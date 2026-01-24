@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Menu, X, Waves } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { DashboardSidebar, type DashboardView } from "@/components/dashboard/DashboardSidebar";
 import { BalanceOverview } from "@/components/dashboard/BalanceCard";
 import { DepositModal } from "@/components/dashboard/DepositModal";
@@ -9,6 +9,7 @@ import { SendModal } from "@/components/dashboard/SendModal";
 import { StatementView } from "@/components/dashboard/StatementView";
 import { SettingsView } from "@/components/dashboard/SettingsView";
 import { KYCView } from "@/components/dashboard/KYCView";
+import sendicashLogo from "@/assets/sendicash-logo.png";
 
 interface DashboardProps {
   onLogout: () => void;
@@ -42,11 +43,14 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     switch (activeView) {
       case "balance":
         return (
-          <BalanceOverview
-            onDeposit={() => setDepositOpen(true)}
-            onWithdraw={() => setWithdrawOpen(true)}
-            onSend={() => setSendOpen(true)}
-          />
+          <div className="space-y-8">
+            <BalanceOverview
+              onDeposit={() => setDepositOpen(true)}
+              onWithdraw={() => setWithdrawOpen(true)}
+              onSend={() => setSendOpen(true)}
+            />
+            <StatementView />
+          </div>
         );
       case "statement":
         return <StatementView />;
@@ -56,11 +60,14 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
         return <KYCView />;
       default:
         return (
-          <BalanceOverview
-            onDeposit={() => setDepositOpen(true)}
-            onWithdraw={() => setWithdrawOpen(true)}
-            onSend={() => setSendOpen(true)}
-          />
+          <div className="space-y-8">
+            <BalanceOverview
+              onDeposit={() => setDepositOpen(true)}
+              onWithdraw={() => setWithdrawOpen(true)}
+              onSend={() => setSendOpen(true)}
+            />
+            <StatementView />
+          </div>
         );
     }
   };
@@ -79,12 +86,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b border-border">
         <div className="flex items-center justify-between p-4">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-primary to-primary/80 flex items-center justify-center">
-              <Waves className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-lg font-bold text-foreground">SendWave</span>
-          </div>
+          <img src={sendicashLogo} alt="SendiCash" className="h-10 object-contain" />
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2 rounded-lg hover:bg-muted text-foreground"
@@ -117,7 +119,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="max-w-6xl mx-auto"
+          className="max-w-4xl mx-auto"
         >
           {renderContent()}
         </motion.div>
