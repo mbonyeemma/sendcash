@@ -1,4 +1,4 @@
-import { Waves } from "lucide-react";
+import sendicashLogo from "@/assets/sendicash-logo.png";
 
 export const Footer = () => {
   return (
@@ -7,11 +7,8 @@ export const Footer = () => {
         <div className="grid md:grid-cols-4 gap-8 mb-8">
           {/* Logo & Description */}
           <div className="md:col-span-1">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-primary-foreground/10 flex items-center justify-center">
-                <Waves className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <span className="text-xl font-bold">SendWave</span>
+            <div className="mb-4">
+              <img src={sendicashLogo} alt="SendiCash" className="h-12 object-contain brightness-0 invert" />
             </div>
             <p className="text-primary-foreground/70 text-sm">
               Fast, simple, and secure payments for everyone. Your gateway to the future of digital finance.
@@ -51,7 +48,7 @@ export const Footer = () => {
 
         <div className="border-t border-primary-foreground/20 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-primary-foreground/60 text-sm">
-            © {new Date().getFullYear()} SendWave. All rights reserved.
+            © {new Date().getFullYear()} SendiCash. All rights reserved.
           </p>
           <div className="flex gap-4 mt-4 md:mt-0">
             <a href="#" className="text-primary-foreground/60 hover:text-primary-foreground transition-colors text-sm">

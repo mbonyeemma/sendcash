@@ -11,14 +11,13 @@ interface DepositModalProps {
   onClose: () => void;
 }
 
-type DepositMethod = "mobile" | "visa" | "crypto";
-type Step = 1 | 2 | 3;
+type DepositMethod = "mobile" | "crypto";
+type Step = 1 | 2;
 
 const mobileNetworks = ["MTN Mobile Money", "Airtel Money", "Others"];
 const cryptoTokens = [
-  { id: "tron", name: "TRON", symbol: "TRX", address: "TXk8rQSAvPvBBNtqSoY6nCfsXWCSSpTVQF" },
-  { id: "dcs", name: "DCS Token", symbol: "DCS", address: "DCSk8rQSAvPvBBNtqSoY6nCfsXWCSSpTVQF" },
-  { id: "xlusd", name: "XLUSD", symbol: "XLUSD", address: "XLUSDk8rQSAvPvBBNtqSoY6nCfsXWCSSpTVQF" },
+  { id: "usdt", name: "Tether", symbol: "USDT", address: "TXk8rQSAvPvBBNtqSoY6nCfsXWCSSpTVQF", color: "bg-emerald-500" },
+  { id: "usdc", name: "USD Coin", symbol: "USDC", address: "0x1234567890abcdef1234567890abcdef12345678", color: "bg-blue-500" },
 ];
 
 export const DepositModal = ({ isOpen, onClose }: DepositModalProps) => {
@@ -27,7 +26,6 @@ export const DepositModal = ({ isOpen, onClose }: DepositModalProps) => {
   const [network, setNetwork] = useState("");
   const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState("UGX");
   const [selectedToken, setSelectedToken] = useState(cryptoTokens[0]);
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,7 +45,7 @@ export const DepositModal = ({ isOpen, onClose }: DepositModalProps) => {
 
   const handleConfirm = async () => {
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, 1500));
     setIsLoading(false);
     toast({
       title: "Deposit initiated!",
@@ -55,7 +53,7 @@ export const DepositModal = ({ isOpen, onClose }: DepositModalProps) => {
         ? "Please complete the payment on your phone." 
         : "Waiting for blockchain confirmation.",
     });
-    setStep(3);
+    resetAndClose();
   };
 
   const resetAndClose = () => {
@@ -71,47 +69,49 @@ export const DepositModal = ({ isOpen, onClose }: DepositModalProps) => {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex justify-end">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={resetAndClose}
-          className="absolute inset-0 bg-foreground/60 backdrop-blur-sm"
+          className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
         />
 
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative bg-card rounded-2xl shadow-xl w-full max-w-lg p-6 border border-border"
+          initial={{ x: "100%" }}
+          animate={{ x: 0 }}
+          exit={{ x: "100%" }}
+          transition={{ type: "spring", damping: 25, stiffness: 200 }}
+          className="relative bg-card h-full w-full max-w-md shadow-2xl border-l border-border flex flex-col"
         >
-          <button
-            onClick={resetAndClose}
-            className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted"
-          >
-            <X className="w-5 h-5" />
-          </button>
-
-          {/* Progress */}
-          <div className="flex items-center gap-2 mb-6">
-            {[1, 2, 3].map((s) => (
-              <div
-                key={s}
-                className={`h-1 flex-1 rounded-full transition-colors ${
-                  s <= step ? "bg-primary" : "bg-muted"
-                }`}
-              />
-            ))}
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-border">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Deposit Funds</h2>
+              <p className="text-sm text-muted-foreground">Step {step} of 2</p>
+            </div>
+            <button
+              onClick={resetAndClose}
+              className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
-          {/* Step 1: Method Selection */}
-          {step === 1 && (
-            <div>
-              <h2 className="text-xl font-bold text-foreground mb-2">Deposit Funds</h2>
-              <p className="text-muted-foreground mb-6">Choose your deposit method</p>
+          {/* Progress */}
+          <div className="flex gap-2 px-6 pt-4">
+            <div className={`h-1 flex-1 rounded-full ${step >= 1 ? "bg-primary" : "bg-muted"}`} />
+            <div className={`h-1 flex-1 rounded-full ${step >= 2 ? "bg-primary" : "bg-muted"}`} />
+          </div>
 
-              <div className="space-y-3">
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {/* Step 1: Method Selection */}
+            {step === 1 && (
+              <div className="space-y-4">
+                <p className="text-muted-foreground">Choose your deposit method</p>
+
                 <button
                   onClick={() => handleMethodSelect("mobile")}
                   className="w-full flex items-center gap-4 p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all"
@@ -147,26 +147,21 @@ export const DepositModal = ({ isOpen, onClose }: DepositModalProps) => {
                   </div>
                   <div className="text-left">
                     <h3 className="font-semibold text-foreground">Cryptocurrency</h3>
-                    <p className="text-sm text-muted-foreground">TRON, DCS, XLUSD</p>
+                    <p className="text-sm text-muted-foreground">USDT, USDC</p>
                   </div>
                 </button>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Step 2: Details */}
-          {step === 2 && method === "mobile" && (
-            <div>
-              <h2 className="text-xl font-bold text-foreground mb-2">Mobile Money Deposit</h2>
-              <p className="text-muted-foreground mb-6">Enter your payment details</p>
-
-              <div className="space-y-4">
+            {/* Step 2: Mobile Money */}
+            {step === 2 && method === "mobile" && (
+              <div className="space-y-5">
                 <div>
                   <Label>Network</Label>
                   <select
                     value={network}
                     onChange={(e) => setNetwork(e.target.value)}
-                    className="w-full mt-1.5 h-11 px-3 rounded-lg border border-input bg-background text-foreground"
+                    className="w-full mt-1.5 h-12 px-4 rounded-xl border border-input bg-background text-foreground"
                   >
                     <option value="">Select network</option>
                     {mobileNetworks.map((n) => (
@@ -181,70 +176,42 @@ export const DepositModal = ({ isOpen, onClose }: DepositModalProps) => {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+256 700 000 000"
-                    className="mt-1.5"
+                    className="mt-1.5 h-12"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Amount</Label>
-                    <Input
-                      type="number"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      placeholder="100,000"
-                      className="mt-1.5"
-                    />
-                  </div>
-                  <div>
-                    <Label>Currency</Label>
-                    <select
-                      value={currency}
-                      onChange={(e) => setCurrency(e.target.value)}
-                      className="w-full mt-1.5 h-11 px-3 rounded-lg border border-input bg-background text-foreground"
-                    >
-                      <option value="UGX">UGX</option>
-                      <option value="USD">USD</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
-                    Back
-                  </Button>
-                  <Button 
-                    variant="hero" 
-                    onClick={handleConfirm} 
-                    className="flex-1"
-                    disabled={!network || !phone || !amount || isLoading}
-                  >
-                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirm Deposit"}
-                  </Button>
+                <div>
+                  <Label>Amount (UGX)</Label>
+                  <Input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="100,000"
+                    className="mt-1.5 h-12"
+                  />
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {step === 2 && method === "crypto" && (
-            <div>
-              <h2 className="text-xl font-bold text-foreground mb-2">Crypto Deposit</h2>
-              <p className="text-muted-foreground mb-6">Send crypto to your wallet address</p>
-
-              <div className="space-y-4">
+            {/* Step 2: Crypto */}
+            {step === 2 && method === "crypto" && (
+              <div className="space-y-5">
                 <div>
                   <Label>Select Token</Label>
-                  <div className="grid grid-cols-3 gap-2 mt-1.5">
+                  <div className="grid grid-cols-2 gap-3 mt-2">
                     {cryptoTokens.map((token) => (
                       <button
                         key={token.id}
                         onClick={() => setSelectedToken(token)}
-                        className={`p-3 rounded-xl border transition-all ${
+                        className={`p-4 rounded-xl border transition-all flex items-center gap-3 ${
                           selectedToken.id === token.id
                             ? "border-primary bg-primary/10"
                             : "border-border hover:border-primary/50"
                         }`}
                       >
+                        <div className={`w-8 h-8 rounded-full ${token.color} flex items-center justify-center text-white text-xs font-bold`}>
+                          {token.symbol.charAt(0)}
+                        </div>
                         <span className="font-semibold text-foreground">{token.symbol}</span>
                       </button>
                     ))}
@@ -253,7 +220,7 @@ export const DepositModal = ({ isOpen, onClose }: DepositModalProps) => {
 
                 <div>
                   <Label>Wallet Address</Label>
-                  <div className="mt-1.5 p-4 rounded-xl bg-muted border border-border">
+                  <div className="mt-2 p-4 rounded-xl bg-muted border border-border">
                     <div className="flex items-center justify-between gap-3">
                       <code className="text-sm text-foreground break-all">
                         {selectedToken.address}
@@ -279,34 +246,28 @@ export const DepositModal = ({ isOpen, onClose }: DepositModalProps) => {
                 </div>
 
                 <p className="text-sm text-muted-foreground text-center">
-                  Send only {selectedToken.name} ({selectedToken.symbol}) to this address.
-                  Sending other tokens may result in loss.
+                  Send only {selectedToken.symbol} to this address
                 </p>
-
-                <Button variant="outline" onClick={() => setStep(1)} className="w-full">
-                  Back
-                </Button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          {/* Step 3: Success */}
-          {step === 3 && (
-            <div className="text-center py-6">
-              <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-                <Check className="w-8 h-8 text-emerald-600" />
-              </div>
-              <h2 className="text-xl font-bold text-foreground mb-2">Deposit Initiated!</h2>
-              <p className="text-muted-foreground mb-6">
-                {method === "mobile"
-                  ? "Please complete the payment on your phone. Your balance will update once confirmed."
-                  : "Your balance will update once the transaction is confirmed on the blockchain."}
-              </p>
-              <Button variant="hero" onClick={resetAndClose} className="w-full">
-                Done
+          {/* Footer */}
+          <div className="p-6 border-t border-border space-y-3">
+            {step === 2 && method === "mobile" && (
+              <Button 
+                variant="hero" 
+                onClick={handleConfirm} 
+                className="w-full h-12"
+                disabled={!network || !phone || !amount || isLoading}
+              >
+                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Confirm Deposit"}
               </Button>
-            </div>
-          )}
+            )}
+            <Button variant="outline" onClick={step === 1 ? resetAndClose : () => setStep(1)} className="w-full h-12">
+              {step === 1 ? "Cancel" : "Back"}
+            </Button>
+          </div>
         </motion.div>
       </div>
     </AnimatePresence>

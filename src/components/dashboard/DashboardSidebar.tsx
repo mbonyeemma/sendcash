@@ -2,18 +2,18 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { 
   Wallet, 
-  ArrowDownCircle, 
-  ArrowUpCircle, 
-  Send, 
   FileText, 
   Settings, 
   Shield,
   ChevronLeft,
   ChevronRight,
   LogOut,
-  Waves
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Send
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import sendicashLogo from "@/assets/sendicash-logo.png";
 
 type DashboardView = "balance" | "deposit" | "withdraw" | "send" | "statement" | "settings" | "kyc";
 
@@ -24,13 +24,13 @@ interface DashboardSidebarProps {
 }
 
 const menuItems = [
-  { id: "balance" as const, label: "Balance", icon: Wallet },
+  { id: "balance" as const, label: "Dashboard", icon: Wallet },
   { id: "deposit" as const, label: "Deposit", icon: ArrowDownCircle },
   { id: "withdraw" as const, label: "Withdraw", icon: ArrowUpCircle },
   { id: "send" as const, label: "Send", icon: Send },
   { id: "statement" as const, label: "Statement", icon: FileText },
   { id: "settings" as const, label: "Settings", icon: Settings },
-  { id: "kyc" as const, label: "KYC / Verification", icon: Shield },
+  { id: "kyc" as const, label: "KYC", icon: Shield },
 ];
 
 export const DashboardSidebar = ({ activeView, onViewChange, onLogout }: DashboardSidebarProps) => {
@@ -39,25 +39,17 @@ export const DashboardSidebar = ({ activeView, onViewChange, onLogout }: Dashboa
   return (
     <motion.aside
       initial={false}
-      animate={{ width: collapsed ? 80 : 280 }}
+      animate={{ width: collapsed ? 80 : 260 }}
       className="bg-card border-r border-border h-screen sticky top-0 flex flex-col"
     >
       {/* Logo */}
       <div className="p-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-primary to-primary/80 flex items-center justify-center shrink-0">
-            <Waves className="w-6 h-6 text-primary-foreground" />
-          </div>
-          {!collapsed && (
-            <motion.span
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="text-lg font-bold text-foreground"
-            >
-              SendWave
-            </motion.span>
-          )}
+          <img 
+            src={sendicashLogo} 
+            alt="SendiCash" 
+            className={cn("object-contain", collapsed ? "w-10 h-10" : "w-32 h-12")}
+          />
         </div>
         <button
           onClick={() => setCollapsed(!collapsed)}

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Menu, X, Waves } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import sendicashLogo from "@/assets/sendicash-logo.png";
 
 interface HeaderProps {
   onLoginClick: () => void;
@@ -22,10 +23,7 @@ export const Header = ({ onLoginClick, onRegisterClick }: HeaderProps) => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
-              <Waves className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-bold text-foreground">SendWave</span>
+            <img src={sendicashLogo} alt="SendiCash" className="h-10 object-contain" />
           </motion.div>
 
           {/* Desktop Navigation */}

@@ -36,7 +36,7 @@ export const HeroSection = ({ onRegisterClick, onLoginClick }: HeroSectionProps)
             </motion.div>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight mb-6">
-              <span className="text-gradient-gold">SendWave</span> – Fast,
+              <span className="text-gradient-gold">SendiCash</span> – Fast,
               <br />Simple, Secure
               <br />Payments
             </h1>
@@ -91,31 +91,24 @@ export const HeroSection = ({ onRegisterClick, onLoginClick }: HeroSectionProps)
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-semibold text-foreground">Buy & Sell Crypto</h3>
                   <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center">
-                    <span className="text-xl">₿</span>
+                    <span className="text-xl">💰</span>
                   </div>
                 </div>
 
                 <div className="space-y-4 mb-6">
                   <div className="flex items-center justify-between p-3 bg-secondary rounded-xl">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">T</div>
-                      <span className="font-medium text-foreground">TRON</span>
+                      <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs font-bold">₮</div>
+                      <span className="font-medium text-foreground">USDT</span>
                     </div>
-                    <span className="text-success font-medium">+2.4%</span>
+                    <span className="text-emerald-600 font-medium">$1.00</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-secondary rounded-xl">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center text-sm font-bold text-gold-dark">D</div>
-                      <span className="font-medium text-foreground">DCS</span>
+                      <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">$</div>
+                      <span className="font-medium text-foreground">USDC</span>
                     </div>
-                    <span className="text-success font-medium">+1.8%</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-secondary rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">X</div>
-                      <span className="font-medium text-foreground">XLUSD</span>
-                    </div>
-                    <span className="text-muted-foreground font-medium">+0.0%</span>
+                    <span className="text-emerald-600 font-medium">$1.00</span>
                   </div>
                 </div>
 
