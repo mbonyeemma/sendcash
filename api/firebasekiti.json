@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "kitty-pay-ff661",
+  "private_key_id": "7977940509d059082170211dda0bb516a640804a",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDB44+m9ZIyCYnB\nwLVXne4NJ4dJw+CPUErWZIxd7CzVScOzTbb69EYoxrjonojoJkxL/GkSgQjZvjgr\nxGcVseHPYI1Yu8wpCvBf062Mvdv/nW0N5WiRY/8VfVMGDJNjcG+Dxyb/GDMLpzNz\nrMhRBX3PW/Docp+MOrIAfcCzc7zaXaF/aNTVALBVUbxhG0MpjmoJjWzwv5z07jUx\nhfDPGFVxAazMxJeSSsB2qNsug3bhGDyc5eXZxw+VUt84AB5TWsru3Rm0tBnxTgr3\nU2soHuuwxYF/LhIFc3nkwsvWowZeqVOR+UlAQL7qQ4wU8VsHCk/C/1TMMdntj4ep\nyuegcsKHAgMBAAECggEAB9OdSWKRV7a92lXinBpScTJ+yhH/nxlhI/1kEyiE+Mkk\n/rhs4f15VY0MCsvXf/OH0etq/GW8Czob/1xKwvvuvxXJLuNJzwBTirK7RzqkxlE/\nBTgU/AV61w27i7t3OaTgw4OHBfYenWJO9+TqIycjGHtAIsn5ucnmxJFO9Y9++JuL\n8eRKYZggUpUcsX3QMPvwbxkIXmyYOqMtsgBDV5lm+Z3yd1bwXa6tBa+cnffca/G8\nj8ASSe7o0yAQVWeOE6de0kTOjf7UKQ4HPN+1/pt3dQ3bm5eSWGBlbI3tb6uMArRx\nwi1f8UVovyu27I8jQN9q2bAhXYQ07fqaNKaoTXt5DQKBgQDuPP5DgMQWo+5Jax/K\n7mjjmC770kHi7WTdI3vDgIPGyWwYakJho6iBOY0rnfHGsoD8BFotEDoME5DPp38k\n5rZxY8stlpT2MYwDBziLB/u0hYJF+e1aRFShy9zThvSXUF9gWhlQqoFy3vPFpNSK\n13cO9u6k2CQlF2m77W5gA4A/qwKBgQDQWB4w9YxkyflQ79Y+oBAluDTVtrX7hNwx\nkniOYPFNYfeZAH3idTvxf7hS8y2LPESpAorY3ZAJdGozCHVpjvOOjwZsjE2rhqWB\nJkBvKpefDCtpcRuQnd+gHyd7nbn66ORxok6QvRkMN8fCJ1ZDYyLV27HyOavUp76G\nw5V7dIUclQKBgDN6SHKrkzNVLrr8g70ksNNk4doV/5iaNS43aZm/3jmI8muAImHY\nrCNoHSHsmf6WOZq7EgUkuXY8kBDen3GIzKlJp/Bs1jkwUZGh8MzR58iFBLY8H9Ze\nZ28ijs/CHH3JpyI5tbihbyE0HbZ6PFbX4ekA4GYMMhs1qOorjqr+dqrLAoGABiRS\n34admOsLWoN3gWkekL4ZcKNuQffstdlnjGr3MhzNO8lz7JUgK0JkoK1ijlQ8ge79\nQN9nO6Ae8Voye+Ym7/Dvc4u/Tmstvdzu0VgkGCA3t2gKM/0zdnj0pQRFU0xCT8dF\nIacxcdbDIMogFOR7RmqvmEBy/FXlm/twEK+irPECgYAKA94CfukBaky6a1hXbTY7\nyF0HVrGqIgo3byYx6w3WNkLa9E2vKjAwFwkqEtozFvq0945sZL8iTXBIb86KWB7v\nWws7tk5Ia863hmTHthJYvFYErvFW1sWu6uKjZcsMuE10BUOmUcejTpG3fgXmCYUm\n1Gd+2MQooOw2j48stcqiYw==\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-fbsvc@kitty-pay-ff661.iam.gserviceaccount.com",
+  "client_id": "113126149127851295700",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40kitty-pay-ff661.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

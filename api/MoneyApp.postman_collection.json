@@ -1,0 +1,2700 @@
+{
+  "info": {
+    "_postman_id": "d5fb5686-850e-492a-9b34-5acf06ba4447",
+    "name": "MoneyApp",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "3143535"
+  },
+  "item": [
+    {
+      "name": "auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"full_name\":\"James\",\r\n    \"email\": \"mbonyee77+1@gmail.com\",\r\n    \"password\": \"Kampala123?\",\r\n    \"phone_number\":\"\",\r\n    \"country_code\":\"256\",\r\n    \"confirm_password\":\"\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{URL}}user/register",
+              "host": [
+                "{{URL}}user"
+              ],
+              "path": [
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"mbonyeemma+8000@gmail.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{URL}}/user/forgot-password",
+              "host": [
+                "{{URL}}"
+              ],
+              "path": [
+                "user",
+                "forgot-password"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Reset OTP",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"mbonyee77@gmail.com\",\n  \"otp\": \"398335\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{URL}}/user/verify-reset-otp",
+              "host": [
+                "{{URL}}"
+              ],
+              "path": [
+                "user",
+                "verify-reset-otp"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"mbonyee77@gmail.com\",\n  \"newPassword\": \"Kampala123?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{URL}}/user/reset-password",
+              "host": [
+                "{{URL}}"
+              ],
+              "path": [
+                "user",
+                "reset-password"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"mbonyee77+1@gmail.com\",\n    \"password\": \"Kampala123?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{URL}}/user/login",
+              "host": [
+                "{{URL}}"
+              ],
+              "path": [
+                "user",
+                "login"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Login",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"mbonyeemma+8000@gmail.com\",\n  \"password\": \"Kampala123?\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{URL}}/user/login",
+                  "host": [
+                    "{{URL}}"
+                  ],
+                  "path": [
+                    "user",
+                    "login"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "X-Powered-By",
+                  "value": "Express"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "*"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "646"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"286-rvXnhxw8lv0e+k/ajK86UA1otSs\""
+                },
+                {
+                  "key": "Date",
+                  "value": "Sat, 03 May 2025 12:41:55 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": 200,\n    \"message\": \"Login successful\",\n    \"data\": {\n        \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMTM2MjQwNDkiLCJ1c2VybmFtZSI6Im1ib255ZWVtbWErODAwMEBnbWFpbC5jb20iLCJlbWFpbCI6Im1ib255ZWVtbWErODAwMEBnbWFpbC5jb20iLCJpYXQiOjE3NDYyNzYxMTUsImV4cCI6MTc0NjM2MjUxNX0.TlrcJ1b_2BUsz6zr--C-2DCDrg6FL0dPAXS0mTt6NyI\",\n        \"user\": {\n            \"user_id\": \"13624049\",\n            \"username\": \"mbonyeemma+8000@gmail.com\",\n            \"email\": \"mbonyeemma+8000@gmail.com\",\n            \"email_verified\": 1\n        },\n        \"wallet\": {\n            \"user_id\": \"13624049\",\n            \"chain\": \"stellar\",\n            \"publicKey\": \"GARYXPMDT7UEP6KBRLJ4WC54TLZHSAB7U33B77K72JQPYZBTW7ISNWK2\",\n            \"secret\": \"SBXIE5KFIDUDTJQ2OFTY4HQUZNDJTRDOO56LH7QWZIRKKAP6FJAHJXAB\",\n            \"mnemonic\": \"\"\n        }\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"mbonyeemma+8000@gmail.com\",\n  \"otp\": \"768119\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{URL}}/user/verify-otp",
+              "host": [
+                "{{URL}}"
+              ],
+              "path": [
+                "user",
+                "verify-otp"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Verify OTP",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"mbonyeemma+8000@gmail.com\",\n  \"otp\": \"768119\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{URL}}/user/verify-otp",
+                  "host": [
+                    "{{URL}}"
+                  ],
+                  "path": [
+                    "user",
+                    "verify-otp"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "X-Powered-By",
+                  "value": "Express"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "*"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "457"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"1c9-mrviElVv7UON82LaxjMNys+KYp0\""
+                },
+                {
+                  "key": "Date",
+                  "value": "Sat, 03 May 2025 12:41:36 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": 200,\n    \"message\": \"Email verified successfully\",\n    \"data\": {\n        \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMTM2MjQwNDkiLCJ1c2VybmFtZSI6Im1ib255ZWVtbWErODAwMEBnbWFpbC5jb20iLCJlbWFpbCI6Im1ib255ZWVtbWErODAwMEBnbWFpbC5jb20iLCJpYXQiOjE3NDYyNzYwOTYsImV4cCI6MTc0NjM2MjQ5Nn0.LPyuPYiOkDMzfAOjNGdaQyUmtQPfwPaZEIh438vQO9M\",\n        \"user\": {\n            \"user_id\": \"13624049\",\n            \"username\": \"mbonyeemma+8000@gmail.com\",\n            \"email\": \"mbonyeemma+8000@gmail.com\",\n            \"email_verified\": true\n        }\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Search Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{URL}}/user/search_users/12345678?q=john",
+              "host": [
+                "{{URL}}"
+              ],
+              "path": [
+                "user",
+                "search_users",
+                "12345678"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "john"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "change-pin",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"oldPin\": \"\",\n    \"confirmOldPin\": \"\",\n    \"newPin\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{URL}}/user/change-pin",
+              "host": [
+                "{{URL}}"
+              ],
+              "path": [
+                "user",
+                "change-pin"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "On Login, the app returns a refresh token, send this refresh token on the pin login to get a new JWT token. When the app returns a 401, after calling applogin, go to the main login, if the api returns 401, on any othet endpoint, go to the pin login"
+    },
+    {
+      "name": "Wallet",
+      "item": [
+        {
+          "name": "PaymentMethods",
+          "item": [
+            {
+              "name": "Add Payment Method",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"type\": \"BANK\",\n  \"currency\": \"USD\",\n  \"phone_number\": \"1234567890\",\n  \"country_code\": \"US\",\n  \"account_name\": \"John Doe\",\n  \"bank_name\": \"Example Bank\",\n  \"bank_code\": \"001\",\n  \"account_number\": \"000123456789\",\n  \"bank_address\": \"123 Main St\",\n  \"bank_phone_number\": \"555-555-5555\",\n  \"bank_country\": \"USA\"\n}"
+                },
+                "url": {
+                  "raw": "{{URL}}wallet/addPaymentMethod",
+                  "host": [
+                    "{{URL}}wallet"
+                  ],
+                  "path": [
+                    "addPaymentMethod"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Add Payment Method[mobile]",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"type\": \"MOBILE\",\n  \"currency\": \"UGX\",\n  \"phone_number\": \"+256787719618\",\n  \"account_number\": \"+256787719618\",\n  \"country_code\": \"UG\",\n  \"account_name\": \"MBONYE EMMANUEL\"\n}"
+                },
+                "url": {
+                  "raw": "{{URL}}wallet/addPaymentMethod",
+                  "host": [
+                    "{{URL}}wallet"
+                  ],
+                  "path": [
+                    "addPaymentMethod"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Add Payment Method[WALLET]",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"type\": \"MOBILE\",\n    \"currency\": \"UGX\",\n    \"phone_number\": \"+256787719618\",\n    \"country_code\": \"UG\",\n    \"account_number\": \"usdp****\",\n    \"account_name\": \"MBONYE EMMANUEL\"\n}"
+                },
+                "url": {
+                  "raw": "{{URL}}wallet/addPaymentMethod",
+                  "host": [
+                    "{{URL}}wallet"
+                  ],
+                  "path": [
+                    "addPaymentMethod"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Payment Method",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{URL}}wallet/deletePaymentMethod/:Id",
+                  "host": [
+                    "{{URL}}wallet"
+                  ],
+                  "path": [
+                    "deletePaymentMethod",
+                    ":Id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "Id",
+                      "value": "payment_method_id"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get User Payment Methods",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{URL}}wallet/getUserPaymentMethods?type=BANK",
+                  "host": [
+                    "{{URL}}wallet"
+                  ],
+                  "path": [
+                    "getUserPaymentMethods"
+                  ],
+                  "query": [
+                    {
+                      "key": "type",
+                      "value": "BANK"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "getPaymentTypes",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{URL}}wallet/getPaymentTypes",
+                  "host": [
+                    "{{URL}}wallet"
+                  ],
+                  "path": [
+                    "getPaymentTypes"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Get Balance",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{URL}}wallet/balance/UGX",
+              "host": [
+                "{{URL}}wallet"
+              ],
+              "path": [
+                "balance",
+                "UGX"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Statement",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{token}}wallet/accountStatement?currency=UGX",
+              "host": [
+                "{{token}}wallet"
+              ],
+              "path": [
+                "accountStatement"
+              ],
+              "query": [
+                {
+                  "key": "currency",
+                  "value": "UGX"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"account_number\": \"bava\",\n    \"amount\": 1000,\n    \"payment_method_id\": \"\",\n    \"pin\": \"12345\",\n    \"payment_mode\": \"MOBILE\",\n    \"currency\": \"UGX\",\n    \"billerInfo\":{\n        \n    }\n    \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{URL}}/wallet/transferRequest",
+              "host": [
+                "{{URL}}"
+              ],
+              "path": [
+                "wallet",
+                "transferRequest"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "depositRequest",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"amount\": \"1000\",\n    \"currency\": \"UGX\",\n    \"account_number\":\"256787700618\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{URL}}/wallet/depositRequest",
+              "host": [
+                "{{URL}}"
+              ],
+              "path": [
+                "wallet",
+                "depositRequest"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "validatAccount",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_method\":\"WALLET\",\n  \"receiver_account\":\"0787719618\",\n  \"amount\":9000\n   \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{token}}wallet/validatAccount",
+              "host": [
+                "{{token}}wallet"
+              ],
+              "path": [
+                "validatAccount"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "setTransactionPin",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"pin\": \"12345\",\n    \"confirm_pin\": \"12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{URL}}wallet/setTransactionPin",
+              "host": [
+                "{{URL}}wallet"
+              ],
+              "path": [
+                "setTransactionPin"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "pinlogin",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNDQyNTI1NDUiLCJ0eXBlIjoicmVmcmVzaCIsImlhdCI6MTc0OTAzMzUwMCwiZXhwIjoxNzQ5NjM4MzAwfQ._UKHFJNMS8wI7G7Tct_9S-wL75mBKujnd4YBSxHPXWc",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"pin\": \"12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{URL}}wallet/pinlogin",
+              "host": [
+                "{{URL}}wallet"
+              ],
+              "path": [
+                "pinlogin"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "depositaddresses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{URL}}wallet/deposit/addresses",
+              "host": [
+                "{{URL}}wallet"
+              ],
+              "path": [
+                "deposit",
+                "addresses"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "profile",
+      "item": [
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"EMMA BRIAN\",\n  \"username\":\"256787719618\",\n  \"avatar\": \"https://example.com/avatar.png\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{token}}user/update_profile",
+              "host": [
+                "{{token}}user"
+              ],
+              "path": [
+                "update_profile"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "update_profile",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"full_name\": \"\",\n    \"avatar\": \"\",\n    \"country\": \"\",\n    \"bio\":\"\",\n    \"phone_number\":\"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{URL}}/user/update_profile",
+              "host": [
+                "{{URL}}"
+              ],
+              "path": [
+                "user",
+                "update_profile"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "updatePushToken",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\":\"8d2eabfeob8e2a45bdb35879ceeb6e284c\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{URL}}/user/registerPushToken",
+              "host": [
+                "{{URL}}"
+              ],
+              "path": [
+                "user",
+                "registerPushToken"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "getCountries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{URL}}/user/getCountries",
+              "host": [
+                "{{URL}}"
+              ],
+              "path": [
+                "user",
+                "getCountries"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "getUserByUsername",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{URL}}/user/get_user_by_id/bava",
+              "host": [
+                "{{URL}}"
+              ],
+              "path": [
+                "user",
+                "get_user_by_id",
+                "bava"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "deposit",
+      "item": [
+        {
+          "name": "getSupportedAssets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{URL}}/wallet/getSupportedAssets",
+              "host": [
+                "{{URL}}"
+              ],
+              "path": [
+                "wallet",
+                "getSupportedAssets"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "stableCoinDeposit",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"amount\": 15,\n    \"asset_code\": \"USDC\",\n    \"chain_code\": \"stellar\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{URL}}/wallet/stableCoinDeposit",
+              "host": [
+                "{{URL}}"
+              ],
+              "path": [
+                "wallet",
+                "stableCoinDeposit"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Billers",
+      "item": [
+        {
+          "name": "1.0 GET /products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{URL_}}payment/products",
+              "host": [
+                "{{URL_}}payment"
+              ],
+              "path": [
+                "products"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "GET /products",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{URL_}}payment/products",
+                  "host": [
+                    "{{URL_}}payment"
+                  ],
+                  "path": [
+                    "products"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "X-Powered-By",
+                  "value": "Express"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "*"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "6712"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"1a38-R98jlE2HWqO9ZBbUJMpShi36ZVg\""
+                },
+                {
+                  "key": "Date",
+                  "value": "Fri, 18 Jul 2025 07:49:55 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": 200,\n    \"data\": {\n        \"success\": true,\n        \"products\": [\n            {\n                \"name\": \"Finance Trust Bank Uganda Ltd Transfer\",\n                \"code\": \"FINANCE_TRUST_BANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"GOtv - Multichoice\",\n                \"code\": \"GO_TV\",\n                \"category\": \"TV\",\n                \"has_price_list\": true,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Uganda Telecom Airtime\",\n                \"code\": \"UTL_AIRTIME\",\n                \"category\": \"AIRTIME\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": false\n            },\n            {\n                \"name\": \"MTN Uganda Airtime\",\n                \"code\": \"MTN_UG_AIRTIME\",\n                \"category\": \"AIRTIME\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": false\n            },\n            {\n                \"name\": \"AZAM TV\",\n                \"code\": \"AZAM_TV\",\n                \"category\": \"TV\",\n                \"has_price_list\": true,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Airtel Uganda Internet\",\n                \"code\": \"AIRTEL_UG_INTERNET\",\n                \"category\": \"INTERNET\",\n                \"has_price_list\": true,\n                \"has_choice_list\": false,\n                \"billable\": false\n            },\n            {\n                \"name\": \"Roke Telecom Internet\",\n                \"code\": \"ROKE_TELECOM_UG_INTERNET\",\n                \"category\": \"INTERNET\",\n                \"has_price_list\": true,\n                \"has_choice_list\": false,\n                \"billable\": false\n            },\n            {\n                \"name\": \"MTN Uganda Internet\",\n                \"code\": \"MTN_UG_INTERNET\",\n                \"category\": \"INTERNET\",\n                \"has_price_list\": true,\n                \"has_choice_list\": false,\n                \"billable\": false\n            },\n            {\n                \"name\": \"Airtel Uganda Voice Bundles\",\n                \"code\": \"AIRTEL_UG_VOICE_BUNDLES\",\n                \"category\": \"OTHERS\",\n                \"has_price_list\": true,\n                \"has_choice_list\": false,\n                \"billable\": false\n            },\n            {\n                \"name\": \"DSTV - Multichoice\",\n                \"code\": \"DSTV\",\n                \"category\": \"TV\",\n                \"has_price_list\": true,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"MTN Uganda Voice Bundles\",\n                \"code\": \"MTN_UG_VOICE_BUNDLES\",\n                \"category\": \"OTHERS\",\n                \"has_price_list\": true,\n                \"has_choice_list\": false,\n                \"billable\": false\n            },\n            {\n                \"name\": \"Exim Bank Uganda Ltd Transfer\",\n                \"code\": \"EXIM_BANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Bank Of India Uganda Ltd Transfer\",\n                \"code\": \"BANK_OF_INDIA_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Centenary Rural Development Bank Uganda Ltd Transfer\",\n                \"code\": \"CENTENARY_RURAL_DEVELOPMENT_BANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Bank Of Baroda Uganda Ltd Transfer\",\n                \"code\": \"BANK_OF_BARODA_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"UEDCL Light\",\n                \"code\": \"UMEME_PRE_PAID\",\n                \"category\": \"UTILITIES\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Bank Of Afica Uganda Ltd Transfer\",\n                \"code\": \"BANK_OF_AFRICA_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Citibank Uganda Ltd Transfer\",\n                \"code\": \"CITIBANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"ABSA Bank Of Uganda Ltd Transfer\",\n                \"code\": \"ABSA_BANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Guaranty Trust Bank Uganda Ltd Transfer\",\n                \"code\": \"GUARANTY_TRUST_BANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"KCB Bank Uganda Ltd Transfer\",\n                \"code\": \"KCB_BANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"ABC Capital Bank Uganda Ltd Transfer\",\n                \"code\": \"ABC_CAPITAL_BANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Equity Bank Uganda Ltd Transfer\",\n                \"code\": \"EQUITY_BANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Housing Finance Bank Uganda Ltd Transfer\",\n                \"code\": \"HOUSING_FINANCE_BANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"National Water\",\n                \"code\": \"NATIONAL_WATER\",\n                \"category\": \"UTILITIES\",\n                \"has_price_list\": false,\n                \"has_choice_list\": true,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Cairo Bank Uganda Ltd Transfer\",\n                \"code\": \"CAIRO_INTERNATIONAL_BANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Startimes Bouquets\",\n                \"code\": \"STARTIMES\",\n                \"category\": \"TV\",\n                \"has_price_list\": true,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Airtel Uganda Airtime\",\n                \"code\": \"AIRTEL_UG_AIRTIME\",\n                \"category\": \"AIRTIME\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": false\n            },\n            {\n                \"name\": \"Multichoice - DSTV/GOtv\",\n                \"code\": \"MULTICHOICE\",\n                \"category\": \"TV\",\n                \"has_price_list\": true,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"NCBA Bank Uganda Ltd Transfer\",\n                \"code\": \"NCBA_BANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"I & M Bank Uganda Ltd Transfer\",\n                \"code\": \"ORIENT_BANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Ecobank Uganda Ltd Transfer\",\n                \"code\": \"ECOBANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"United Bank For Africa Ltd Transfer\",\n                \"code\": \"UNITED_BANK_FOR_AFRICA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"DFCU Bank Uganda Ltd Transfer\",\n                \"code\": \"DFCU_BANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Postbank Uganda Ltd Transfer\",\n                \"code\": \"POSTBANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Diamond Trust Bank Uganda Ltd Transfer\",\n                \"code\": \"DIAMOND_TRUST_BANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Opportunity Bank Uganda Ltd Transfer\",\n                \"code\": \"OPPORTUNITY_BANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Stanbic Bank Uganda Ltd Transfer\",\n                \"code\": \"STANBIC_BANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Top Finance Bank Uganda Ltd Transfer\",\n                \"code\": \"TOP_FINANCE_BANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Tropical Bank Uganda Ltd Transfer\",\n                \"code\": \"TROPICAL_BANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            },\n            {\n                \"name\": \"Standard Chartered Bank Uganda Ltd Transfer\",\n                \"code\": \"STANDARD_CHARTERED_BANK_UGANDA_TRANSFER\",\n                \"category\": \"BANK_TRANSFERS\",\n                \"has_price_list\": false,\n                \"has_choice_list\": false,\n                \"billable\": true\n            }\n        ]\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "1.1 GET /products/price-list",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{URL_}}payment/products/price-list?code=MTN_UG_AIRTIME",
+              "host": [
+                "{{URL_}}payment"
+              ],
+              "path": [
+                "products",
+                "price-list"
+              ],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "MTN_UG_AIRTIME"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "1.2 GET /products/choice-list",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:9000/payment/products/choice-list?code=MTN_UG_AIRTIME",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "9000",
+              "path": [
+                "payment",
+                "products",
+                "choice-list"
+              ],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "MTN_UG_AIRTIME"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2.0 POST /products/validate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"product_code\": \"NATIONAL_WATER\",\n    \"amount\": 1000,\n    \"contact_phone\": \"256773102176\",\n    \"msisdn\": \"21173835\",\n    \"location_id\": \"226531\"\n}"
+            },
+            "url": {
+              "raw": "{{URL}}payment/products/validate",
+              "host": [
+                "{{URL}}payment"
+              ],
+              "path": [
+                "products",
+                "validate"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "POST /products/validate",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"account_no\": \"256787719618\",\n  \"reference\": \"56771267712345\",\n  \"msisdn\": \"256787719618\",\n  \"amount\": 5000,\n  \"product_code\": \"MTN_UG_AIRTIME\",\n  \"contact_phone\": \"256771234567\",\n  \"location_id\": \"KLA01\"\n}"
+                },
+                "url": {
+                  "raw": "{{URL_}}payment/products/validate",
+                  "host": [
+                    "{{URL_}}payment"
+                  ],
+                  "path": [
+                    "products",
+                    "validate"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "X-Powered-By",
+                  "value": "Express"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "*"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "141"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"8d-+JJWD+DpkjVVbyQZ6hxw6ruzRf0\""
+                },
+                {
+                  "key": "Date",
+                  "value": "Fri, 18 Jul 2025 07:56:59 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": 200,\n    \"data\": {\n        \"success\": true,\n        \"validation_reference\": \"6f7bb08b887e2e25\",\n        \"charge\": 0,\n        \"customer_name\": \"EMMANUEL MBONYE\",\n        \"balance\": \"0.0\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "2.1 PayBiller",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"amount\": 1000,\n    \"payment_method_id\": \"\",\n    \"pin\": \"12345\",\n    \"payment_mode\": \"BILLER\",\n    \"currency\": \"UGX\",\n    \"billerInfo\": {\n        \"product_code\": \"MTN_UG_AIRTIME\",\n        \"account_number\": \"12345678901\",\n        \"validation_reference\": \"25db978afcbb62d1\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{URL}}/wallet/transferRequest",
+              "host": [
+                "{{URL}}"
+              ],
+              "path": [
+                "wallet",
+                "transferRequest"
+              ]
+            },
+            "description": "Example payment request for UEGCL electricity bill (requires meter_number and amount)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "payments",
+      "item": [
+        {
+          "name": "Get All Billers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{URL}}payment/billers",
+              "host": [
+                "{{URL}}payment"
+              ],
+              "path": [
+                "billers"
+              ]
+            },
+            "description": "Get all active billers across all categories, both grouped by category and as flat list"
+          },
+          "response": [
+            {
+              "name": "All Billers Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/billers",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "billers"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"All billers retrieved successfully\",\n  \"data\": {\n    \"total_billers\": 20,\n    \"grouped_by_category\": {\n      \"electricity\": {\n        \"category_name\": \"Electricity\",\n        \"billers\": []\n      },\n      \"airtime\": {\n        \"category_name\": \"Airtime\",\n        \"billers\": []\n      }\n    },\n    \"flat_list\": []\n  },\n  \"status\": 200\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Billers by Category",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{URL}}/payment/categories/airtime/billers",
+              "host": [
+                "{{URL}}"
+              ],
+              "path": [
+                "payment",
+                "categories",
+                "airtime",
+                "billers"
+              ]
+            },
+            "description": "Get all billers for a specific category (e.g., airtime = MTN, Airtel, Africell, UTL)"
+          },
+          "response": [
+            {
+              "name": "Airtime Billers",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/categories/airtime/billers",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "categories",
+                    "airtime",
+                    "billers"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Billers for airtime retrieved successfully\",\n  \"data\": [\n    {\n      \"id\": 3,\n      \"name\": \"MTN Uganda\",\n      \"slug\": \"mtn\",\n      \"short_name\": \"MTN\",\n      \"min_amount\": 500,\n      \"max_amount\": 500000,\n      \"customer_id_label\": \"Phone Number\",\n      \"customer_id_placeholder\": \"Enter phone number (256XXXXXXXXX)\",\n      \"commission_rate\": 5.00,\n      \"currency\": \"UGX\",\n      \"category_name\": \"Airtime\",\n      \"category_slug\": \"airtime\"\n    }\n  ],\n  \"status\": 200\n}"
+            }
+          ]
+        },
+        {
+          "name": "validateMerchant",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"merchant_id\": \"611801\",\n    \"payment_mode\": \"MERCHANT_KITI_PAY\",\n    \"currency\":\"UGX\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{URL}}/wallet/validateMerchant",
+              "host": [
+                "{{URL}}"
+              ],
+              "path": [
+                "wallet",
+                "validateMerchant"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "payMerchant",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"merchant_id\": \"123456\",\n    \"amount\": 1000,\n    \"pin\": \"12345\",\n    \"payment_mode\": \"MERCHANT_KITI_PAY\",\n    \"currency\": \"UGX\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{URL}}/wallet/payMerchant",
+              "host": [
+                "{{URL}}"
+              ],
+              "path": [
+                "wallet",
+                "payMerchant"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "validation_reference",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"validation_reference\": \"889bbc78cc823053\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{URL}}payment/products/purchase",
+              "host": [
+                "{{URL}}payment"
+              ],
+              "path": [
+                "products",
+                "purchase"
+              ]
+            },
+            "description": "Get all active billers across all categories, both grouped by category and as flat list"
+          },
+          "response": [
+            {
+              "name": "All Billers Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/billers",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "billers"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"All billers retrieved successfully\",\n  \"data\": {\n    \"total_billers\": 20,\n    \"grouped_by_category\": {\n      \"electricity\": {\n        \"category_name\": \"Electricity\",\n        \"billers\": []\n      },\n      \"airtime\": {\n        \"category_name\": \"Airtime\",\n        \"billers\": []\n      }\n    },\n    \"flat_list\": []\n  },\n  \"status\": 200\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "admin",
+      "item": [
+        {
+          "name": "Authentication",
+          "item": [
+            {
+              "name": "Admin Login",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"admin@kitypay.com\",\n  \"password\": \"admin\",\n  \"username\":\"admin\"\n}"
+                },
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/login",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "login"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "initAdmin",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"admin@kitypay.com\",\n  \"password\": \"adminpassword123\"\n}"
+                },
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/init-default-admin",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "init-default-admin"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "User Management",
+          "item": [
+            {
+              "name": "Get All Users",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/users?limit=50&offset=0",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "users"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "50",
+                      "description": "Number of users to return"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0",
+                      "description": "Number of users to skip"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get User by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/user/{{user_id}}",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "user",
+                    "{{user_id}}"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Create User",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"user_id\": \"user123\",\n  \"full_name\": \"John Doe\",\n  \"username\": \"johndoe\",\n  \"password\": \"securepassword123\",\n  \"email\": \"john@example.com\",\n  \"country_code\": \"UG\",\n  \"currency\": \"UGX\",\n  \"phone_number\": \"+256701234567\",\n  \"is_merchant\": 0,\n  \"is_validator\": 0\n}"
+                },
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/user",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "user"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update User",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"full_name\": \"John Updated Doe\",\n  \"email\": \"john.updated@example.com\",\n  \"phone_number\": \"+256701234568\"\n}"
+                },
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/user/{{user_id}}",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "user",
+                    "{{user_id}}"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete User",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/user/{{user_id}}",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "user",
+                    "{{user_id}}"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get User Transactions",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/user/{{user_id}}/transactions?status=success&limit=20&offset=0",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "user",
+                    "{{user_id}}",
+                    "transactions"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "success",
+                      "description": "Filter by transaction status"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20",
+                      "description": "Number of transactions to return"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0",
+                      "description": "Number of transactions to skip"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get User Balances",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/user/{{user_id}}/balances",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "user",
+                    "{{user_id}}",
+                    "balances"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "System User Management",
+          "item": [
+            {
+              "name": "Get All System Users",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/system-users?limit=50&offset=0",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "system-users"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "50",
+                      "description": "Number of system users to return"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0",
+                      "description": "Number of system users to skip"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get System User by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/system-user/{{admin_id}}",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "system-user",
+                    "{{admin_id}}"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Create System User",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"admin_user\",\n  \"password\": \"secureadminpass123\",\n  \"email\": \"admin@kitypay.com\",\n  \"full_name\": \"Admin User\"\n}"
+                },
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/system-user",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "system-user"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update System User",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"admin.updated@kitypay.com\",\n  \"full_name\": \"Updated Admin User\"\n}"
+                },
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/system-user/{{admin_id}}",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "system-user",
+                    "{{admin_id}}"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete System User",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/system-user/{{admin_id}}",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "system-user",
+                    "{{admin_id}}"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Wallet Management",
+          "item": [
+            {
+              "name": "Get All Wallets",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/wallets?limit=50&offset=0",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "wallets"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "50",
+                      "description": "Number of wallets to return"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0",
+                      "description": "Number of wallets to skip"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Wallet by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/wallet/{{wallet_id}}",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "wallet",
+                    "{{wallet_id}}"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Deactivate Wallet",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/wallet/{{wallet_id}}/deactivate",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "wallet",
+                    "{{wallet_id}}",
+                    "deactivate"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Reports",
+          "item": [
+            {
+              "name": "Transaction Report",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/reports/transactions?status=success&limit=100&offset=0",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "reports",
+                    "transactions"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "success",
+                      "description": "Filter by transaction status"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "100",
+                      "description": "Number of transactions to return"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0",
+                      "description": "Number of transactions to skip"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Wallet Report",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/reports/wallets?limit=100&offset=0",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "reports",
+                    "wallets"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "100",
+                      "description": "Number of wallets to return"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0",
+                      "description": "Number of wallets to skip"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "User Report",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/reports/users?limit=100&offset=0",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "reports",
+                    "users"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "100",
+                      "description": "Number of users to return"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0",
+                      "description": "Number of users to skip"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "System User Report",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/reports/system-users?limit=100&offset=0",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "reports",
+                    "system-users"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "100",
+                      "description": "Number of system users to return"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0",
+                      "description": "Number of system users to skip"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Crypto Deposit Addresses",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/reports/crypto-addresses?limit=100&offset=0",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "reports",
+                    "crypto-addresses"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "100",
+                      "description": "Number of addresses to return"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0",
+                      "description": "Number of addresses to skip"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Payment Types",
+          "item": [
+            {
+              "name": "Get All Payment Types",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/payment-types?limit=50&offset=0",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "payment-types"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "50",
+                      "description": "Number of payment types to return"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0",
+                      "description": "Number of payment types to skip"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Create Payment Type",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"type\": \"MOBILE_MONEY\",\n  \"country\": \"UG\",\n  \"currency\": \"UGX\",\n  \"operation\": \"DEPOSIT\",\n  \"fee\": 1000,\n  \"fee_type\": \"FLAT\",\n  \"min_amount\": 1000,\n  \"max_amount\": 1000000,\n  \"status\": \"active\"\n}"
+                },
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/payment-type",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "payment-type"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update Payment Type",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fee\": 1500,\n  \"status\": \"inactive\"\n}"
+                },
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/payment-type/{{payment_type_id}}",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "payment-type",
+                    "{{payment_type_id}}"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Payment Type",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/payment-type/{{payment_type_id}}",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "payment-type",
+                    "{{payment_type_id}}"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Settings",
+          "item": [
+            {
+              "name": "Change Password",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"newPassword\": \"newSecurePassword123\"\n}"
+                },
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/change-password",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "change-password"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Reset User Password",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/user/{{user_id}}/reset-password",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "user",
+                    "{{user_id}}",
+                    "reset-password"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Exchange Rates",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/exchange-rates?limit=100&offset=0",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "exchange-rates"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "100",
+                      "description": "Number of exchange rates to return"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0",
+                      "description": "Number of exchange rates to skip"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "sweep",
+          "item": [
+            {
+              "name": "sweep-settings",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/sweep-settings",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "sweep-settings"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "sweep-init",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"min_amount\": 2,\n    \"network\":\"BSC\",\n    \"sweep_type\": \"all\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "https://api.kitypay.com/admin/sweep-settings",
+                  "protocol": "https",
+                  "host": [
+                    "api",
+                    "kitypay",
+                    "com"
+                  ],
+                  "path": [
+                    "admin",
+                    "sweep-settings"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "New Request",
+          "request": {
+            "method": "GET",
+            "header": []
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "notifications",
+      "item": [
+        {
+          "name": "Get Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{URL}}/user/notifications",
+              "host": [
+                "{{URL}}"
+              ],
+              "path": [
+                "user",
+                "notifications"
+              ]
+            },
+            "description": "Retrieve user's notifications (last 50)"
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Notifications as Read",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notificationIds\": [\"notification_id_1\", \"notification_id_2\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/user/notifications/markasread",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "user",
+                "notifications",
+                "markasread"
+              ]
+            },
+            "description": "Mark specific notifications as read"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Notifications",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notificationIds\": [\"notification_id_1\", \"notification_id_2\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/user/notifications/delete",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "user",
+                "notifications",
+                "delete"
+              ]
+            },
+            "description": "Delete specific notifications"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2.1  All Service Categories",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{URL}}/payment/categories",
+          "host": [
+            "{{URL}}"
+          ],
+          "path": [
+            "payment",
+            "categories"
+          ]
+        },
+        "description": "Retrieve all active service categories (Electricity, Airtime, Pay TV, etc.) with biller counts"
+      },
+      "response": [
+        {
+          "name": "Success Response",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/categories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "categories"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [],
+          "cookie": [],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Service categories retrieved successfully\",\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"Electricity\",\n      \"slug\": \"electricity\",\n      \"description\": \"Pay electricity bill\",\n      \"icon\": \"lightbulb\",\n      \"color\": \"#3B82F6\",\n      \"sort_order\": 1,\n      \"billers_count\": 2\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Airtime\",\n      \"slug\": \"airtime\",\n      \"description\": \"Buy airtime\",\n      \"icon\": \"phone\",\n      \"color\": \"#8B5CF6\",\n      \"sort_order\": 3,\n      \"billers_count\": 4\n    }\n  ],\n  \"status\": 200\n}"
+        }
+      ]
+    },
+    {
+      "name": "requestAirdrop",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{URL}}/user/airdrop",
+          "host": [
+            "{{URL}}"
+          ],
+          "path": [
+            "user",
+            "airdrop"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "exchange-rate",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"from_currency\":\"KES\",\n    \"to_currency\":\"UGX\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{URL}}/payment/exchange-rate",
+          "host": [
+            "{{URL}}"
+          ],
+          "path": [
+            "payment",
+            "exchange-rate"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "exchange-rate Copy",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"from_currency\":\"KES\",\n    \"to_currency\":\"UGX\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{URL}}/payment/exchange-rate",
+          "host": [
+            "{{URL}}"
+          ],
+          "path": [
+            "payment",
+            "exchange-rate"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbl9pZCI6MywiZW1haWwiOiJhZG1pbkBraXR5cGF5LmNvbSIsInVzZXJuYW1lIjoiYWRtaW4iLCJ0eXBlIjoiYWRtaW4iLCJpYXQiOjE3NTg2MDQ2NzYsImV4cCI6MTc1ODY5MTA3Nn0.3bmlbBIOAS77dTM_EGu_OFhIBpSUtqTl1pd6T4s_PR4",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ]
+}

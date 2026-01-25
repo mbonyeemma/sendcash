@@ -1,0 +1,348 @@
+import { api, setAuthToken, removeAuthToken, getAuthToken, ApiResponse } from "@/lib/api";
+
+// Types
+
+export interface RegisterRequest {
+  full_name: string;
+  email: string;
+  password: string;
+  phone_number?: string;
+  country_code?: string;
+  confirm_password?: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  token: string;
+  refreshToken?: string;
+  user: {
+    user_id: string;
+    username: string;
+    email: string;
+    email_verified: number | boolean;
+    full_name?: string;
+    country_code?: string;
+    country?: string;
+    currency?: string;
+    phone_number?: string;
+    has_wallet_pin?: boolean;
+  };
+  wallet?: {
+    user_id: string;
+    chain: string;
+    publicKey: string;
+    secret: string;
+    mnemonic: string;
+  };
+}
+
+export interface VerifyOTPRequest {
+  email: string;
+  otp: string;
+}
+
+export interface VerifyOTPResponse {
+  token: string;
+  refreshToken?: string;
+  user: {
+    user_id: string;
+    username: string;
+    email: string;
+    email_verified: boolean;
+    full_name?: string;
+    country_code?: string;
+    country?: string;
+    currency?: string;
+    phone_number?: string;
+    has_wallet_pin?: boolean;
+  };
+}
+
+export interface BalanceResponse {
+  balance: string;
+  currency: string;
+}
+
+export interface Transaction {
+  id: string;
+  type: string;
+  amount: string;
+  currency: string;
+  status: string;
+  created_at: string;
+  description?: string;
+}
+
+export interface StatementResponse {
+  transactions: Transaction[];
+  total: number;
+}
+
+export interface PaymentMethod {
+  id: string;
+  type: string;
+  currency: string;
+  phone_number?: string;
+  account_name: string;
+  account_number?: string;
+  bank_name?: string;
+  country_code?: string;
+}
+
+export interface TransferRequest {
+  account_number: string;
+  amount: number;
+  payment_method_id?: string;
+  pin: string;
+  payment_mode: string;
+  currency: string;
+  billerInfo?: Record<string, any>;
+}
+
+export interface DepositRequest {
+  amount: string;
+  currency: string;
+  account_number: string;
+}
+
+export interface AddPaymentMethodRequest {
+  type: string;
+  currency: string;
+  phone_number?: string;
+  country_code?: string;
+  account_name: string;
+  account_number?: string;
+  bank_name?: string;
+  bank_code?: string;
+  bank_address?: string;
+  bank_phone_number?: string;
+  bank_country?: string;
+}
+
+export interface SetPinRequest {
+  pin: string;
+  confirm_pin: string;
+}
+
+export interface PinLoginRequest {
+  pin: string;
+}
+
+export interface UpdateProfileRequest {
+  full_name?: string;
+  avatar?: string;
+  country?: string;
+  bio?: string;
+  phone_number?: string;
+}
+
+export interface ValidateAccountRequest {
+  payment_method: string;
+  receiver_account: string;
+  amount: number;
+}
+
+// Re-export token management functions
+export { setAuthToken, removeAuthToken, getAuthToken };
+
+// Auth APIs
+export const authApi = {
+  register: async (data: RegisterRequest): Promise<ApiResponse> => {
+    return api.post(data, "/user/register");
+  },
+
+  verifyOTP: async (data: VerifyOTPRequest): Promise<ApiResponse<VerifyOTPResponse>> => {
+    const response = await api.post<VerifyOTPResponse>(data, "/user/verify-otp");
+    if (response.data?.token) {
+      setAuthToken(response.data.token);
+    }
+    return response;
+  },
+
+  login: async (data: LoginRequest): Promise<ApiResponse<LoginResponse>> => {
+    const response = await api.post<LoginResponse>(data, "/user/login");
+    if (response.data?.token) {
+      setAuthToken(response.data.token);
+    }
+    return response;
+  },
+
+  pinLogin: async (data: PinLoginRequest): Promise<ApiResponse<LoginResponse>> => {
+    const response = await api.post<LoginResponse>(data, "/wallet/pinlogin");
+    if (response.data?.token) {
+      setAuthToken(response.data.token);
+    }
+    return response;
+  },
+
+  forgotPassword: async (email: string): Promise<ApiResponse> => {
+    return api.post({ email }, "/user/forgot-password");
+  },
+
+  verifyResetOTP: async (email: string, otp: string): Promise<ApiResponse> => {
+    return api.post({ email, otp }, "/user/verify-reset-otp");
+  },
+
+  resetPassword: async (email: string, newPassword: string): Promise<ApiResponse> => {
+    return api.post({ email, newPassword }, "/user/reset-password");
+  },
+
+  logout: (): void => {
+    removeAuthToken();
+  },
+};
+
+// Wallet APIs
+export const walletApi = {
+  getBalance: async (currency: string = "UGX"): Promise<ApiResponse<BalanceResponse>> => {
+    return api.get<BalanceResponse>(`/wallet/balance/${currency}`);
+  },
+
+  getStatement: async (currency: string = "UGX"): Promise<ApiResponse<StatementResponse>> => {
+    return api.get<StatementResponse>(`/wallet/accountStatement?currency=${currency}`);
+  },
+
+  transfer: async (data: TransferRequest): Promise<ApiResponse> => {
+    return api.post(data, "/wallet/transferRequest");
+  },
+
+  depositRequest: async (data: DepositRequest): Promise<ApiResponse> => {
+    return api.post(data, "/wallet/depositRequest");
+  },
+
+  validateAccount: async (data: ValidateAccountRequest): Promise<ApiResponse> => {
+    return api.post(data, "/wallet/validatAccount");
+  },
+
+  setTransactionPin: async (data: SetPinRequest): Promise<ApiResponse> => {
+    return api.post(data, "/wallet/setTransactionPin");
+  },
+
+  getDepositAddresses: async (): Promise<ApiResponse> => {
+    return api.get("/wallet/deposit/addresses");
+  },
+
+  getSupportedAssets: async (): Promise<ApiResponse> => {
+    return api.get("/wallet/getSupportedAssets");
+  },
+
+  stableCoinDeposit: async (amount: number, assetCode: string, chainCode: string): Promise<ApiResponse> => {
+    return api.post({ amount, asset_code: assetCode, chain_code: chainCode }, "/wallet/stableCoinDeposit");
+  },
+};
+
+// Payment Method APIs
+export const paymentMethodApi = {
+  addPaymentMethod: async (data: AddPaymentMethodRequest): Promise<ApiResponse<PaymentMethod>> => {
+    return api.post<PaymentMethod>(data, "/wallet/addPaymentMethod");
+  },
+
+  getUserPaymentMethods: async (type?: string): Promise<ApiResponse<PaymentMethod[]>> => {
+    const query = type ? `?type=${type}` : "";
+    return api.get<PaymentMethod[]>(`/wallet/getUserPaymentMethods${query}`);
+  },
+
+  deletePaymentMethod: async (id: string): Promise<ApiResponse> => {
+    return api.get(`/wallet/deletePaymentMethod/${id}`);
+  },
+
+  getPaymentTypes: async (): Promise<ApiResponse> => {
+    return api.get("/wallet/getPaymentTypes");
+  },
+
+  getAdminPaymentTypes: async (): Promise<ApiResponse> => {
+    return api.get("/admin/payment-types");
+  },
+};
+
+// Payment Types API
+export interface PaymentType {
+  id: number;
+  type: string;
+  country: string;
+  currency: string;
+  operation: string; // "ALL", "DEPOSIT", "TRANSFER"
+  fee: number;
+  fee_type: string; // "FLAT", "PERCENTAGE"
+  min_amount: number;
+  max_amount: number;
+  status: string; // "active", "inactive"
+}
+
+export const paymentTypeApi = {
+  getPaymentTypes: async (): Promise<ApiResponse<PaymentType[]>> => {
+    return api.get<PaymentType[]>("/wallet/getPaymentTypes");
+  },
+};
+
+// Profile APIs
+export const profileApi = {
+  updateProfile: async (data: UpdateProfileRequest): Promise<ApiResponse> => {
+    return api.post(data, "/user/update_profile");
+  },
+
+  getUserByUsername: async (username: string): Promise<ApiResponse> => {
+    return api.get(`/user/get_user_by_id/${username}`);
+  },
+
+  getCountries: async (): Promise<ApiResponse> => {
+    return api.get("/user/getCountries");
+  },
+
+  changePin: async (oldPin: string, confirmOldPin: string, newPin: string): Promise<ApiResponse> => {
+    return api.post({ oldPin, confirmOldPin, newPin }, "/user/change-pin");
+  },
+};
+
+// Notifications API
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  read: boolean;
+  created_at: string;
+}
+
+export const notificationApi = {
+  getNotifications: async (): Promise<ApiResponse<Notification[]>> => {
+    return api.get<Notification[]>("/user/notifications");
+  },
+
+  markAsRead: async (notificationIds: string[]): Promise<ApiResponse> => {
+    return api.post({ notificationIds }, "/user/notifications/markasread");
+  },
+
+  deleteNotifications: async (notificationIds: string[]): Promise<ApiResponse> => {
+    return api.post({ notificationIds }, "/user/notifications/delete");
+  },
+
+  registerPushToken: async (token: string): Promise<ApiResponse> => {
+    return api.post({ token }, "/user/registerPushToken");
+  },
+};
+
+// Exchange Rate API
+export interface ExchangeRateRequest {
+  from_currency: string;
+  to_currency: string;
+}
+
+export interface ExchangeRateResponse {
+  rate: number;
+  from_currency: string;
+  to_currency: string;
+}
+
+export const exchangeApi = {
+  getExchangeRate: async (fromCurrency: string, toCurrency: string): Promise<ApiResponse<ExchangeRateResponse>> => {
+    return api.post<ExchangeRateResponse>(
+      { from_currency: fromCurrency, to_currency: toCurrency },
+      "/payment/exchange-rate"
+    );
+  },
+};
