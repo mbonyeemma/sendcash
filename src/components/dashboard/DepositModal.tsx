@@ -1,10 +1,18 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Smartphone, CreditCard, Bitcoin, Copy, Check, QrCode, Loader2 } from "lucide-react";
+import { X, Smartphone, CreditCard, Bitcoin, Copy, Check, QrCode, Loader2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { cryptoCurrencies, fiatCurrencies, Currency } from "@/data/currencies";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface DepositModalProps {
   isOpen: boolean;
@@ -14,19 +22,26 @@ interface DepositModalProps {
 type DepositMethod = "mobile" | "crypto";
 type Step = 1 | 2;
 
-const mobileNetworks = ["MTN Mobile Money", "Airtel Money", "Others"];
-const cryptoTokens = [
-  { id: "usdt", name: "Tether", symbol: "USDT", address: "TXk8rQSAvPvBBNtqSoY6nCfsXWCSSpTVQF", color: "bg-emerald-500" },
-  { id: "usdc", name: "USD Coin", symbol: "USDC", address: "0x1234567890abcdef1234567890abcdef12345678", color: "bg-blue-500" },
+const mobileNetworks = [
+  { id: "mtn", name: "MTN Mobile Money", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/New-mtn-logo.svg/1200px-New-mtn-logo.svg.png" },
+  { id: "airtel", name: "Airtel Money", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Airtel_Africa_logo.svg/1200px-Airtel_Africa_logo.svg.png" },
 ];
+
+const walletAddresses: Record<string, string> = {
+  usdc: "0x1234567890abcdef1234567890abcdef12345678",
+  usdt: "TXk8rQSAvPvBBNtqSoY6nCfsXWCSSpTVQF",
+  rlusd: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+};
 
 export const DepositModal = ({ isOpen, onClose }: DepositModalProps) => {
   const [step, setStep] = useState<Step>(1);
   const [method, setMethod] = useState<DepositMethod | null>(null);
   const [network, setNetwork] = useState("");
+  const [phoneOption, setPhoneOption] = useState<"saved" | "onetime">("saved");
   const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState("");
-  const [selectedToken, setSelectedToken] = useState(cryptoTokens[0]);
+  const [selectedCurrency, setSelectedCurrency] = useState<Currency>(fiatCurrencies[0]);
+  const [selectedToken, setSelectedToken] = useState<Currency>(cryptoCurrencies[0]);
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -37,7 +52,7 @@ export const DepositModal = ({ isOpen, onClose }: DepositModalProps) => {
   };
 
   const copyAddress = async () => {
-    await navigator.clipboard.writeText(selectedToken.address);
+    await navigator.clipboard.writeText(walletAddresses[selectedToken.id]);
     setCopied(true);
     toast({ title: "Address copied!", description: "Wallet address copied to clipboard." });
     setTimeout(() => setCopied(false), 2000);
@@ -142,12 +157,12 @@ export const DepositModal = ({ isOpen, onClose }: DepositModalProps) => {
                   onClick={() => handleMethodSelect("crypto")}
                   className="w-full flex items-center gap-4 p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all"
                 >
-                  <div className="w-12 h-12 rounded-xl bg-amber-400/10 flex items-center justify-center">
-                    <Bitcoin className="w-6 h-6 text-amber-500" />
+                  <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+                    <Bitcoin className="w-6 h-6 text-accent" />
                   </div>
                   <div className="text-left">
                     <h3 className="font-semibold text-foreground">Cryptocurrency</h3>
-                    <p className="text-sm text-muted-foreground">USDT, USDC</p>
+                    <p className="text-sm text-muted-foreground">USDC, USDT, RLUSD</p>
                   </div>
                 </button>
               </div>
@@ -157,38 +172,87 @@ export const DepositModal = ({ isOpen, onClose }: DepositModalProps) => {
             {step === 2 && method === "mobile" && (
               <div className="space-y-5">
                 <div>
-                  <Label>Network</Label>
-                  <select
-                    value={network}
-                    onChange={(e) => setNetwork(e.target.value)}
-                    className="w-full mt-1.5 h-12 px-4 rounded-xl border border-input bg-background text-foreground"
-                  >
-                    <option value="">Select network</option>
-                    {mobileNetworks.map((n) => (
-                      <option key={n} value={n}>{n}</option>
-                    ))}
-                  </select>
+                  <Label className="text-sm font-medium">Payment Network</Label>
+                  <Select value={network} onValueChange={setNetwork}>
+                    <SelectTrigger className="mt-1.5 h-12 bg-background">
+                      <SelectValue placeholder="Select network" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border-border">
+                      {mobileNetworks.map((n) => (
+                        <SelectItem key={n.id} value={n.id}>
+                          <div className="flex items-center gap-3">
+                            <img src={n.logo} alt={n.name} className="w-5 h-5 object-contain" />
+                            <span>{n.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
-                  <Label>Phone Number</Label>
+                  <Label className="text-sm font-medium">Phone Number</Label>
+                  <div className="flex gap-2 mt-1.5">
+                    <button
+                      onClick={() => setPhoneOption("saved")}
+                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                        phoneOption === "saved"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
+                    >
+                      Saved Number
+                    </button>
+                    <button
+                      onClick={() => setPhoneOption("onetime")}
+                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                        phoneOption === "onetime"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
+                    >
+                      One-time Number
+                    </button>
+                  </div>
                   <Input
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+256 700 000 000"
-                    className="mt-1.5 h-12"
+                    placeholder={phoneOption === "saved" ? "+256 700 000 000" : "Enter phone number"}
+                    className="mt-2 h-12"
                   />
                 </div>
 
                 <div>
-                  <Label>Amount (UGX)</Label>
-                  <Input
-                    type="number"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="100,000"
-                    className="mt-1.5 h-12"
-                  />
+                  <Label className="text-sm font-medium">Amount</Label>
+                  <div className="flex gap-2 mt-1.5">
+                    <Input
+                      type="number"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder="0.00"
+                      className="h-12 flex-1"
+                    />
+                    <Select value={selectedCurrency.id} onValueChange={(v) => setSelectedCurrency(fiatCurrencies.find(c => c.id === v) || fiatCurrencies[0])}>
+                      <SelectTrigger className="h-12 w-32 bg-background">
+                        <SelectValue>
+                          <div className="flex items-center gap-2">
+                            <img src={selectedCurrency.logo} alt={selectedCurrency.symbol} className="w-5 h-4 object-cover rounded-sm" />
+                            <span>{selectedCurrency.symbol}</span>
+                          </div>
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover border-border">
+                        {fiatCurrencies.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            <div className="flex items-center gap-2">
+                              <img src={c.logo} alt={c.symbol} className="w-5 h-4 object-cover rounded-sm" />
+                              <span>{c.symbol}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             )}
@@ -197,40 +261,48 @@ export const DepositModal = ({ isOpen, onClose }: DepositModalProps) => {
             {step === 2 && method === "crypto" && (
               <div className="space-y-5">
                 <div>
-                  <Label>Select Token</Label>
-                  <div className="grid grid-cols-2 gap-3 mt-2">
-                    {cryptoTokens.map((token) => (
-                      <button
-                        key={token.id}
-                        onClick={() => setSelectedToken(token)}
-                        className={`p-4 rounded-xl border transition-all flex items-center gap-3 ${
-                          selectedToken.id === token.id
-                            ? "border-primary bg-primary/10"
-                            : "border-border hover:border-primary/50"
-                        }`}
-                      >
-                        <div className={`w-8 h-8 rounded-full ${token.color} flex items-center justify-center text-white text-xs font-bold`}>
-                          {token.symbol.charAt(0)}
+                  <Label className="text-sm font-medium">Select Token to Deposit</Label>
+                  <Select value={selectedToken.id} onValueChange={(v) => setSelectedToken(cryptoCurrencies.find(c => c.id === v) || cryptoCurrencies[0])}>
+                    <SelectTrigger className="mt-1.5 h-14 bg-background">
+                      <SelectValue>
+                        <div className="flex items-center gap-3">
+                          <img src={selectedToken.logo} alt={selectedToken.symbol} className="w-7 h-7 object-contain" />
+                          <div className="text-left">
+                            <p className="font-semibold">{selectedToken.symbol}</p>
+                            <p className="text-xs text-muted-foreground">{selectedToken.network}</p>
+                          </div>
                         </div>
-                        <span className="font-semibold text-foreground">{token.symbol}</span>
-                      </button>
-                    ))}
-                  </div>
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border-border">
+                      {cryptoCurrencies.map((token) => (
+                        <SelectItem key={token.id} value={token.id}>
+                          <div className="flex items-center gap-3">
+                            <img src={token.logo} alt={token.symbol} className="w-6 h-6 object-contain" />
+                            <div>
+                              <p className="font-medium">{token.symbol}</p>
+                              <p className="text-xs text-muted-foreground">{token.network}</p>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
-                  <Label>Wallet Address</Label>
+                  <Label className="text-sm font-medium">Wallet Address</Label>
                   <div className="mt-2 p-4 rounded-xl bg-muted border border-border">
                     <div className="flex items-center justify-between gap-3">
                       <code className="text-sm text-foreground break-all">
-                        {selectedToken.address}
+                        {walletAddresses[selectedToken.id]}
                       </code>
                       <button
                         onClick={copyAddress}
                         className="p-2 rounded-lg hover:bg-background transition-colors shrink-0"
                       >
                         {copied ? (
-                          <Check className="w-4 h-4 text-emerald-500" />
+                          <Check className="w-4 h-4 text-accent" />
                         ) : (
                           <Copy className="w-4 h-4 text-muted-foreground" />
                         )}
@@ -246,7 +318,7 @@ export const DepositModal = ({ isOpen, onClose }: DepositModalProps) => {
                 </div>
 
                 <p className="text-sm text-muted-foreground text-center">
-                  Send only {selectedToken.symbol} to this address
+                  Send only <span className="font-semibold text-foreground">{selectedToken.symbol}</span> ({selectedToken.network}) to this address
                 </p>
               </div>
             )}
@@ -256,9 +328,8 @@ export const DepositModal = ({ isOpen, onClose }: DepositModalProps) => {
           <div className="p-6 border-t border-border space-y-3">
             {step === 2 && method === "mobile" && (
               <Button 
-                variant="hero" 
                 onClick={handleConfirm} 
-                className="w-full h-12"
+                className="w-full h-12 bg-primary hover:bg-primary/90"
                 disabled={!network || !phone || !amount || isLoading}
               >
                 {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Confirm Deposit"}

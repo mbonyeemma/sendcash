@@ -101,7 +101,7 @@ export const SettingsView = () => {
                   </div>
                 </div>
 
-                <Button variant="hero" onClick={handleSave}>Save Changes</Button>
+                <Button onClick={handleSave}>Save Changes</Button>
               </div>
             )}
 
@@ -134,7 +134,7 @@ export const SettingsView = () => {
                   </div>
                 </div>
 
-                <Button variant="hero" onClick={handleSave}>Update Password</Button>
+                <Button onClick={handleSave}>Update Password</Button>
               </div>
             )}
 
@@ -159,7 +159,7 @@ export const SettingsView = () => {
                   ))}
                 </div>
 
-                <Button variant="hero" onClick={handleSave}>Save Preferences</Button>
+                <Button onClick={handleSave}>Save Preferences</Button>
               </div>
             )}
           </motion.div>
