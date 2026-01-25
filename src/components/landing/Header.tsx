@@ -38,7 +38,7 @@ export const Header = ({ onLoginClick, onRegisterClick }: HeaderProps) => {
             <Button variant="ghost" onClick={onLoginClick}>
               Login
             </Button>
-            <Button variant="hero" onClick={onRegisterClick}>
+            <Button onClick={onRegisterClick}>
               Get Started
             </Button>
           </div>
@@ -68,7 +68,7 @@ export const Header = ({ onLoginClick, onRegisterClick }: HeaderProps) => {
                 <Button variant="ghost" onClick={onLoginClick} className="w-full">
                   Login
                 </Button>
-                <Button variant="hero" onClick={onRegisterClick} className="w-full">
+                <Button onClick={onRegisterClick} className="w-full">
                   Get Started
                 </Button>
               </div>

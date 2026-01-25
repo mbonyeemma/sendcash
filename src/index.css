@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,102 +6,95 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 216 88% 15%;
+    --background: 220 20% 98%;
+    --foreground: 230 25% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 216 88% 15%;
+    --card-foreground: 230 25% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 216 88% 15%;
+    --popover-foreground: 230 25% 12%;
 
-    --primary: 216 88% 34%;
+    --primary: 231 81% 42%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 20% 96%;
-    --secondary-foreground: 216 88% 25%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 230 25% 18%;
 
-    --muted: 210 15% 94%;
-    --muted-foreground: 216 20% 46%;
+    --muted: 220 14% 94%;
+    --muted-foreground: 220 10% 46%;
 
-    --accent: 51 100% 50%;
-    --accent-foreground: 216 88% 15%;
+    --accent: 142 71% 45%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 216 88% 34%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 231 81% 42%;
 
-    --radius: 0.75rem;
+    --radius: 0.625rem;
 
-    /* Custom tokens */
-    --gold: 51 100% 50%;
-    --gold-dark: 45 100% 40%;
-    --success: 142 76% 36%;
+    --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
     
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(216 88% 34%) 0%, hsl(216 88% 45%) 100%);
-    --gradient-gold: linear-gradient(135deg, hsl(51 100% 50%) 0%, hsl(45 100% 40%) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(210 20% 98%) 0%, hsl(216 88% 97%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(210 20% 99%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(231 81% 42%) 0%, hsl(231 81% 55%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(220 20% 98%) 0%, hsl(231 81% 97%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(220 20% 99%) 100%);
     
-    /* Shadows */
-    --shadow-sm: 0 1px 2px 0 hsl(216 88% 15% / 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(216 88% 15% / 0.08), 0 2px 4px -2px hsl(216 88% 15% / 0.05);
-    --shadow-lg: 0 10px 15px -3px hsl(216 88% 15% / 0.1), 0 4px 6px -4px hsl(216 88% 15% / 0.05);
-    --shadow-xl: 0 20px 25px -5px hsl(216 88% 15% / 0.1), 0 8px 10px -6px hsl(216 88% 15% / 0.05);
-    --shadow-gold: 0 4px 14px 0 hsl(51 100% 50% / 0.3);
+    --shadow-sm: 0 1px 2px 0 hsl(230 25% 12% / 0.04);
+    --shadow-md: 0 4px 6px -1px hsl(230 25% 12% / 0.06), 0 2px 4px -2px hsl(230 25% 12% / 0.04);
+    --shadow-lg: 0 10px 15px -3px hsl(230 25% 12% / 0.08), 0 4px 6px -4px hsl(230 25% 12% / 0.04);
+    --shadow-xl: 0 20px 25px -5px hsl(230 25% 12% / 0.1), 0 8px 10px -6px hsl(230 25% 12% / 0.04);
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 216 88% 15%;
-    --sidebar-primary: 216 88% 34%;
+    --sidebar-foreground: 230 25% 12%;
+    --sidebar-primary: 231 81% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 216 88% 97%;
-    --sidebar-accent-foreground: 216 88% 34%;
-    --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 216 88% 34%;
+    --sidebar-accent: 231 81% 97%;
+    --sidebar-accent-foreground: 231 81% 42%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 231 81% 42%;
   }
 
   .dark {
-    --background: 216 88% 8%;
-    --foreground: 210 40% 98%;
+    --background: 230 25% 8%;
+    --foreground: 220 20% 98%;
 
-    --card: 216 88% 12%;
-    --card-foreground: 210 40% 98%;
+    --card: 230 25% 11%;
+    --card-foreground: 220 20% 98%;
 
-    --popover: 216 88% 12%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 230 25% 11%;
+    --popover-foreground: 220 20% 98%;
 
-    --primary: 216 88% 50%;
+    --primary: 231 81% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 216 50% 20%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 230 20% 18%;
+    --secondary-foreground: 220 20% 98%;
 
-    --muted: 216 50% 18%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 230 20% 16%;
+    --muted-foreground: 220 15% 60%;
 
-    --accent: 51 100% 50%;
-    --accent-foreground: 216 88% 8%;
+    --accent: 142 71% 45%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62% 30%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 220 20% 98%;
 
-    --border: 216 50% 20%;
-    --input: 216 50% 20%;
-    --ring: 216 88% 50%;
+    --border: 230 20% 18%;
+    --input: 230 20% 18%;
+    --ring: 231 81% 55%;
 
-    --sidebar-background: 216 88% 10%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 216 88% 50%;
+    --sidebar-background: 230 25% 9%;
+    --sidebar-foreground: 220 20% 98%;
+    --sidebar-primary: 231 81% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 216 50% 18%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 216 50% 20%;
-    --sidebar-ring: 216 88% 50%;
+    --sidebar-accent: 230 20% 16%;
+    --sidebar-accent-foreground: 220 20% 98%;
+    --sidebar-border: 230 20% 18%;
+    --sidebar-ring: 231 81% 55%;
   }
 }
 
@@ -111,17 +104,16 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'DM Sans', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
   }
 }
 
 @layer utilities {
-  .text-gradient-gold {
-    @apply bg-clip-text text-transparent;
-    background-image: var(--gradient-gold);
-  }
-  
   .bg-gradient-primary {
     background-image: var(--gradient-primary);
   }
@@ -136,9 +128,5 @@
   
   .shadow-card-hover {
     box-shadow: var(--shadow-lg);
-  }
-  
-  .shadow-gold {
-    box-shadow: var(--shadow-gold);
   }
 }

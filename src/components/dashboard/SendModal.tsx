@@ -1,39 +1,59 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Smartphone, ArrowRightLeft, Loader2 } from "lucide-react";
+import { X, ArrowUpDown, Loader2, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { currencies, cryptoCurrencies, fiatCurrencies, Currency, exchangeRates } from "@/data/currencies";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface SendModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type SendType = "mobile" | "crypto";
-type Step = 1 | 2;
-
-const mobileNetworks = ["MTN Mobile Money", "Airtel Money", "Others"];
-const cryptoTokens = [
-  { id: "usdt", name: "Tether", symbol: "USDT", color: "bg-emerald-500" },
-  { id: "usdc", name: "USD Coin", symbol: "USDC", color: "bg-blue-500" },
+const mobileNetworks = [
+  { id: "mtn", name: "MTN Mobile Money", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/New-mtn-logo.svg/1200px-New-mtn-logo.svg.png" },
+  { id: "airtel", name: "Airtel Money", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Airtel_Africa_logo.svg/1200px-Airtel_Africa_logo.svg.png" },
 ];
 
 export const SendModal = ({ isOpen, onClose }: SendModalProps) => {
-  const [step, setStep] = useState<Step>(1);
-  const [sendType, setSendType] = useState<SendType | null>(null);
+  const [activeTab, setActiveTab] = useState<"convert" | "mobile">("convert");
+  const [fromCurrency, setFromCurrency] = useState<Currency>(cryptoCurrencies[0]);
+  const [toCurrency, setToCurrency] = useState<Currency>(fiatCurrencies[0]);
+  const [fromAmount, setFromAmount] = useState("");
+  const [toAmount, setToAmount] = useState("");
   const [network, setNetwork] = useState("");
   const [recipient, setRecipient] = useState("");
-  const [amount, setAmount] = useState("");
-  const [selectedToken, setSelectedToken] = useState(cryptoTokens[0]);
-  const [walletAddress, setWalletAddress] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleTypeSelect = (type: SendType) => {
-    setSendType(type);
-    setStep(2);
+  const getRate = () => {
+    return exchangeRates[fromCurrency.id]?.[toCurrency.id] || 1;
+  };
+
+  useEffect(() => {
+    if (fromAmount && !isNaN(parseFloat(fromAmount))) {
+      const rate = getRate();
+      setToAmount((parseFloat(fromAmount) * rate).toFixed(2));
+    } else {
+      setToAmount("");
+    }
+  }, [fromAmount, fromCurrency, toCurrency]);
+
+  const swapCurrencies = () => {
+    const temp = fromCurrency;
+    setFromCurrency(toCurrency);
+    setToCurrency(temp);
+    setFromAmount(toAmount);
   };
 
   const handleConfirm = async () => {
@@ -42,18 +62,18 @@ export const SendModal = ({ isOpen, onClose }: SendModalProps) => {
     setIsLoading(false);
     toast({
       title: "Transfer sent!",
-      description: "Your transfer has been initiated successfully.",
+      description: activeTab === "convert" 
+        ? `Successfully converted ${fromAmount} ${fromCurrency.symbol} to ${toAmount} ${toCurrency.symbol}`
+        : `Sent ${fromAmount} UGX to ${recipient}`,
     });
     resetAndClose();
   };
 
   const resetAndClose = () => {
-    setStep(1);
-    setSendType(null);
+    setFromAmount("");
+    setToAmount("");
     setNetwork("");
     setRecipient("");
-    setAmount("");
-    setWalletAddress("");
     onClose();
   };
 
@@ -81,7 +101,7 @@ export const SendModal = ({ isOpen, onClose }: SendModalProps) => {
           <div className="flex items-center justify-between p-6 border-b border-border">
             <div>
               <h2 className="text-xl font-bold text-foreground">Send Money</h2>
-              <p className="text-sm text-muted-foreground">Step {step} of 2</p>
+              <p className="text-sm text-muted-foreground">Convert & send funds</p>
             </div>
             <button
               onClick={resetAndClose}
@@ -91,154 +111,172 @@ export const SendModal = ({ isOpen, onClose }: SendModalProps) => {
             </button>
           </div>
 
-          {/* Progress */}
-          <div className="flex gap-2 px-6 pt-4">
-            <div className={`h-1 flex-1 rounded-full ${step >= 1 ? "bg-primary" : "bg-muted"}`} />
-            <div className={`h-1 flex-1 rounded-full ${step >= 2 ? "bg-primary" : "bg-muted"}`} />
-          </div>
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "convert" | "mobile")} className="flex-1 flex flex-col">
+            <TabsList className="mx-6 mt-4 grid grid-cols-2 bg-muted">
+              <TabsTrigger value="convert" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                Convert
+              </TabsTrigger>
+              <TabsTrigger value="mobile" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                Mobile Money
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
-            {/* Step 1 */}
-            {step === 1 && (
-              <div className="space-y-4">
-                <p className="text-muted-foreground">Choose how you want to send</p>
-
-                <button
-                  onClick={() => handleTypeSelect("mobile")}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <Smartphone className="w-6 h-6 text-primary" />
-                  </div>
-                  <div className="text-left">
-                    <h3 className="font-semibold text-foreground">Mobile Money</h3>
-                    <p className="text-sm text-muted-foreground">Send to MTN, Airtel & more</p>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => handleTypeSelect("crypto")}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-amber-400/10 flex items-center justify-center">
-                    <ArrowRightLeft className="w-6 h-6 text-amber-500" />
-                  </div>
-                  <div className="text-left">
-                    <h3 className="font-semibold text-foreground">Cryptocurrency</h3>
-                    <p className="text-sm text-muted-foreground">Send USDT, USDC</p>
-                  </div>
-                </button>
-              </div>
-            )}
-
-            {/* Step 2: Mobile */}
-            {step === 2 && sendType === "mobile" && (
-              <div className="space-y-5">
-                <div>
-                  <Label>Network</Label>
-                  <select
-                    value={network}
-                    onChange={(e) => setNetwork(e.target.value)}
-                    className="w-full mt-1.5 h-12 px-4 rounded-xl border border-input bg-background text-foreground"
-                  >
-                    <option value="">Select network</option>
-                    {mobileNetworks.map((n) => (
-                      <option key={n} value={n}>{n}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <Label>Recipient Phone</Label>
-                  <Input
-                    value={recipient}
-                    onChange={(e) => setRecipient(e.target.value)}
-                    placeholder="+256 700 000 000"
-                    className="mt-1.5 h-12"
-                  />
-                </div>
-
-                <div>
-                  <Label>Amount (UGX)</Label>
+            {/* Convert Tab */}
+            <TabsContent value="convert" className="flex-1 overflow-y-auto p-6 space-y-4">
+              {/* From Section */}
+              <div className="bg-muted rounded-2xl p-5 space-y-3">
+                <Label className="text-sm text-muted-foreground">From</Label>
+                <div className="flex items-center gap-3">
                   <Input
                     type="number"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="100,000"
-                    className="mt-1.5 h-12"
+                    value={fromAmount}
+                    onChange={(e) => setFromAmount(e.target.value)}
+                    placeholder="0"
+                    className="text-3xl font-bold h-14 bg-transparent border-0 p-0 focus-visible:ring-0 flex-1"
                   />
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: Crypto */}
-            {step === 2 && sendType === "crypto" && (
-              <div className="space-y-5">
-                <div>
-                  <Label>Select Token</Label>
-                  <div className="grid grid-cols-2 gap-3 mt-2">
-                    {cryptoTokens.map((token) => (
-                      <button
-                        key={token.id}
-                        onClick={() => setSelectedToken(token)}
-                        className={`p-4 rounded-xl border transition-all flex items-center gap-3 ${
-                          selectedToken.id === token.id
-                            ? "border-primary bg-primary/10"
-                            : "border-border hover:border-primary/50"
-                        }`}
-                      >
-                        <div className={`w-8 h-8 rounded-full ${token.color} flex items-center justify-center text-white text-xs font-bold`}>
-                          {token.symbol.charAt(0)}
+                  <Select value={fromCurrency.id} onValueChange={(v) => setFromCurrency(currencies.find(c => c.id === v) || fromCurrency)}>
+                    <SelectTrigger className="h-12 w-36 bg-background rounded-xl">
+                      <SelectValue>
+                        <div className="flex items-center gap-2">
+                          <img src={fromCurrency.logo} alt={fromCurrency.symbol} className="w-6 h-6 object-contain rounded-full" />
+                          <span className="font-semibold">{fromCurrency.symbol}</span>
                         </div>
-                        <span className="font-semibold text-foreground">{token.symbol}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <Label>Recipient Wallet Address</Label>
-                  <Input
-                    value={walletAddress}
-                    onChange={(e) => setWalletAddress(e.target.value)}
-                    placeholder="Enter wallet address"
-                    className="mt-1.5 h-12"
-                  />
-                </div>
-
-                <div>
-                  <Label>Amount ({selectedToken.symbol})</Label>
-                  <Input
-                    type="number"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="0.00"
-                    className="mt-1.5 h-12"
-                  />
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border-border">
+                      {currencies.map((c) => (
+                        <SelectItem key={c.id} value={c.id} disabled={c.id === toCurrency.id}>
+                          <div className="flex items-center gap-2">
+                            <img src={c.logo} alt={c.symbol} className="w-5 h-5 object-contain rounded-full" />
+                            <span>{c.symbol}</span>
+                            <span className="text-xs text-muted-foreground">({c.name})</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-            )}
-          </div>
+
+              {/* Swap Button */}
+              <div className="flex justify-center -my-2 relative z-10">
+                <button
+                  onClick={swapCurrencies}
+                  className="w-12 h-12 rounded-full bg-accent text-accent-foreground flex items-center justify-center shadow-lg hover:scale-105 transition-transform"
+                >
+                  <ArrowUpDown className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* To Section */}
+              <div className="bg-muted rounded-2xl p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm text-muted-foreground">To</Label>
+                  <span className="text-xs text-accent flex items-center gap-1">
+                    <TrendingUp className="w-3 h-3" /> Live
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <p className="text-3xl font-bold flex-1 min-h-[3.5rem] flex items-center">
+                    {toAmount || "0"}
+                  </p>
+                  <Select value={toCurrency.id} onValueChange={(v) => setToCurrency(currencies.find(c => c.id === v) || toCurrency)}>
+                    <SelectTrigger className="h-12 w-36 bg-primary text-primary-foreground rounded-xl">
+                      <SelectValue>
+                        <div className="flex items-center gap-2">
+                          <img src={toCurrency.logo} alt={toCurrency.symbol} className="w-6 h-6 object-contain rounded-full" />
+                          <span className="font-semibold">{toCurrency.symbol}</span>
+                        </div>
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border-border">
+                      {currencies.map((c) => (
+                        <SelectItem key={c.id} value={c.id} disabled={c.id === fromCurrency.id}>
+                          <div className="flex items-center gap-2">
+                            <img src={c.logo} alt={c.symbol} className="w-5 h-5 object-contain rounded-full" />
+                            <span>{c.symbol}</span>
+                            <span className="text-xs text-muted-foreground">({c.name})</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Rate Info */}
+              {fromAmount && (
+                <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Min: 1 {fromCurrency.symbol} | Max: 5,000,000 {toCurrency.symbol}</span>
+                  </div>
+                  <p className="text-primary font-medium mt-1">
+                    Rate: 1 {fromCurrency.symbol} = {getRate().toLocaleString()} {toCurrency.symbol}
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Mobile Money Tab */}
+            <TabsContent value="mobile" className="flex-1 overflow-y-auto p-6 space-y-5">
+              <div>
+                <Label className="text-sm font-medium">Network</Label>
+                <Select value={network} onValueChange={setNetwork}>
+                  <SelectTrigger className="mt-1.5 h-12 bg-background">
+                    <SelectValue placeholder="Select network" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover border-border">
+                    {mobileNetworks.map((n) => (
+                      <SelectItem key={n.id} value={n.id}>
+                        <div className="flex items-center gap-3">
+                          <img src={n.logo} alt={n.name} className="w-5 h-5 object-contain" />
+                          <span>{n.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium">Recipient Phone</Label>
+                <Input
+                  value={recipient}
+                  onChange={(e) => setRecipient(e.target.value)}
+                  placeholder="+256 700 000 000"
+                  className="mt-1.5 h-12"
+                />
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium">Amount (UGX)</Label>
+                <Input
+                  type="number"
+                  value={fromAmount}
+                  onChange={(e) => setFromAmount(e.target.value)}
+                  placeholder="0"
+                  className="mt-1.5 h-12"
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
 
           {/* Footer */}
           <div className="p-6 border-t border-border space-y-3">
-            {step === 2 && (
-              <Button 
-                variant="hero" 
-                onClick={handleConfirm} 
-                className="w-full h-12"
-                disabled={
-                  (sendType === "mobile" && (!network || !recipient || !amount)) ||
-                  (sendType === "crypto" && (!walletAddress || !amount)) ||
-                  isLoading
-                }
-              >
-                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Send Money"}
-              </Button>
-            )}
-            <Button variant="outline" onClick={step === 1 ? resetAndClose : () => setStep(1)} className="w-full h-12">
-              {step === 1 ? "Cancel" : "Back"}
+            <Button 
+              onClick={handleConfirm} 
+              className="w-full h-12 bg-primary hover:bg-primary/90"
+              disabled={
+                (activeTab === "convert" && !fromAmount) ||
+                (activeTab === "mobile" && (!network || !recipient || !fromAmount)) ||
+                isLoading
+              }
+            >
+              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Continue"}
+            </Button>
+            <Button variant="outline" onClick={resetAndClose} className="w-full h-12">
+              Cancel
             </Button>
           </div>
         </motion.div>

@@ -170,7 +170,7 @@ export const AuthModal = ({ isOpen, onClose, initialMode, onSuccess }: AuthModal
               </div>
             </div>
 
-            <Button variant="hero" className="w-full" size="lg" disabled={isLoading}>
+            <Button className="w-full" size="lg" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />

@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Smartphone, Shield, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cryptoCurrencies } from "@/data/currencies";
 
 interface HeroSectionProps {
   onRegisterClick: () => void;
@@ -13,7 +14,7 @@ export const HeroSection = ({ onRegisterClick, onLoginClick }: HeroSectionProps)
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 right-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 left-10 w-96 h-96 bg-gold/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 left-10 w-96 h-96 bg-accent/10 rounded-full blur-3xl" />
       </div>
 
       <div className="container mx-auto px-4 relative z-10">
@@ -36,7 +37,7 @@ export const HeroSection = ({ onRegisterClick, onLoginClick }: HeroSectionProps)
             </motion.div>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight mb-6">
-              <span className="text-gradient-gold">SendiCash</span> – Fast,
+              <span className="text-primary">SendiCash</span> – Fast,
               <br />Simple, Secure
               <br />Payments
             </h1>
@@ -47,11 +48,11 @@ export const HeroSection = ({ onRegisterClick, onLoginClick }: HeroSectionProps)
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Button variant="hero" size="xl" onClick={onRegisterClick}>
+              <Button size="lg" onClick={onRegisterClick} className="h-12 px-8 text-base">
                 Create Account
-                <ArrowRight className="w-5 h-5" />
+                <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
-              <Button variant="heroOutline" size="xl" onClick={onLoginClick}>
+              <Button variant="outline" size="lg" onClick={onLoginClick} className="h-12 px-8 text-base">
                 Sign In
               </Button>
             </div>
@@ -64,7 +65,7 @@ export const HeroSection = ({ onRegisterClick, onLoginClick }: HeroSectionProps)
               className="flex items-center gap-6 mt-10 justify-center lg:justify-start"
             >
               <div className="flex items-center gap-2 text-muted-foreground">
-                <Shield className="w-5 h-5 text-success" />
+                <Shield className="w-5 h-5 text-accent" />
                 <span className="text-sm">Bank-level security</span>
               </div>
               <div className="flex items-center gap-2 text-muted-foreground">
@@ -90,41 +91,39 @@ export const HeroSection = ({ onRegisterClick, onLoginClick }: HeroSectionProps)
               >
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-semibold text-foreground">Buy & Sell Crypto</h3>
-                  <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center">
                     <span className="text-xl">💰</span>
                   </div>
                 </div>
 
-                <div className="space-y-4 mb-6">
-                  <div className="flex items-center justify-between p-3 bg-secondary rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs font-bold">₮</div>
-                      <span className="font-medium text-foreground">USDT</span>
+                <div className="space-y-3 mb-6">
+                  {cryptoCurrencies.map((token) => (
+                    <div key={token.id} className="flex items-center justify-between p-3 bg-secondary rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <img src={token.logo} alt={token.symbol} className="w-8 h-8 rounded-full object-contain" />
+                        <div>
+                          <span className="font-medium text-foreground">{token.symbol}</span>
+                          <p className="text-xs text-muted-foreground">{token.network}</p>
+                        </div>
+                      </div>
+                      <span className="text-accent font-medium">$1.00</span>
                     </div>
-                    <span className="text-emerald-600 font-medium">$1.00</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-secondary rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">$</div>
-                      <span className="font-medium text-foreground">USDC</span>
-                    </div>
-                    <span className="text-emerald-600 font-medium">$1.00</span>
-                  </div>
+                  ))}
                 </div>
 
-                <Button variant="gold" className="w-full" size="lg" onClick={onRegisterClick}>
+                <Button className="w-full h-11 bg-accent hover:bg-accent/90 text-accent-foreground" onClick={onRegisterClick}>
                   Start Trading
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </motion.div>
 
-              {/* Floating elements */}
+              {/* Floating crypto icon */}
               <motion.div
                 animate={{ rotate: [0, 10, -10, 0] }}
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -top-4 -right-4 w-16 h-16 bg-gold rounded-2xl shadow-gold flex items-center justify-center text-2xl"
+                className="absolute -top-4 -right-4 w-14 h-14 bg-primary rounded-2xl shadow-lg flex items-center justify-center"
               >
-                💰
+                <img src={cryptoCurrencies[0].logo} alt="USDC" className="w-8 h-8" />
               </motion.div>
             </div>
           </motion.div>

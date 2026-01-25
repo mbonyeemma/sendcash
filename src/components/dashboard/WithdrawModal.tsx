@@ -5,6 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { cryptoCurrencies, fiatCurrencies, Currency } from "@/data/currencies";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface WithdrawModalProps {
   isOpen: boolean;
@@ -14,10 +22,9 @@ interface WithdrawModalProps {
 type WithdrawMethod = "mobile" | "crypto";
 type Step = 1 | 2;
 
-const mobileNetworks = ["MTN Mobile Money", "Airtel Money", "Others"];
-const cryptoTokens = [
-  { id: "usdt", name: "Tether", symbol: "USDT", color: "bg-emerald-500" },
-  { id: "usdc", name: "USD Coin", symbol: "USDC", color: "bg-blue-500" },
+const mobileNetworks = [
+  { id: "mtn", name: "MTN Mobile Money", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/New-mtn-logo.svg/1200px-New-mtn-logo.svg.png" },
+  { id: "airtel", name: "Airtel Money", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Airtel_Africa_logo.svg/1200px-Airtel_Africa_logo.svg.png" },
 ];
 
 export const WithdrawModal = ({ isOpen, onClose }: WithdrawModalProps) => {
@@ -26,7 +33,8 @@ export const WithdrawModal = ({ isOpen, onClose }: WithdrawModalProps) => {
   const [network, setNetwork] = useState("");
   const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState("");
-  const [selectedToken, setSelectedToken] = useState(cryptoTokens[0]);
+  const [selectedCurrency, setSelectedCurrency] = useState<Currency>(fiatCurrencies[0]);
+  const [selectedToken, setSelectedToken] = useState<Currency>(cryptoCurrencies[0]);
   const [walletAddress, setWalletAddress] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -123,12 +131,12 @@ export const WithdrawModal = ({ isOpen, onClose }: WithdrawModalProps) => {
                   onClick={() => handleMethodSelect("crypto")}
                   className="w-full flex items-center gap-4 p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all"
                 >
-                  <div className="w-12 h-12 rounded-xl bg-amber-400/10 flex items-center justify-center">
-                    <Bitcoin className="w-6 h-6 text-amber-500" />
+                  <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+                    <Bitcoin className="w-6 h-6 text-accent" />
                   </div>
                   <div className="text-left">
                     <h3 className="font-semibold text-foreground">Cryptocurrency</h3>
-                    <p className="text-sm text-muted-foreground">USDT, USDC</p>
+                    <p className="text-sm text-muted-foreground">USDC, USDT, RLUSD</p>
                   </div>
                 </button>
               </div>
@@ -138,21 +146,26 @@ export const WithdrawModal = ({ isOpen, onClose }: WithdrawModalProps) => {
             {step === 2 && method === "mobile" && (
               <div className="space-y-5">
                 <div>
-                  <Label>Network</Label>
-                  <select
-                    value={network}
-                    onChange={(e) => setNetwork(e.target.value)}
-                    className="w-full mt-1.5 h-12 px-4 rounded-xl border border-input bg-background text-foreground"
-                  >
-                    <option value="">Select network</option>
-                    {mobileNetworks.map((n) => (
-                      <option key={n} value={n}>{n}</option>
-                    ))}
-                  </select>
+                  <Label className="text-sm font-medium">Network</Label>
+                  <Select value={network} onValueChange={setNetwork}>
+                    <SelectTrigger className="mt-1.5 h-12 bg-background">
+                      <SelectValue placeholder="Select network" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border-border">
+                      {mobileNetworks.map((n) => (
+                        <SelectItem key={n.id} value={n.id}>
+                          <div className="flex items-center gap-3">
+                            <img src={n.logo} alt={n.name} className="w-5 h-5 object-contain" />
+                            <span>{n.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
-                  <Label>Phone Number</Label>
+                  <Label className="text-sm font-medium">Phone Number</Label>
                   <Input
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
@@ -162,14 +175,36 @@ export const WithdrawModal = ({ isOpen, onClose }: WithdrawModalProps) => {
                 </div>
 
                 <div>
-                  <Label>Amount (UGX)</Label>
-                  <Input
-                    type="number"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="100,000"
-                    className="mt-1.5 h-12"
-                  />
+                  <Label className="text-sm font-medium">Amount</Label>
+                  <div className="flex gap-2 mt-1.5">
+                    <Input
+                      type="number"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder="0.00"
+                      className="h-12 flex-1"
+                    />
+                    <Select value={selectedCurrency.id} onValueChange={(v) => setSelectedCurrency(fiatCurrencies.find(c => c.id === v) || fiatCurrencies[0])}>
+                      <SelectTrigger className="h-12 w-32 bg-background">
+                        <SelectValue>
+                          <div className="flex items-center gap-2">
+                            <img src={selectedCurrency.logo} alt={selectedCurrency.symbol} className="w-5 h-4 object-cover rounded-sm" />
+                            <span>{selectedCurrency.symbol}</span>
+                          </div>
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover border-border">
+                        {fiatCurrencies.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            <div className="flex items-center gap-2">
+                              <img src={c.logo} alt={c.symbol} className="w-5 h-4 object-cover rounded-sm" />
+                              <span>{c.symbol}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             )}
@@ -178,29 +213,37 @@ export const WithdrawModal = ({ isOpen, onClose }: WithdrawModalProps) => {
             {step === 2 && method === "crypto" && (
               <div className="space-y-5">
                 <div>
-                  <Label>Select Token</Label>
-                  <div className="grid grid-cols-2 gap-3 mt-2">
-                    {cryptoTokens.map((token) => (
-                      <button
-                        key={token.id}
-                        onClick={() => setSelectedToken(token)}
-                        className={`p-4 rounded-xl border transition-all flex items-center gap-3 ${
-                          selectedToken.id === token.id
-                            ? "border-primary bg-primary/10"
-                            : "border-border hover:border-primary/50"
-                        }`}
-                      >
-                        <div className={`w-8 h-8 rounded-full ${token.color} flex items-center justify-center text-white text-xs font-bold`}>
-                          {token.symbol.charAt(0)}
+                  <Label className="text-sm font-medium">Select Token</Label>
+                  <Select value={selectedToken.id} onValueChange={(v) => setSelectedToken(cryptoCurrencies.find(c => c.id === v) || cryptoCurrencies[0])}>
+                    <SelectTrigger className="mt-1.5 h-14 bg-background">
+                      <SelectValue>
+                        <div className="flex items-center gap-3">
+                          <img src={selectedToken.logo} alt={selectedToken.symbol} className="w-7 h-7 object-contain" />
+                          <div className="text-left">
+                            <p className="font-semibold">{selectedToken.symbol}</p>
+                            <p className="text-xs text-muted-foreground">{selectedToken.network}</p>
+                          </div>
                         </div>
-                        <span className="font-semibold text-foreground">{token.symbol}</span>
-                      </button>
-                    ))}
-                  </div>
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border-border">
+                      {cryptoCurrencies.map((token) => (
+                        <SelectItem key={token.id} value={token.id}>
+                          <div className="flex items-center gap-3">
+                            <img src={token.logo} alt={token.symbol} className="w-6 h-6 object-contain" />
+                            <div>
+                              <p className="font-medium">{token.symbol}</p>
+                              <p className="text-xs text-muted-foreground">{token.network}</p>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
-                  <Label>Wallet Address</Label>
+                  <Label className="text-sm font-medium">Wallet Address</Label>
                   <Input
                     value={walletAddress}
                     onChange={(e) => setWalletAddress(e.target.value)}
@@ -210,7 +253,7 @@ export const WithdrawModal = ({ isOpen, onClose }: WithdrawModalProps) => {
                 </div>
 
                 <div>
-                  <Label>Amount ({selectedToken.symbol})</Label>
+                  <Label className="text-sm font-medium">Amount ({selectedToken.symbol})</Label>
                   <Input
                     type="number"
                     value={amount}
@@ -227,9 +270,8 @@ export const WithdrawModal = ({ isOpen, onClose }: WithdrawModalProps) => {
           <div className="p-6 border-t border-border space-y-3">
             {step === 2 && (
               <Button 
-                variant="hero" 
                 onClick={handleConfirm} 
-                className="w-full h-12"
+                className="w-full h-12 bg-primary hover:bg-primary/90"
                 disabled={
                   (method === "mobile" && (!network || !phone || !amount)) ||
                   (method === "crypto" && (!walletAddress || !amount)) ||
