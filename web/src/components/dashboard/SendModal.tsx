@@ -77,7 +77,6 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
   const [receiverType, setReceiverType] = useState<"saved" | "onetime">("saved");
   const [paymentMethods, setPaymentMethods] = useState<ApiPaymentMethod[]>([]);
   const [fromAmount, setFromAmount] = useState("");
-  const [pin, setPin] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(false);
@@ -135,11 +134,6 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
     // Skip amount validation for offramp (it has its own amounts)
     if (method !== "offramp" && (!fromAmount || parseFloat(fromAmount) <= 0)) {
       newErrors.fromAmount = "Please enter a valid amount";
-    }
-
-    // PIN not required for offramp
-    if (method !== "offramp" && !pin) {
-      newErrors.pin = "Please enter your transaction PIN";
     }
 
     if (method === "mobile") {
@@ -201,7 +195,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
         
         // TODO: Call offramp API endpoint
         // For now, simulate the call
-        toast.success(`Offramp successful: ${offrampAmount} RLUSD converted to ${fiatAmount} ${toCurrency.symbol}`);
+        toast.success(`Successfully converted ${offrampAmount} RLUSD to ${fiatAmount} ${toCurrency.symbol}!`);
         resetAndClose();
         if (onSuccess) onSuccess();
         setIsLoading(false);
@@ -233,10 +227,12 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
         account_number: accountNumber,
         amount: parseFloat(fromAmount),
         payment_method_id: selectedPaymentMethod || "",
-        pin: pin,
+        pin: "", // No PIN required
         payment_mode: paymentMode,
         currency: method === "crypto" ? fromCurrency.symbol.toUpperCase() : userCurrency,
-        billerInfo: {},
+        bank_name: bankName || undefined,
+        account_holder_name: accountHolder || undefined,
+        network: network || undefined,
       };
 
       const response = await walletApi.transfer(transferData);
@@ -266,7 +262,6 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
     setSelectedPaymentMethod("");
     setShowAddPaymentMethod(false);
     setReceiverType("saved");
-    setPin("");
     setErrors({});
     // Reset offramp state
     setOfframpAmount("");
@@ -734,35 +729,12 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
               </div>
             )}
             {method && method !== "offramp" && (
-              <div>
-                <Label className="text-sm font-medium">Transaction PIN</Label>
-                <Input
-                  type="password"
-                  value={pin}
-                  onChange={(e) => {
-                    setPin(e.target.value);
-                    if (errors.pin) setErrors({ ...errors, pin: "" });
-                  }}
-                  placeholder="Enter your PIN"
-                  className="mt-1.5 h-12"
-                  maxLength={6}
-                />
-                {errors.pin && (
-                  <p className="text-sm text-destructive flex items-center gap-1 mt-1">
-                    <AlertCircle className="w-4 h-4" />
-                    {errors.pin}
-                  </p>
-                )}
-              </div>
-            )}
-            {method && method !== "offramp" && (
               <Button 
                 onClick={handleSend} 
                 className="w-full h-12 bg-primary hover:bg-primary/90"
                 disabled={
                   !method || 
                   isLoading || 
-                  !pin || 
                   !fromAmount
                 }
               >

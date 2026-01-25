@@ -18,4 +18,10 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  preview: {
+    port: 8080,
+  },
+  build: {
+    outDir: "dist",
+  },
 }));
