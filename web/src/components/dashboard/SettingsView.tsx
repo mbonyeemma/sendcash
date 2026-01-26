@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { User, Lock, Shield, Bell, Camera, CheckCircle, Clock, AlertCircle, Upload, FileText, Loader2 } from "lucide-react";
+import { User, Lock, Shield, Bell, Camera, CheckCircle, Clock, AlertCircle, Upload, FileText, Loader2, Network, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,10 +8,12 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { profileApi, walletApi, notificationApi, Notification } from "@/services/api";
+import { xrplService } from "@/services/xrplService";
 import { useAuth } from "@/contexts/AuthContext";
+import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
 import { OfframpModal } from "@/components/dashboard/OfframpModal";
 
-type SettingsTab = "profile" | "security" | "notifications" | "offramp" | "kyc";
+type SettingsTab = "profile" | "security" | "notifications" | "offramp" | "kyc" | "network";
 
 export const SettingsView = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
@@ -176,7 +178,7 @@ export const SettingsView = () => {
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SettingsTab)} className="w-full">
         {/* Horizontal Tabs Menu */}
         <div className="bg-card rounded-2xl border border-border p-2 mb-4">
-          <TabsList className="grid grid-cols-5 w-full h-auto bg-transparent gap-2">
+          <TabsList className="grid grid-cols-6 w-full h-auto bg-transparent gap-2">
             <TabsTrigger 
               value="profile" 
               className="flex items-center gap-2 px-4 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -190,6 +192,13 @@ export const SettingsView = () => {
             >
               <Lock className="w-4 h-4" />
               <span className="font-medium">Security</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="network"
+              className="flex items-center gap-2 px-4 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <Network className="w-4 h-4" />
+              <span className="font-medium">Network</span>
             </TabsTrigger>
             <TabsTrigger 
               value="notifications"
@@ -376,6 +385,10 @@ export const SettingsView = () => {
             </div>
           </TabsContent>
 
+          <TabsContent value="network" className="mt-0">
+            <NetworkContent />
+          </TabsContent>
+
           <TabsContent value="offramp" className="mt-0">
             <OfframpContent />
           </TabsContent>
@@ -426,6 +439,210 @@ export const SettingsView = () => {
           </TabsContent>
         </motion.div>
       </Tabs>
+    </div>
+  );
+};
+
+// Network Content Component
+const NetworkContent = () => {
+  const { isConnected, address, network, switchToTestnet, switchToMainnet } = useXRPLWallet();
+  const [isRequesting, setIsRequesting] = useState(false);
+  const [isCreatingTrustline, setIsCreatingTrustline] = useState(false);
+
+  const handleRequestTestXRP = async () => {
+    if (!address) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+
+    if (network !== "Testnet") {
+      toast.error("Please switch to Testnet to request test funds");
+      return;
+    }
+
+    try {
+      setIsRequesting(true);
+      await xrplService.requestTestXRP(address);
+      toast.success("Test XRP requested successfully! It may take a few moments to arrive.");
+    } catch (error: any) {
+      console.error("Failed to request test XRP:", error);
+      toast.error("Failed to request test XRP. Please try again.");
+    } finally {
+      setIsRequesting(false);
+    }
+  };
+
+  const handleSetupRLUSDTrustline = async () => {
+    if (!address) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+
+    if (network !== "Testnet") {
+      toast.error("Please switch to Testnet to setup RLUSD");
+      return;
+    }
+
+    try {
+      setIsCreatingTrustline(true);
+      const issuer = xrplService.getRLUSDIssuer("Testnet");
+      await xrplService.setTrustline("RLUSD", issuer, "1000000");
+      toast.success("RLUSD trustline created! You can now receive RLUSD.");
+    } catch (error: any) {
+      console.error("Failed to create trustline:", error);
+      toast.error(error.message || "Failed to create trustline. Please try again.");
+    } finally {
+      setIsCreatingTrustline(false);
+    }
+  };
+
+  const handleOpenRLUSDFaucet = () => {
+    window.open(xrplService.getRLUSDFaucetURL(), "_blank");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-foreground mb-2">XRPL Network Settings</h2>
+        <p className="text-sm text-muted-foreground">
+          Configure your XRPL network and manage test funds
+        </p>
+      </div>
+
+      {/* Wallet Status */}
+      <div className={`p-4 rounded-xl border ${isConnected ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800" : "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800"}`}>
+        <div className="flex items-start gap-3">
+          <Wallet className={`w-5 h-5 shrink-0 mt-0.5 ${isConnected ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"}`} />
+          <div>
+            <p className={`text-sm font-medium ${isConnected ? "text-green-800 dark:text-green-200" : "text-yellow-800 dark:text-yellow-200"}`}>
+              {isConnected ? "Wallet Connected" : "Wallet Not Connected"}
+            </p>
+            {isConnected && address && (
+              <p className={`text-xs mt-1 ${isConnected ? "text-green-700 dark:text-green-300" : "text-yellow-700 dark:text-yellow-300"}`}>
+                {address.slice(0, 8)}...{address.slice(-6)}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Network Selection */}
+      <div className="bg-card rounded-xl border border-border p-6 space-y-4">
+        <div>
+          <h3 className="font-semibold text-foreground mb-1">Network</h3>
+          <p className="text-xs text-muted-foreground">
+            Current network: <span className="font-medium text-foreground">{network || "Not connected"}</span>
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={switchToMainnet}
+            className={`p-4 rounded-xl border transition-all ${
+              network === "Mainnet"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-muted hover:bg-muted/80 border-border"
+            }`}
+          >
+            <div className="flex flex-col items-center gap-2">
+              <Network className="w-6 h-6" />
+              <div>
+                <p className="font-semibold">Mainnet</p>
+                <p className="text-xs opacity-80">Production network</p>
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={switchToTestnet}
+            className={`p-4 rounded-xl border transition-all ${
+              network === "Testnet"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-muted hover:bg-muted/80 border-border"
+            }`}
+          >
+            <div className="flex flex-col items-center gap-2">
+              <Network className="w-6 h-6" />
+              <div>
+                <p className="font-semibold">Testnet</p>
+                <p className="text-xs opacity-80">Testing network</p>
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Test Faucet */}
+      {network === "Testnet" && (
+        <div className="bg-card rounded-xl border border-border p-6 space-y-4">
+          <div>
+            <h3 className="font-semibold text-foreground mb-1">Test Faucet</h3>
+            <p className="text-sm text-muted-foreground">
+              Get free test XRP and RLUSD for testing
+            </p>
+          </div>
+
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Testnet Funds</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  These funds have no real value and are only for testing purposes.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <Button
+              onClick={handleRequestTestXRP}
+              disabled={!isConnected || isRequesting}
+              variant="outline"
+              className="w-full"
+            >
+              {isRequesting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Requesting XRP...
+                </>
+              ) : (
+                "1. Request Test XRP"
+              )}
+            </Button>
+
+            <Button
+              onClick={handleSetupRLUSDTrustline}
+              disabled={!isConnected || isCreatingTrustline}
+              variant="outline"
+              className="w-full"
+            >
+              {isCreatingTrustline ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Creating Trustline...
+                </>
+              ) : (
+                "2. Setup RLUSD Trustline"
+              )}
+            </Button>
+
+            <Button
+              onClick={handleOpenRLUSDFaucet}
+              disabled={!isConnected}
+              className="w-full"
+            >
+              3. Get Test RLUSD from Faucet
+            </Button>
+          </div>
+
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p>• <strong>Step 1:</strong> Get XRP for transaction fees</p>
+            <p>• <strong>Step 2:</strong> Create trustline to receive RLUSD</p>
+            <p>• <strong>Step 3:</strong> Get RLUSD from tryrlusd.com (requires GitHub login)</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { walletApi } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
 import {
   Select,
   SelectContent,
@@ -33,6 +34,7 @@ interface ConnectedWallet {
 
 export const OfframpModal = ({ isOpen, onClose, onSuccess }: OfframpModalProps) => {
   const { user } = useAuth();
+  const { isConnected, address, network, connectWallet, isConnecting } = useXRPLWallet();
   const userCurrency = user?.currency || "UGX";
   const [step, setStep] = useState<"connect" | "create">("connect");
   const [wallets, setWallets] = useState<ConnectedWallet[]>([]);

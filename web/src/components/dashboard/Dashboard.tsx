@@ -5,8 +5,7 @@ import { DashboardSidebar, type DashboardView } from "@/components/dashboard/Das
 import { BalanceOverview } from "@/components/dashboard/BalanceCard";
 import { DepositModal } from "@/components/dashboard/DepositModal";
 import { SendModal } from "@/components/dashboard/SendModal";
-import { ConvertModal } from "@/components/dashboard/ConvertModal";
-import { OfframpModal } from "@/components/dashboard/OfframpModal";
+import { ConnectXRPLWalletModal } from "@/components/dashboard/ConnectXRPLWalletModal";
 import { StatementView } from "@/components/dashboard/StatementView";
 import { SettingsView } from "@/components/dashboard/SettingsView";
 import { BalanceView } from "@/components/dashboard/BalanceView";
@@ -27,6 +26,7 @@ import {
 } from "@/components/ui/popover";
 import { notificationApi, Notification } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
 import sendicashLogo from "@/assets/sendicash-logo.png";
 
 interface DashboardProps {
@@ -35,12 +35,12 @@ interface DashboardProps {
 
 export const Dashboard = ({ onLogout }: DashboardProps) => {
   const { user } = useAuth();
+  const { isConnected, address } = useXRPLWallet();
   const [activeView, setActiveView] = useState<DashboardView>("balance");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
-  const [convertOpen, setConvertOpen] = useState(false);
-  const [offrampOpen, setOfframpOpen] = useState(false);
+  const [connectWalletOpen, setConnectWalletOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -104,6 +104,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
               onDeposit={() => setDepositOpen(true)}
               onSend={() => setSendOpen(true)}
               onConvert={() => setConvertOpen(true)}
+              onBalanceUpdate={() => {}}
             />
             <StatementView />
           </div>
@@ -121,6 +122,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
               onDeposit={() => setDepositOpen(true)}
               onSend={() => setSendOpen(true)}
               onConvert={() => setConvertOpen(true)}
+              onBalanceUpdate={() => {}}
             />
             <StatementView />
           </div>
@@ -144,15 +146,17 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
           <div className="flex items-center justify-between p-4">
           <img src={sendicashLogo} alt="SendiCash" className="h-10 object-contain" />
           <div className="flex items-center gap-2">
-            {/* Connect Wallet Button */}
+            {/* Connect XRPL Wallet Button */}
             <Button
-              onClick={() => setOfframpOpen(true)}
-              variant="outline"
+              onClick={() => setConnectWalletOpen(true)}
+              variant={isConnected ? "default" : "outline"}
               size="sm"
               className="gap-2"
             >
               <Wallet className="w-4 h-4" />
-              <span className="hidden sm:inline">Connect</span>
+              <span className="hidden sm:inline">
+                {isConnected ? `${address?.slice(0, 4)}...${address?.slice(-4)}` : "Connect"}
+              </span>
             </Button>
 
             {/* Notifications */}
@@ -305,6 +309,19 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
         {/* Desktop Header */}
         <div className="hidden lg:block border-b border-border bg-card">
           <div className="flex items-center justify-end p-4 pr-8 gap-3">
+            {/* Connect XRPL Wallet Button */}
+            <Button
+              onClick={() => setConnectWalletOpen(true)}
+              variant={isConnected ? "default" : "outline"}
+              size="sm"
+              className="gap-2"
+            >
+              <Wallet className="w-4 h-4" />
+              <span>
+                {isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)}` : "Connect Wallet"}
+              </span>
+            </Button>
+
             {/* Notifications */}
             <Popover open={notificationOpen} onOpenChange={setNotificationOpen}>
               <PopoverTrigger asChild>
@@ -458,13 +475,9 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
           window.location.reload(); // Simple refresh for now
         }}
       />
-      <ConvertModal isOpen={convertOpen} onClose={() => setConvertOpen(false)} />
-      <OfframpModal
-        isOpen={offrampOpen}
-        onClose={() => setOfframpOpen(false)}
-        onSuccess={() => {
-          // Refresh data if needed
-        }}
+      <ConnectXRPLWalletModal
+        isOpen={connectWalletOpen}
+        onClose={() => setConnectWalletOpen(false)}
       />
     </div>
   );

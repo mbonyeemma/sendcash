@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { walletApi } from "@/services/api";
+import { xrplService } from "@/services/xrplService";
+import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
 import { getCurrencyById } from "@/data/currencies";
 import { toast } from "sonner";
 
@@ -11,6 +13,7 @@ interface Balance {
 }
 
 export const BalanceView = () => {
+  const { isConnected, address, network } = useXRPLWallet();
   const [hidden, setHidden] = useState(false);
   const [balances, setBalances] = useState<Balance[]>([
     { currency: "RLUSD", balance: "0", isLoading: true },
@@ -22,27 +25,76 @@ export const BalanceView = () => {
     // Refresh balances every 30 seconds
     const interval = setInterval(fetchBalances, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isConnected, address]);
 
   const fetchBalances = async () => {
-    // Fetch RLUSD balance
-    try {
-      const rlusdResponse = await walletApi.getBalance("RLUSD");
-      if (rlusdResponse.data) {
-        const balanceValue = rlusdResponse.data.balance ?? rlusdResponse.data.data?.balance;
+    // Fetch RLUSD balance from XRPL wallet if connected
+    if (isConnected && address) {
+      try {
+        const xrplBalances = await xrplService.getAccountBalances(address, network || "Mainnet");
+        
+        // Find RLUSD balance
+        const rlusdBalance = xrplBalances.find(b => 
+          xrplService.formatCurrency(b.currency) === "RLUSD" || 
+          b.currency === "RLUSD"
+        );
+        
+        if (rlusdBalance) {
+          setBalances(prev =>
+            prev.map(b =>
+              b.currency === "RLUSD"
+                ? { ...b, balance: rlusdBalance.value, isLoading: false }
+                : b
+            )
+          );
+        } else {
+          // No RLUSD balance found
+          setBalances(prev =>
+            prev.map(b => (b.currency === "RLUSD" ? { ...b, balance: "0", isLoading: false } : b))
+          );
+        }
+      } catch (error: any) {
+        console.error("Failed to fetch XRPL RLUSD balance:", error);
+        // Fallback to API if XRPL fetch fails
+        try {
+          const rlusdResponse = await walletApi.getBalance("RLUSD");
+          if (rlusdResponse.data) {
+            const balanceValue = rlusdResponse.data.balance ?? rlusdResponse.data.data?.balance;
+            setBalances(prev =>
+              prev.map(b =>
+                b.currency === "RLUSD"
+                  ? { ...b, balance: String(balanceValue || "0"), isLoading: false }
+                  : b
+              )
+            );
+          }
+        } catch (fallbackError) {
+          console.error("Failed to fetch RLUSD balance from API:", fallbackError);
+          setBalances(prev =>
+            prev.map(b => (b.currency === "RLUSD" ? { ...b, balance: "0", isLoading: false } : b))
+          );
+        }
+      }
+    } else {
+      // No wallet connected, use API
+      try {
+        const rlusdResponse = await walletApi.getBalance("RLUSD");
+        if (rlusdResponse.data) {
+          const balanceValue = rlusdResponse.data.balance ?? rlusdResponse.data.data?.balance;
+          setBalances(prev =>
+            prev.map(b =>
+              b.currency === "RLUSD"
+                ? { ...b, balance: String(balanceValue || "0"), isLoading: false }
+                : b
+            )
+          );
+        }
+      } catch (error: any) {
+        console.error("Failed to fetch RLUSD balance:", error);
         setBalances(prev =>
-          prev.map(b =>
-            b.currency === "RLUSD"
-              ? { ...b, balance: String(balanceValue || "0"), isLoading: false }
-              : b
-          )
+          prev.map(b => (b.currency === "RLUSD" ? { ...b, balance: "0", isLoading: false } : b))
         );
       }
-    } catch (error: any) {
-      console.error("Failed to fetch RLUSD balance:", error);
-      setBalances(prev =>
-        prev.map(b => (b.currency === "RLUSD" ? { ...b, balance: "0", isLoading: false } : b))
-      );
     }
 
     // Fetch UGX balance
