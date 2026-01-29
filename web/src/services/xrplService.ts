@@ -88,14 +88,21 @@ export const xrplService = {
             },
         destination: destination,
       };
+      // Use DestinationTag (32-bit unsigned) when memo is numeric – composes correctly for signing
       if (memo && memo.trim()) {
-        const text = memo.trim();
-        const memoHex = Array.from(new TextEncoder().encode(text))
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("")
-          .toUpperCase();
-        payment.memos = [{ Memo: { MemoData: memoHex } }];
+        const trimmed = memo.trim();
+        const asNum = parseInt(trimmed, 10);
+        if (String(asNum) === trimmed && asNum >= 0 && asNum <= 0xFFFFFFFF) {
+          payment.destinationTag = asNum;
+        } else {
+          const memoHex = Array.from(new TextEncoder().encode(trimmed))
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("")
+            .toUpperCase();
+          payment.memos = [{ Memo: { MemoData: memoHex } }];
+        }
       }
+      // Returns { type: "response" | "reject", result?: { hash } } – check type for user cancel
       const result = await sendPayment(payment as any);
       return result;
     } catch (error) {
@@ -127,15 +134,10 @@ export const xrplService = {
   },
 
   /**
-   * Get RLUSD issuer address (Ripple's official issuer)
+   * Get RLUSD issuer address (single env: VITE_RLUSD_ISSUER)
    */
-  getRLUSDIssuer: (network: string = "Mainnet"): string => {
-    if (network === "Testnet") {
-      // Official Testnet RLUSD issuer from Ripple
-      return "rQhWct2fv4Vc4KRjRgMrxa8xPN9Zx9iLKV";
-    }
-    // Mainnet RLUSD issuer (update when available)
-    return "rN5JM3R9Y4rCNQbhHDsJAKkpHBLJzx3yXA";
+  getRLUSDIssuer: (_network?: string): string => {
+    return import.meta.env.VITE_RLUSD_ISSUER || "rN5JM3R9Y4rCNQbhHDsJAKkpHBLJzx3yXA";
   },
 
   /**

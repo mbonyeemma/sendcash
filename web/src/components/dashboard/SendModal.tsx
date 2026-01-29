@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2, AlertCircle, Smartphone, Building2, Wallet, ChevronLeft, Plus, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -71,6 +71,8 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const sendCancelledRef = useRef(false);
+  const SEND_TIMEOUT_MS = 90000; // 90s – user may need time to approve in GemWallet
 
   // Exchange rate RLUSD to UGX
   const rate = exchangeRates["rlusd"]?.["ugx"] || 3720;
@@ -193,6 +195,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
       return;
     }
 
+    sendCancelledRef.current = false;
     setIsLoading(true);
 
     try {
@@ -206,7 +209,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
         accountNumber = bankAccount;
       }
 
-      // 1) Create payout request – backend returns XRPL address + memo
+      // 1) Create payout request – backend returns XRPL address + memo (numeric)
       const payoutPayload = {
         amount: parseFloat(rlusdAmount),
         fiat_amount: parseFloat(ugxAmount),
@@ -225,25 +228,52 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
         return;
       }
 
-      // 2) Open GemWallet: send RLUSD to custody address with memo
+      // 2) Open GemWallet: send RLUSD to custody address with memo (race with timeout so we don't hang)
       const issuer = xrplService.getRLUSDIssuer(xrplNetwork === "Testnet" ? "Testnet" : "Mainnet");
-      await xrplService.sendPayment(
-        data.xrpl_destination,
-        String(data.amount),
-        "RLUSD",
-        issuer,
-        data.memo
-      );
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("SEND_TIMEOUT")), SEND_TIMEOUT_MS);
+      });
+      const sendResult = await Promise.race([
+        xrplService.sendPayment(
+          data.xrpl_destination,
+          String(data.amount),
+          "RLUSD",
+          issuer,
+          data.memo
+        ),
+        timeoutPromise,
+      ]) as { type?: string; result?: { hash?: string } } | undefined;
 
-      toast.success(`Sent ${rlusdAmount} RLUSD. Once confirmed on XRPL, ${ugxAmount} ${userCurrency} will be sent to the recipient.`);
-      resetAndClose();
-      if (onSuccess) onSuccess();
+      if (sendCancelledRef.current) return;
+
+      if (sendResult?.type === "reject") {
+        toast.error("Transaction cancelled in GemWallet.");
+        return;
+      }
+      if (sendResult?.type === "response" && sendResult?.result?.hash) {
+        toast.success(`Sent ${rlusdAmount} RLUSD. Once confirmed on XRPL, ${ugxAmount} ${userCurrency} will be sent to the recipient.`);
+        resetAndClose();
+        if (onSuccess) onSuccess();
+      } else {
+        toast.error("Unexpected response from wallet. Please try again.");
+      }
     } catch (error: any) {
+      if (sendCancelledRef.current) return;
       console.error("Send error:", error);
-      toast.error(error.message || "Failed to complete transaction. Please try again.");
+      if (error?.message === "SEND_TIMEOUT") {
+        toast.error("Request timed out. If GemWallet showed an error, try again or refresh the extension. If you approved, check your transaction history.");
+      } else {
+        toast.error(error?.message || "Failed to complete transaction. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCancelSend = () => {
+    sendCancelledRef.current = true;
+    setIsLoading(false);
+    toast.info("Cancelled. If you already approved in GemWallet, the transaction may still go through.");
   };
 
   const resetAndClose = () => {
@@ -800,21 +830,34 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                 >
                   Back
                 </Button>
-                <Button
-                  onClick={handleSend}
-                  disabled={isLoading}
-                  className="flex-1 h-12 bg-primary hover:bg-primary/90"
-                >
-                  {isLoading ? (
-                    <>
+                {isLoading ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={handleCancelSend}
+                      className="flex-1 h-12 border-destructive text-destructive hover:bg-destructive/10"
+                    >
+                      Cancel
+                    </Button>
+                    <Button disabled className="flex-1 h-12 bg-primary/70 cursor-wait">
                       <Loader2 className="w-5 h-5 animate-spin mr-2" />
                       Processing...
-                    </>
-                  ) : (
-                    "Confirm & Send"
-                  )}
-                </Button>
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    onClick={handleSend}
+                    className="flex-1 h-12 bg-primary hover:bg-primary/90"
+                  >
+                    Confirm & Send
+                  </Button>
+                )}
               </div>
+            )}
+            {showPreview && isLoading && (
+              <p className="text-xs text-muted-foreground text-center mt-3">
+                Check the GemWallet popup and approve, or click Cancel to stop.
+              </p>
             )}
           </div>
         </motion.div>

@@ -92,46 +92,56 @@ export const XRPLWalletProvider = ({ children }: XRPLWalletProviderProps) => {
     }
   }, []);
 
+  const CONNECT_TIMEOUT_MS = 45000; // 45s – user may need time to approve in extension popup
+
   const connectWallet = async () => {
     try {
       setIsConnecting(true);
       console.log("Attempting to connect to GemWallet...");
-      
-      // Try to get wallet address directly - if this works, GemWallet is installed
-      const addressResponse = await getAddress();
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Connection timed out. Check for a GemWallet popup and approve it, then try again.")), CONNECT_TIMEOUT_MS);
+      });
+
+      // Race getAddress against timeout so we don't hang forever
+      const addressResponse = await Promise.race([getAddress(), timeoutPromise]) as Awaited<ReturnType<typeof getAddress>>;
       console.log("Address response:", addressResponse);
-      
-      if (addressResponse.result?.address) {
-        const walletAddress = addressResponse.result.address;
-        
-        // Get network
-        const networkResponse = await getNetwork();
-        const walletNetwork = networkResponse.result?.network || "Mainnet";
-        
-        console.log("✅ Successfully connected to GemWallet");
-        console.log("Address:", walletAddress);
-        console.log("Network:", walletNetwork);
-        
-        setAddress(walletAddress);
-        setNetwork(walletNetwork);
-        setIsConnected(true);
-        setIsGemWalletInstalled(true); // Update installation status
-        
-        // Save to localStorage
-        localStorage.setItem("xrpl_wallet_address", walletAddress);
-        localStorage.setItem("xrpl_wallet_network", walletNetwork);
-      } else {
-        throw new Error("Failed to get wallet address");
+
+      if (addressResponse?.type === "reject" || !addressResponse?.result?.address) {
+        throw new Error("Connection rejected or no address returned. Please approve the request in the GemWallet popup.");
       }
+
+      const walletAddress = addressResponse.result.address;
+
+      // Get network
+      const networkResponse = await getNetwork();
+      const walletNetwork = networkResponse?.result?.network || "Mainnet";
+
+      console.log("✅ Successfully connected to GemWallet");
+      console.log("Address:", walletAddress);
+      console.log("Network:", walletNetwork);
+
+      setAddress(walletAddress);
+      setNetwork(walletNetwork);
+      setIsConnected(true);
+      setIsGemWalletInstalled(true);
+
+      localStorage.setItem("xrpl_wallet_address", walletAddress);
+      localStorage.setItem("xrpl_wallet_network", walletNetwork);
     } catch (error: any) {
       console.error("❌ Failed to connect wallet:", error);
-      
-      // If error indicates extension not found, open install page
+
       if (error.message?.includes("not found") || error.message?.includes("undefined")) {
         window.open("https://gemwallet.app/", "_blank");
         throw new Error("GemWallet extension not found. Please install it and refresh the page.");
       }
-      
+      if (error.message?.includes("timed out")) {
+        throw new Error("Connection timed out. Look for a GemWallet popup (it may be behind this window) and approve it, then click Connect again.");
+      }
+      if (error.message?.includes("rejected") || error.message?.includes("reject")) {
+        throw new Error("Connection rejected. Please approve the request in the GemWallet popup.");
+      }
+
       throw error;
     } finally {
       setIsConnecting(false);

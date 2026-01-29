@@ -34,6 +34,8 @@ export const ConnectXRPLWalletModal = ({ isOpen, onClose }: ConnectXRPLWalletMod
       
       if (errorMessage.includes("rejected") || errorMessage.includes("denied")) {
         toast.error("Connection rejected. Please accept the connection in GemWallet.");
+      } else if (errorMessage.includes("timed out")) {
+        toast.error("Connection timed out. Look for a GemWallet popup (it may be behind this window) and approve it.");
       } else if (errorMessage.includes("not found") || errorMessage.includes("install")) {
         toast.error("GemWallet not detected. Please install the extension and refresh.");
       } else {
@@ -123,6 +125,11 @@ export const ConnectXRPLWalletModal = ({ isOpen, onClose }: ConnectXRPLWalletMod
                           <ExternalLink className="w-5 h-5" />
                         )}
                       </button>
+                      {isConnecting && (
+                        <p className="text-xs text-muted-foreground text-center">
+                          Check for the GemWallet popup (extension icon or behind this window) and approve the connection.
+                        </p>
+                      )}
 
                       <div className="text-center space-y-2">
                         {!isGemWalletInstalled ? (
