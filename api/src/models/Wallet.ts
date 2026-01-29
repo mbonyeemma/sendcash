@@ -802,12 +802,9 @@ export class Wallet extends Modal {
 
       const user_id = userId
 
-      const paymentMethods = await this.getPaymentTypes();
-      const allowedPaymentMethods = paymentMethods.data as any[];
-      const allowedTypes = Array.isArray(allowedPaymentMethods)
-        ? allowedPaymentMethods.map((m: any) => m.type)
-        : [];
-      if (allowedTypes.length > 0 && !allowedTypes.includes(type)) {
+      // Allow known types (UI sends MOBILE/BANK; DB may use MOBILE_MONEY)
+      const knownTypes = ['MOBILE', 'MOBILE_MONEY', 'BANK', 'WALLET', 'CARD', 'BILLER'];
+      if (!knownTypes.includes(type)) {
         return this.makeResponse(400, "Invalid payment method");
       }
 
