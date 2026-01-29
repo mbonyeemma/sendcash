@@ -1,13 +1,10 @@
 import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import Database from './database';
-import config from '../config';
 import { ApiResponse, AuthenticatedRequest } from '../types';
 import { sendNotification } from '../helpers/FCM';
-import { Stellar } from './Stellar';
 import { Encryption } from './encryption';
 import BaseModel from './database';
-import { Recipient, Stellar as Stellar2 } from './Stellar';
 import crypto from 'crypto';
 import { sendEmail } from '../helpers/email';
 import SMSHelper from '../helpers/SMSHelper';
@@ -77,15 +74,6 @@ export default class Modal extends BaseModel {
         return this.callQuery(`SELECT * FROM followers WHERE user_id = '${userId}'`);
     }
 
-    async getPlayed(userId: string) {
-        return this.callQuery(`SELECT * FROM bets WHERE user_id = '${userId}'`);
-    }
-
-    async getWon(userId: string) {
-        return await this.callQuery(`SELECT * FROM bets WHERE winner_id = '${userId}'`);
-    }
-
- 
     async getUser(username: string) {
         const users: any = await this.callQuery(`SELECT * FROM sia_users WHERE username = '${username}'`);
         return users.length > 0 ? users[0] : null;
@@ -112,7 +100,7 @@ export default class Modal extends BaseModel {
     generateToken(user: UserRecord): string {
         return jwt.sign(
             { username: user.username },
-            config.secretKey,
+            (process.env.JWT_SECRET || 'your-secret-key'),
             { expiresIn: '24h' }
         );
     }
@@ -158,7 +146,7 @@ export default class Modal extends BaseModel {
 
     async verifyToken(token: string) {
         try {
-            const decoded: any = jwt.verify(token, config.secretKey);
+            const decoded: any = jwt.verify(token, (process.env.JWT_SECRET || 'your-secret-key'));
             return decoded;
         } catch (error) {
             throw new Error('Invalid token');
@@ -167,9 +155,9 @@ export default class Modal extends BaseModel {
 
     async generateWallet(user_id: any) {
         try {
-            const chain = 'stellar';
+            const chain = 'XRPL';
             const existingWallet: any = await this.callQuery(
-                `SELECT * FROM sia_wallets where user_id = '${user_id}'`
+                `SELECT * FROM sc_wallets where user_id = '${user_id}'`
             );
 
             if (existingWallet.length > 0) {
@@ -185,27 +173,20 @@ export default class Modal extends BaseModel {
                 };
             }
 
-            const wallet: { publicKey: string; secret: string; mnemonic?: string } = await new Stellar().generateKeypair();
-            console.log('Generated new wallet with public key:', wallet.publicKey);
-
-            // Encrypt the secret key before storing
-            const encryptedSecret = Encryption.encrypt(wallet.secret);
-
+            // XRPL-only: no custodial keypair; store placeholder for compatibility
+            const placeholderSecret = Encryption.encrypt('');
             const walletData: WalletRecord = {
                 user_id: user_id,
-                chain: chain,
-                publicKey: wallet.publicKey,
-                secret: encryptedSecret, // Store encrypted secret
-                mnemonic: wallet.mnemonic ? Encryption.encrypt(wallet.mnemonic) : undefined // Encrypt mnemonic if available
-            }
-
-            await this.insertData('sia_wallets', walletData);
-
-            // Return wallet with decrypted secret (only for immediate use)
+                chain: 'XRPL',
+                publicKey: '',
+                secret: placeholderSecret,
+                mnemonic: undefined
+            };
+            await this.insertData('sc_wallets', walletData);
             return {
                 ...walletData,
-                secret: wallet.secret, // Return original secret
-                mnemonic: wallet.mnemonic // Return original mnemonic
+                secret: '',
+                mnemonic: undefined
             };
         } catch (error) {
             console.error('Wallet generation error:', error);
@@ -279,7 +260,7 @@ export default class Modal extends BaseModel {
 
 
             const wallet: any = await this.callQuery(
-                `SELECT * FROM sia_wallets WHERE user_id = '${userId}'`
+                `SELECT * FROM sc_wallets WHERE user_id = '${userId}'`
             );
 
             if (wallet.length > 0) {
@@ -409,7 +390,7 @@ export default class Modal extends BaseModel {
                     email: user.email,
                     type: 'access'
                 },
-                config.secretKey,
+                (process.env.JWT_SECRET || 'your-secret-key'),
                 { expiresIn: '124h' }
             );
 
@@ -426,70 +407,8 @@ export default class Modal extends BaseModel {
     hashPin(pin: string): string {
         return crypto.createHash('sha256').update(pin).digest('hex');
     }
-    async giveAirdrop(userId: string, amount: string, token: string) {
-        try {
-            console.log("Give airdrop", userId, amount, token);
-
-            // First, make sure the user exists
-            const user = await this.getUserById(userId);
-            if (!user) {
-                return this.makeResponse(404, "User not found");
-            }
-
-            // Generate or retrieve wallet with proper error handling
-            let wallet;
-            try {
-                wallet = await this.generateWallet(userId);
-                if (!wallet || !wallet.publicKey || !wallet.secret) {
-                    return this.makeResponse(500, "Failed to retrieve or generate wallet");
-                }
-                console.log("Retrieved wallet with public key:", wallet.publicKey);
-            } catch (walletError: any) {
-                console.error("Wallet error:", walletError);
-                return this.makeResponse(500, "Error retrieving wallet information");
-            }
-
-            // Make sure the secret key is a valid string
-            if (typeof wallet.secret !== 'string' || wallet.secret.trim() === '') {
-                return this.makeResponse(400, "Invalid wallet secret key");
-            }
-
-            // Attempt to sponsor the account
-            try {
-
-                const txArray: Recipient[] = [
-                    {
-                        publicKey: wallet.publicKey,
-                        amount: amount,
-                        asset_code: token,
-                        asset_issuer: new Stellar().assetIssuer,
-                        senderSecretKey: new Stellar().assetIssuerPv || '',
-                        creditPrivateKey: wallet.secret
-                    }
-                ]
-
-                const response = await new Stellar().makeBatchTransfers("transfer", txArray);
-                console.log(`response`, response);
-
-
-                if (response && response.status === 200) {
-                    return this.makeResponse(200, "Airdrop given successfully", {
-                        public_key: wallet.publicKey,
-                        transaction_hash: response.message
-                    });
-                } else {
-                    return this.makeResponse(response.status || 500, response.message || "Failed to sponsor account");
-                }
-            } catch (error: any) {
-                console.error('Sponsorship error:', error);
-                return this.makeResponse(500, error.message || "Error during account sponsorship");
-            }
-        } catch (error: any) {
-            console.error('Give airdrop error:', error);
-            return this.makeResponse(500, "Failed to give airdrop", {
-                error: error.message || "Unknown error"
-            });
-        }
+    async giveAirdrop(_userId: string, _amount: string, _token: string) {
+        return this.makeResponse(400, "Airdrop not supported for XRPL-only");
     }
 
 
@@ -504,7 +423,7 @@ export function tokenRequired(req: AuthenticatedRequest, res: Response, next: Ne
 
     const token = authHeader.split(' ')[1];
     try {
-        const decoded = jwt.verify(token, config.secretKey) as JwtPayload;
+        const decoded = jwt.verify(token, (process.env.JWT_SECRET || 'your-secret-key')) as JwtPayload;
         req.user = decoded;
         next();
     } catch (error) {

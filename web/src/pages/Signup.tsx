@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { authApi, profileApi } from "@/services/api";
+import { OTPVerification } from "@/components/auth/OTPVerification";
 import sendicashLogo from "@/assets/sendicash-logo.png";
 
 const getPasswordStrength = (password: string): { strength: "weak" | "medium" | "strong"; score: number; feedback: string } => {
@@ -209,8 +210,18 @@ export default function Signup() {
       const response = await authApi.register(registerData);
 
       if (response.status === 200) {
-        toast.success("Registration successful! Please login to continue.");
-        navigate("/login");
+        const message = (response as any).message || "";
+        const needsVerification = message.toLowerCase().includes("verify") || (response as any).data?.email;
+        const email = (response as any).data?.email || formData.email;
+
+        if (needsVerification && email) {
+          setRegisteredEmail(email);
+          setShowOTP(true);
+          toast({ title: "Check your email", description: "Enter the 6-digit code we sent to " + email });
+        } else {
+          toast.success("Registration successful! Please login to continue.");
+          navigate("/login");
+        }
       }
     } catch (error: any) {
       // Error toast is already shown by the API layer, so we don't need to show another one
@@ -237,6 +248,16 @@ export default function Signup() {
 
         {/* Card */}
         <div className="bg-card rounded-2xl shadow-xl p-5 border border-border">
+          {showOTP ? (
+            <OTPVerification
+              email={registeredEmail}
+              onBack={() => {
+                setShowOTP(false);
+                setRegisteredEmail("");
+              }}
+            />
+          ) : (
+            <>
           {/* Header */}
           <div className="text-center mb-4">
             <h2 className="text-2xl font-bold text-foreground mb-1">
@@ -466,6 +487,8 @@ export default function Signup() {
               Sign in
             </Link>
           </p>
+            </>
+          )}
         </div>
 
         {/* Footer */}

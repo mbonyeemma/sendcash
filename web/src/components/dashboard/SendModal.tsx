@@ -51,7 +51,7 @@ const calculateFee = (amount: number): number => {
 
 export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
   const { user } = useAuth();
-  const { isConnected, address, connectWallet } = useXRPLWallet();
+  const { isConnected, address, connectWallet, network: xrplNetwork } = useXRPLWallet();
   const userCurrency = user?.currency || "UGX";
   
   const [method, setMethod] = useState<SendMethod>("");
@@ -196,46 +196,48 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
     setIsLoading(true);
 
     try {
-      // Determine account number and payment mode
       let accountNumber = "";
-      let paymentMode = "";
-
+      const paymentMode = method === "mobile" ? "MOBILE" : "BANK";
       if (method === "mobile") {
         accountNumber = receiverType === "saved" && selectedPaymentMethod
           ? paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.phone_number || recipient
           : recipient.replace(/\s/g, "");
-        paymentMode = "MOBILE";
-      } else if (method === "bank") {
+      } else {
         accountNumber = bankAccount;
-        paymentMode = "BANK";
       }
 
-      // Send RLUSD offramp request to server
-      // Server will deduct RLUSD from wallet and send UGX to recipient
-      const offrampData = {
+      // 1) Create payout request – backend returns XRPL address + memo
+      const payoutPayload = {
         amount: parseFloat(rlusdAmount),
         fiat_amount: parseFloat(ugxAmount),
-        from_currency: "RLUSD",
-        to_currency: userCurrency,
-        payment_method_id: selectedPaymentMethod || "",
         payment_mode: paymentMode,
         account_number: accountNumber,
         bank_name: bankName || undefined,
         account_holder_name: accountHolder || undefined,
         network: network || undefined,
-        source_address: address, // XRPL wallet address
+        payment_method_id: selectedPaymentMethod || undefined,
+        narration: "RLUSD offramp",
       };
-
-      // TODO: Replace with actual offramp API endpoint
-      const response = await walletApi.transfer(offrampData as any);
-
-      if (response.status === 200 || response.status === 201) {
-        toast.success(`Successfully sent ${rlusdAmount} RLUSD! Recipient will receive ${ugxAmount} ${userCurrency}.`);
-        resetAndClose();
-        if (onSuccess) onSuccess();
-      } else {
-        toast.error(response.message || "Transfer failed");
+      const response = await walletApi.createPayoutRequest(payoutPayload);
+      const data = response.data as { xrpl_destination: string; memo: string; amount: number };
+      if (!data?.xrpl_destination || !data?.memo) {
+        toast.error(response.message || "Invalid payout response");
+        return;
       }
+
+      // 2) Open GemWallet: send RLUSD to custody address with memo
+      const issuer = xrplService.getRLUSDIssuer(xrplNetwork === "Testnet" ? "Testnet" : "Mainnet");
+      await xrplService.sendPayment(
+        data.xrpl_destination,
+        String(data.amount),
+        "RLUSD",
+        issuer,
+        data.memo
+      );
+
+      toast.success(`Sent ${rlusdAmount} RLUSD. Once confirmed on XRPL, ${ugxAmount} ${userCurrency} will be sent to the recipient.`);
+      resetAndClose();
+      if (onSuccess) onSuccess();
     } catch (error: any) {
       console.error("Send error:", error);
       toast.error(error.message || "Failed to complete transaction. Please try again.");
@@ -261,10 +263,6 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
     setShowPreview(false);
     onClose();
   };
-
-  const fee = fromAmount && !isNaN(parseFloat(fromAmount)) && method
-    ? calculateFee(parseFloat(fromAmount), method)
-    : 0;
 
   if (!isOpen) return null;
 
@@ -472,85 +470,51 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                   )}
                 </div>
 
-            {/* Mobile Money Offramp */}
-            {method === "mobile" && !showPreview && (
-              <div className="space-y-5">
-                {/* RLUSD Amount */}
+                {/* Receiver Type & Beneficiary for Mobile */}
                 <div>
-                  <Label className="text-sm font-medium">Amount (RLUSD)</Label>
-                  <Input
-                    type="number"
-                    value={rlusdAmount}
-                    onChange={(e) => {
-                      setRlusdAmount(e.target.value);
-                      if (errors.rlusdAmount) setErrors({ ...errors, rlusdAmount: "" });
-                    }}
-                    placeholder="0.00"
-                    className="mt-1.5 h-12"
-                  />
-                  {errors.rlusdAmount && (
-                    <p className="text-sm text-destructive flex items-center gap-1 mt-1">
-                      <AlertCircle className="w-4 h-4" />
-                      {errors.rlusdAmount}
-                    </p>
-                  )}
+                  <Label className="text-sm font-medium mb-2">Send To</Label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setReceiverType("saved"); setSelectedPaymentMethod(""); }}
+                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${receiverType === "saved" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                    >
+                      Saved Beneficiary
+                    </button>
+                    <button
+                      onClick={() => { setReceiverType("onetime"); setSelectedPaymentMethod(""); }}
+                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${receiverType === "onetime" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                    >
+                      New Recipient
+                    </button>
+                  </div>
                 </div>
-
-                {/* UGX Amount Display */}
-                {ugxAmount && (
-                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Recipient gets</p>
-                        <p className="text-2xl font-bold text-foreground">{ugxAmount} {userCurrency}</p>
-                      </div>
-                      <ArrowRight className="w-6 h-6 text-primary" />
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-primary/20 space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">You send:</span>
-                        <span>{rlusdAmount} RLUSD</span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Fee (1%):</span>
-                        <span>{(parseFloat(rlusdAmount) * 0.01).toFixed(6)} RLUSD</span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Rate:</span>
-                        <span>1 RLUSD = {rate.toFixed(2)} {userCurrency}</span>
-                      </div>
-                    </div>
+                {receiverType === "saved" && (
+                  <div>
+                    <Label className="text-sm font-medium">Select Beneficiary</Label>
+                    <Select value={selectedPaymentMethod || undefined} onValueChange={(v) => { setSelectedPaymentMethod(v); if (errors.recipient) setErrors({ ...errors, recipient: "" }); }}>
+                      <SelectTrigger className="mt-1.5 h-12 bg-background">
+                        <SelectValue placeholder="Select beneficiary" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover border-border">
+                        {isLoadingPaymentMethods ? <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div> : paymentMethods.length === 0 ? <div className="p-4 text-center text-sm text-muted-foreground">No saved beneficiaries</div> : paymentMethods.map((pm) => (
+                          <SelectItem key={pm.id} value={pm.id}>
+                            <div className="flex flex-col"><span className="font-medium">{pm.account_name}</span><span className="text-xs text-muted-foreground">{pm.account_number}</span></div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.recipient && <p className="text-sm text-destructive flex items-center gap-1 mt-1"><AlertCircle className="w-4 h-4" />{errors.recipient}</p>}
                   </div>
                 )}
-
-                {/* Network Selection */}
-                <div>
-                  <Label className="text-sm font-medium">Mobile Network</Label>
-                  <Select value={network} onValueChange={(v) => {
-                    setNetwork(v);
-                    if (errors.network) setErrors({ ...errors, network: "" });
-                  }}>
-                    <SelectTrigger className="mt-1.5 h-12 bg-background">
-                      <SelectValue placeholder="Select network" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover border-border">
-                      {mobileNetworks.map((n) => (
-                        <SelectItem key={n.id} value={n.id}>
-                          <div className="flex items-center gap-3">
-                            <img src={n.logo} alt={n.name} className="w-5 h-5 object-contain" />
-                            <span>{n.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.network && (
-                    <p className="text-sm text-destructive flex items-center gap-1 mt-1">
-                      <AlertCircle className="w-4 h-4" />
-                      {errors.network}
-                    </p>
-                  )}
-                </div>
+                {receiverType === "onetime" && method === "mobile" && (
+                  <div>
+                    <Label className="text-sm font-medium">Recipient Phone</Label>
+                    <Input value={recipient} onChange={(e) => { setRecipient(e.target.value); if (errors.recipient) setErrors({ ...errors, recipient: "" }); }} placeholder="e.g. 256700000000" className="mt-1.5 h-12" />
+                    {errors.recipient && <p className="text-sm text-destructive flex items-center gap-1 mt-1"><AlertCircle className="w-4 h-4" />{errors.recipient}</p>}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Bank Transfer Offramp */}
             {method === "bank" && !showPreview && (
@@ -801,6 +765,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                 </div>
               </div>
             )}
+            </div>
           </div>
 
           {/* Footer */}

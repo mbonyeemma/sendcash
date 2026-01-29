@@ -233,6 +233,73 @@ export const walletApi = {
   stableCoinDeposit: async (amount: number, assetCode: string, chainCode: string): Promise<ApiResponse> => {
     return api.post({ amount, asset_code: assetCode, chain_code: chainCode }, "/wallet/stableCoinDeposit");
   },
+
+  /** Create RLUSD offramp payout request; returns XRPL address + memo for user to send RLUSD in GemWallet */
+  createPayoutRequest: async (data: RlusdPayoutRequest): Promise<ApiResponse<RlusdPayoutResponse>> => {
+    return api.post<RlusdPayoutResponse>(data, "/wallet/rlusdPayoutRequest");
+  },
+};
+
+export interface RlusdPayoutRequest {
+  amount: number;
+  fiat_amount: number;
+  payment_mode: string;
+  account_number: string;
+  bank_name?: string;
+  account_holder_name?: string;
+  network?: string;
+  payment_method_id?: string;
+  narration?: string;
+}
+
+export interface RlusdPayoutResponse {
+  xrpl_destination: string;
+  memo: string;
+  amount: number;
+  trans_id: string;
+  expires_in_seconds: number;
+}
+
+// Provider (onramp) APIs: quote, onramp request, pay-in instructions
+export interface OnrampQuoteRequest {
+  amount_ugx?: number;
+  amount_rlusd?: number;
+}
+
+export interface OnrampQuoteResponse {
+  amount_ugx: number;
+  amount_rlusd: number;
+  rate: number;
+  fee_ugx: number;
+  fee_pct: number;
+  expires_in_seconds: number;
+}
+
+export interface OnrampRequestRequest {
+  amount_ugx: number;
+  amount_rlusd: number;
+  destination_address: string;
+  account_number?: string;
+  network?: string;
+}
+
+export interface OnrampRequestResponse {
+  trans_id: string;
+  reference: string;
+  pay_in_address?: string;
+  amount_ugx: number;
+  amount_rlusd: number;
+  instructions: string;
+  expires_in_seconds: number;
+}
+
+export const providerApi = {
+  getQuote: async (data: OnrampQuoteRequest): Promise<ApiResponse<OnrampQuoteResponse>> => {
+    return api.post<OnrampQuoteResponse>(data, "/provider/quote");
+  },
+  createOnrampRequest: async (data: OnrampRequestRequest): Promise<ApiResponse<OnrampRequestResponse>> => {
+    return api.post<OnrampRequestResponse>(data, "/provider/onrampRequest");
+  },
 };
 
 // Payment Method APIs
@@ -342,7 +409,7 @@ export const exchangeApi = {
   getExchangeRate: async (fromCurrency: string, toCurrency: string): Promise<ApiResponse<ExchangeRateResponse>> => {
     return api.post<ExchangeRateResponse>(
       { from_currency: fromCurrency, to_currency: toCurrency },
-      "/payment/exchange-rate"
+      "/wallet/getExchangeRate"
     );
   },
 };

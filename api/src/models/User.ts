@@ -1,15 +1,12 @@
 import { Request } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { Stellar } from '../libs/Stellar';
 import Modal from '../libs/modal';
-import config from '../config';
 import EmailSender from '../libs/email.helper';
 import { Encryption } from '../libs/encryption';
 const emailSender = new EmailSender();
 
 import { UserData, ApiResponse, UserProfile } from '../types';
-const stellar = new Stellar();
 const { OAuth2Client } = require('google-auth-library');
 
 interface UserRecord {
@@ -160,7 +157,7 @@ export class User extends Modal {
                     username: username,
                     email: email
                 },
-                config.secretKey,
+                (process.env.JWT_SECRET || 'your-secret-key'),
                 { expiresIn: '24h' }
             );
 
@@ -236,10 +233,10 @@ export class User extends Modal {
 
     async registerUser(req: any): Promise<any> {
         try {
-            const {  referral_code, phone_number, first_name,email,username, last_name,currency, country_code, password } = req;
+            const { referral_code, phone_number, first_name, last_name, full_name, email, username, currency, country_code, password } = req;
             const randomUsername = Math.random().toString(36).substring(2, 10) + (new Date()).getTime().toString(36);
 
-            const name = `${first_name} ${last_name}`;
+            const name = full_name || (first_name && last_name ? `${first_name} ${last_name}`.trim() : null) || email?.split('@')[0] || randomUsername;
 
           //  const username = email.split('@')[0] || randomUsername;
 
@@ -256,8 +253,9 @@ export class User extends Modal {
             const existingEmail: any = await this.callQuery(
                 `SELECT * FROM sia_users WHERE email = '${email}'`
             )
+            const finalUsername = username || email?.split('@')[0] || randomUsername;
             const existingUsername: any = await this.callQuery(
-                `SELECT * FROM sia_users WHERE username = '${username}'`
+                `SELECT * FROM sia_users WHERE username = '${(finalUsername + '').replace(/'/g, "''")}'`
             )
 
             if (existingEmail.length > 0) {
@@ -266,7 +264,7 @@ export class User extends Modal {
             }
 
             if (existingUsername.length > 0) {
-                console.log('Username already exists:', username);
+                console.log('Username already exists:', finalUsername);
                 return this.makeResponse(409, 'Username already exists');
             }
 
@@ -276,15 +274,19 @@ export class User extends Modal {
             // Hash password
             const hashedPassword = await bcrypt.hash(password, 10);
 
+            // Default currency from country or UGX (e.g. 256 -> UGX, 254 -> KES)
+            const currencyByCountry: Record<string, string> = { '256': 'UGX', '254': 'KES' };
+            const currencyToSave = currency || currencyByCountry[String(country_code)] || 'UGX';
+
             // Insert user with wallet public key only
             const result = await this.insertData('sia_users', {
                 referer: referral_code,
                 user_id: user_id,
                 full_name: name,
                 avatar: this.generateDefaultAvatar(user_id),
-                username: username,
+                username: finalUsername,
                 country_code: country_code,
-                currency,
+                currency: currencyToSave,
                 phone_number,
                 email,
                 password: hashedPassword
@@ -362,7 +364,7 @@ export class User extends Modal {
                     user_id: user.user_id,
                     type: 'refresh'
                 },
-                config.secretKey,
+                (process.env.JWT_SECRET || 'your-secret-key'),
                 { expiresIn: '7d' }
             );
             try {
@@ -385,7 +387,7 @@ export class User extends Modal {
                     email: user.email,
                     type: 'access'
                 },
-                config.secretKey,
+                (process.env.JWT_SECRET || 'your-secret-key'),
                 { expiresIn: '124h' }
             );
 
@@ -565,37 +567,6 @@ export class User extends Modal {
         }
     }
 
-    async followUser(req: any): Promise<any> {
-        try {
-            const { user_id, following_user_id } = req.body;
-
-            const user = await this.getUserById(user_id);
-            const followUser = await this.getUserById(following_user_id);
-
-            if (!user || !followUser) {
-                return { error: 'User not found' };
-            }
-
-            if (user_id === following_user_id) {
-                return { error: 'Cannot follow yourself' };
-            }
-
-            const insertData = {
-                user_id,
-                following_user_id,
-                follow_status: true
-            };
-
-            await this.insertData('sia_user_follow', insertData);
-            return { message: 'Successfully followed user' };
-        } catch (error) {
-            console.error('Follow user error:', error);
-            return { error: 'Failed to follow user' };
-        }
-    }
-
-
-
     async searchUsers(query: any): Promise<any> {
         const users = await this.callQuery(
             `SELECT email,currency,full_name,user_id, username,avatar FROM sia_users 
@@ -605,42 +576,21 @@ export class User extends Modal {
         return this.makeResponse(200, "Users found", users);
     }
 
-    async getFollowing(userId: any): Promise<any> {
-        const users = await this.callQuery(
-            `SELECT u.user_id, u.username, u.public_key 
-             FROM sia_users u 
-             INNER JOIN sia_user_follow f ON f.following_user_id = u.user_id 
-             WHERE f.user_id = '${userId}' AND f.follow_status = true`
-        );
-        return users;
+    async followUser(_req: any): Promise<any> {
+        return { message: 'Follow feature not available' };
     }
 
-    async getFollowers(userId: any): Promise<any> {
-        const users = await this.callQuery(
-            `SELECT u.user_id, u.username, u.public_key 
-             FROM sia_users u 
-             INNER JOIN sia_user_follow f ON f.user_id = u.user_id 
-             WHERE f.following_user_id = '${userId}' AND f.follow_status = true`
-        );
-        return users;
+    async getFollowing(_userId: any): Promise<any> {
+        return [];
+    }
+
+    async getFollowers(_userId: any): Promise<any> {
+        return [];
     }
 
     async getProfile(userId: any): Promise<any> {
-        const [
-            followers,
-            following,
-            played,
-            won,
-            lost
-        ] = await Promise.all([
-            this.getFollowersCount(userId),
-            this.getFollowingCount(userId),
-            this.getPlayedCount(userId),
-            this.getWonCount(userId),
-            this.getLostCount(userId)
-        ]);
-
-        return { followers, following, played, won, lost };
+        // Betting and follow stats removed; return zeros
+        return { followers: 0, following: 0, played: 0, won: 0, lost: 0 };
     }
 
     async setupPIN(userId: any, pin: any): Promise<any> {
@@ -859,7 +809,7 @@ export class User extends Modal {
                     username: user.username,
                     email: user.email
                 },
-                config.secretKey,
+                (process.env.JWT_SECRET || 'your-secret-key'),
                 { expiresIn: '24h' }
             );
 
@@ -977,41 +927,6 @@ export class User extends Modal {
         return emailRegex.test(email);
     }
 
-    private async getFollowersCount(userId: any): Promise<any> {
-        const result = await this.callQuery(
-            `SELECT COUNT(*) as count FROM sia_user_follow WHERE following_user_id = '${userId}' AND follow_status = true`
-        ) as any[];
-        return result[0]?.count || 0;
-    }
-
-    private async getFollowingCount(userId: any): Promise<any> {
-        const result = await this.callQuery(
-            `SELECT COUNT(*) as count FROM sia_user_follow WHERE user_id = '${userId}' AND follow_status = true`
-        ) as any[];
-        return result[0]?.count || 0;
-    }
-
-    private async getPlayedCount(userId: any): Promise<any> {
-        const result = await this.callQuery(
-            `SELECT COUNT(*) as count FROM sia_bets WHERE user_id = '${userId}'`
-        ) as any[];
-        return result[0]?.count || 0;
-    }
-
-    private async getWonCount(userId: any): Promise<any> {
-        const result = await this.callQuery(
-            `SELECT COUNT(*) as count FROM sia_bets WHERE user_id = '${userId}' AND bet_final_result = 'won'`
-        ) as any[];
-        return result[0]?.count || 0;
-    }
-
-    private async getLostCount(userId: any): Promise<any> {
-        const result = await this.callQuery(
-            `SELECT COUNT(*) as count FROM sia_bets WHERE user_id = '${userId}' AND bet_final_result = 'lost'`
-        ) as any[];
-        return result[0]?.count || 0;
-    }
-
     async updatePushToken(userId: string, token: string, device: string): Promise<any> {
         try {
             const result: any = await this.callQuery(
@@ -1083,13 +998,13 @@ export class User extends Modal {
             }
 
             // Verify the ID token with Google
-            const client = new OAuth2Client(config.GOOGLE_CLIENT_ID);
+            const client = new OAuth2Client((process.env.GOOGLE_CLIENT_ID || '10349883522-hf77q9tpsqv631fuja0i7uun86j8tij5.apps.googleusercontent.com'));
             let ticket;
 
             try {
                 ticket = await client.verifyIdToken({
                     idToken: idToken,
-                    audience: config.GOOGLE_CLIENT_ID,
+                    audience: (process.env.GOOGLE_CLIENT_ID || '10349883522-hf77q9tpsqv631fuja0i7uun86j8tij5.apps.googleusercontent.com'),
                 });
             } catch (error) {
                 console.error('Google token verification failed:', error);
@@ -1115,7 +1030,7 @@ export class User extends Modal {
                         email: existingUser.email,
                         type: 'access'
                     },
-                    config.secretKey,
+                    (process.env.JWT_SECRET || 'your-secret-key'),
                     { expiresIn: '7d' }
                 );
 
@@ -1162,7 +1077,7 @@ export class User extends Modal {
                     email: user.email,
                     type: 'access'
                 },
-                config.secretKey,
+                (process.env.JWT_SECRET || 'your-secret-key'),
                 { expiresIn: '7d' }
             );
 

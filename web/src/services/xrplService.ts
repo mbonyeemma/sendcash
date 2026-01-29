@@ -68,18 +68,19 @@ export const xrplService = {
   },
 
   /**
-   * Send payment using GemWallet
+   * Send payment using GemWallet (optionally with memo for RLUSD offramp)
    */
   sendPayment: async (
     destination: string,
     amount: string,
     currency: string = "XRP",
-    issuer?: string
+    issuer?: string,
+    memo?: string
   ) => {
     try {
-      const payment = {
-        amount: currency === "XRP" 
-          ? amount // XRP in drops (will be converted by GemWallet)
+      const payment: Record<string, unknown> = {
+        amount: currency === "XRP"
+          ? amount
           : {
               currency: currency,
               issuer: issuer || "",
@@ -87,8 +88,15 @@ export const xrplService = {
             },
         destination: destination,
       };
-      
-      const result = await sendPayment(payment);
+      if (memo && memo.trim()) {
+        const text = memo.trim();
+        const memoHex = Array.from(new TextEncoder().encode(text))
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("")
+          .toUpperCase();
+        payment.memos = [{ Memo: { MemoData: memoHex } }];
+      }
+      const result = await sendPayment(payment as any);
       return result;
     } catch (error) {
       console.error("Error sending payment:", error);

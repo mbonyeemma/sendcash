@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import config from '../config';
 
 // Extend Request interface to include admin info
 declare global {
@@ -32,7 +31,7 @@ export const adminAuthMiddleware = (req: Request, res: Response, next: NextFunct
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
     // Verify token
-    const decoded = jwt.verify(token, config.secretKey) as any;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any;
     
     // Check if it's an admin token
     if (decoded.type !== 'admin') {

@@ -1,109 +1,35 @@
-import { Stellar } from './Stellar';
-import axios from 'axios';
 import * as db from './db.helper';
-// Use require for modules without proper type definitions
 const TronWeb = require('tronweb');
 import { ethers } from 'ethers';
 import crypto from 'crypto';
 
-/**
- * BlockchainHelper class to manage addresses and operations for multiple blockchains
- */
+/** XRPL-only: BlockchainHelper stubbed; no Stellar/Tron/BSC for deposit addresses. */
 export class BlockchainHelper {
-  private stellar: Stellar;
   private tronWeb: any;
-  private binanceProvider: ethers.providers.JsonRpcProvider;
-  
+  private binanceProvider: any;
+
   constructor() {
-    this.stellar = new Stellar();
-    
-    // Initialize TronWeb with the API endpoint
     const tronApiUrl = process.env.TRON_API_URL || 'https://api.trongrid.io';
     const tronApiKey = process.env.TRON_API_KEY || '';
-    
     this.tronWeb = new TronWeb({
       fullHost: tronApiUrl,
       headers: { "TRON-PRO-API-KEY": tronApiKey },
     });
-    
-    // Initialize Binance Smart Chain provider
     const bscRpcUrl = process.env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org/';
-    this.binanceProvider = new ethers.providers.JsonRpcProvider(bscRpcUrl);
+    const JsonRpc = (ethers as any).providers?.JsonRpcProvider ?? (ethers as any).JsonRpcProvider;
+    this.binanceProvider = new JsonRpc(bscRpcUrl);
   }
-  
-  /**
-   * Get deposit addresses for a user across multiple blockchains
-   * @param userId User ID
-   * @returns Object containing addresses for different blockchains
-   */
+
   async getDepositAddresses(userId: string): Promise<any> {
-    try {
-      // Get the user's Stellar wallet
-      const stellarWallet = await this.getStellarWallet(userId);
-      
-      // Get or create Tron address
-      const tronAddress = await this.getTronAddress(userId);
-      
-      // Get or create Binance Chain address
-      const binanceAddress = await this.getBinanceAddress(userId);
-      
-      return {
-        status: 200,
-        message: "Deposit addresses retrieved successfully",
-        data: {
-          stellar: stellarWallet.publicKey,
-          tron: tronAddress,
-          binance: binanceAddress
-        }
-      };
-    } catch (error) {
-      console.error("Error in getDepositAddresses:", error);
-      return {
-        status: 500,
-        message: "Error getting deposit addresses",
-        error: error instanceof Error ? error.message : String(error)
-      };
-    }
+    return {
+      status: 200,
+      message: "XRPL-only: use your own XRPL address for onramp",
+      data: { stellar: '', tron: '', binance: '' }
+    };
   }
-  
-  /**
-   * Get or create a Stellar wallet for a user
-   * @param userId User ID
-   * @returns Stellar wallet object
-   */
-  async getStellarWallet(userId: string): Promise<any> {
-    try {
-      // Check if user already has a Stellar wallet
-      const query = `SELECT * FROM sia_wallets	 WHERE user_id = ? AND chain = 'stellar'`;
-      const result = await db.default.pdo(query, [userId]) as any[];
-      
-      if (result && result.length > 0) {
-        return result[0];
-      }
-      
-      // If no wallet exists, create a new one
-      // Cast stellar to any to avoid TypeScript errors
-      const stellarAny = this.stellar as any;
-      const newWallet = await stellarAny.createAccount();
-      
-      // Store the new wallet in the database
-      const insertQuery = `
-        INSERT INTO sia_wallets	 (user_id, chain, publicKey, secret, created_at)
-        VALUES (?, ?, ?, ?, NOW())
-      `;
-      
-      await db.default.pdo(insertQuery, [
-        userId,
-        'stellar',
-        newWallet.publicKey,
-        newWallet.secret
-      ]);
-      
-      return newWallet;
-    } catch (error) {
-      console.error("Error in getStellarWallet:", error);
-      throw error;
-    }
+
+  async getStellarWallet(_userId: string): Promise<any> {
+    return { publicKey: '' };
   }
   
   /**
@@ -198,7 +124,7 @@ export class BlockchainHelper {
     try {
       switch (chain.toLowerCase()) {
         case 'stellar':
-          return await this.checkStellarBalance(address);
+          return { status: 200, message: "XRPL-only", data: [] };
         case 'tron':
           return await this.checkTronBalance(address);
         case 'binance':
@@ -213,24 +139,6 @@ export class BlockchainHelper {
         message: `Error checking ${chain} balance`,
         error: error instanceof Error ? error.message : String(error)
       };
-    }
-  }
-  
-  /**
-   * Check balance for a Stellar address
-   * @param address Stellar address
-   * @returns Balance information
-   */
-  private async checkStellarBalance(address: string): Promise<any> {
-    try {
-      const balances = await this.stellar.getBalances(address);
-      return {
-        status: 200,
-        message: "Balance retrieved successfully",
-        data: balances
-      };
-    } catch (error) {
-      throw error;
     }
   }
   

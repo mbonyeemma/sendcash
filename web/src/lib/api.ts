@@ -1,6 +1,6 @@
 import { toast } from "sonner";
 
-const BASE_URL = "https://api.kitypay.com";
+const BASE_URL = import.meta.env.VITE_API_URL || "https://sendcash-be-production.up.railway.app";
 
 export interface ApiResponse<T = any> {
   status: number;

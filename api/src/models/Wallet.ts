@@ -1,38 +1,25 @@
 /**
- * Wallet Model
- * 
- * IMPORTANT: This module includes fixes for Moralis address validation issues.
- * Tron addresses (starting with 'T') are filtered out before being sent to Moralis
- * to prevent system lockups due to EVM address validation errors.
- * 
- * See: src/thirdparty/Moralis.ts for the filtering implementation.
+ * Wallet Model – XRPL onramp/offramp only (RLUSD).
  */
 
 import Modal from '../libs/modal';
-import { Recipient } from '../libs/Stellar';
 import { User } from './User';
 import { Encryption } from '../libs/encryption';
 import crypto from 'crypto';
 import { Request } from 'express';
 import { ParamsDictionary } from 'express-serve-static-core';
 import { ParsedQs } from 'qs';
-import MudaPayment from '../helpers/MudaPayment';
 import * as db from '../libs/db.helper';
-import { BlockchainHelper } from '../libs/blockchain.simple';
 import RelworxMobileMoney from '../thirdparty/Relworx';
-import config from '../config';
 import jwt from 'jsonwebtoken';
 import SMSHelper from '../helpers/SMSHelper';
 import payment from './payment';
-import BillerPay from '../thirdparty/BillerPayment';
 import { BillerInfo } from '../helpers/interfaces';
-import StellarService from '../libs/Stellar';
 import { messageTypes } from '../libs/modal';
-const blockchainHelper = new BlockchainHelper();
+
 const smsHelper = new SMSHelper();
 const paymentModel = new payment();
 const mm = new RelworxMobileMoney();
-const bp = new BillerPay();
 smsHelper.initializeSMSClient();
 interface CryptoWebhookData {
   amount: string;
@@ -75,34 +62,6 @@ interface WalletRecord {
 }
 
 export class Wallet extends Modal {
-  async getPendingTransactions() {
-    const transactions = await this.selectDataQuery(`wl_transactions`, `status='PENDING'`);
-    for (const transaction of transactions) {
-      try {
-        const created_on = transaction.created_on;
-        const timecreated = new Date(created_on);
-        const now = new Date();
-        const diffTime = Math.abs(now.getTime() - timecreated.getTime());
-        const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
-        if (diffHours > 1) {
-          this.updateData("wl_transactions", `trans_id='${transaction.trans_id}'`, { status: "EXPIRED" });
-          continue;
-        }
-        const response = await MudaPayment.getTransactionReference(transaction.trans_id);
-        console.log("MudaPaymentResponse", response);
-        if (response[0].status == "SUCCESS") {
-          this.issueTokens(transaction.trans_id);
-        } else if (response.status == "INITIATED") {
-          // this.updateData("wl_transactions", `trans_id='${transaction.trans_id}'`, { status: "SUCCESS" });
-        } else if (response.status.toUpperCase() == "FAILED") {
-          this.updateData("wl_transactions", `trans_id='${transaction.trans_id}'`, { status: "FAILED" });
-        }
-      } catch (error) {
-        console.log("Error in getPendingTransactions", error);
-      }
-    }
-  }
-  stellar: any = new StellarService();
   async validateUserAccount(body: any) {
     const { userId, receiver_account, amount, payment_method } = body;
 
@@ -147,112 +106,10 @@ export class Wallet extends Modal {
       return false;
     }
   }
-  async cryptoWebhook(data: any) {
-    console.log("cryptoWebhook", data);
-    this.saveLog("MORALIS_WEBHOOK", data);
-    try {
-
-      const webhookData: CryptoWebhookData = {
-        amount: data.erc20Transfers[0].valueWithDecimals,
-        asset_code: data.erc20Transfers[0].tokenSymbol,
-        contract_address: data.erc20Transfers[0].contract,
-        fee: data.txs[0].receiptGasUsed,
-        from_address: data.erc20Transfers[0].from,
-        to_address: data.erc20Transfers[0].to,
-        hash: data.txs[0].hash,
-        date: new Date(parseInt(data.block.timestamp) * 1000).toISOString(),
-        confirmation: data.txs[0].receiptStatus === "1"
-      };
-      console.log("cryptoWebhook", JSON.stringify(webhookData));
-
-      const cryptoValidationResult = this.validateCryptoDeposit(webhookData);
-      if (!cryptoValidationResult.valid) {
-        console.error('Crypto deposit validation failed', cryptoValidationResult.message);
-       // return this.makeResponse(cryptoValidationResult.statusCode, cryptoValidationResult.message);
-      }
-
-      const blockchainAddress: any = await this.callQuery(
-        `SELECT * FROM user_blockchain_addresses WHERE LOWER(address) = LOWER('${webhookData.to_address}')`
-      );
-      console.log("blockchainAddress", blockchainAddress);
-      if (blockchainAddress.length === 0) {
-        console.log("No matching address found for the transaction");
-        return this.makeResponse(404, "No matching address found for the transaction");
-      }
-      const user_id = blockchainAddress[0].user_id;
-      const userInfo: any = await this.getWallet(user_id);
-      if (!userInfo) {
-        return this.makeResponse(404, "User wallet not found");
-      }
-      const { currency } = userInfo;
-
-      const cryptoTransaction: any = await this.selectDataQuery(`blockchain_transactions`, `hash='${webhookData.hash}'`);
-      if (cryptoTransaction.length > 0) {
-        console.log("Transaction already exists");
-        return this.makeResponse(200, "Transaction already exists");
-      }
-
-      // const sent_amount = parseFloat(webhookData.amount.toString())
-      //   const sql = `SELECT * FROM wl_transactions WHERE asset='${webhookData.asset_code}' and LOWER(ref_id)= LOWER('${webhookData.to_address}') AND status='PENDING' and asset_amount=${sent_amount} order by id desc limit 1`
-      //   console.log("sql", sql);
-      //   const transaction: any = await this.callQuery(sql);
-      //   console.log("transaction", transaction);
-
-      await this.saveBlockchainTransaction(webhookData);
-
-      const rate = await paymentModel.getRate("USDC", currency);
-      console.log("rate", rate);
-      const rateValue = rate.data.rate;
-      const sent_amount = parseFloat(webhookData.amount.toString())
-      const expectedAmount = sent_amount * rateValue;
-      console.log("expectedAmount", expectedAmount);
-
-      const newTransaction = await this.createTransactionRecord(user_id, user_id, "ADMIN", currency, expectedAmount, "deposit", "crypto", webhookData.hash, "Deposit request", webhookData.to_address, webhookData.asset_code, sent_amount);
-      if (newTransaction == false) {
-        return this.makeResponse(400, "Failed to create transaction record");
-      }
-      const newTxId = newTransaction.trans_id;
-      this.updateData("wl_transactions", `trans_id='${newTxId}'`, { hash: webhookData.hash, status: "RECEIVED" });
-      await this.issueTokens(newTxId);
-
-
-      /*
-      // if the transaction was initiated
-      if (transaction.length > 0) {
-        this.updateData("wl_transactions", `trans_id='${transaction[0].trans_id}'`, { hash: webhookData.hash, status: "RECEIVED" });
-        this.saveBlockchainTransaction(webhookData);
-        await this.issueTokens(transaction[0].trans_id);
-      }else{
-
-        // need to get a users currency and rate
-
-        /*
-      
-        */
-
-
-
-      return this.makeResponse(200, "response", {
-        message: "Transaction processed successfully"
-      });
-    } catch (error) {
-      console.log("Error in cryptoWebhook", error);
-      return this.makeResponse(500, "Error processing transaction", null);
-    }
+  async cryptoWebhook(_data: any) {
+    return this.makeResponse(200, "XRPL-only: crypto webhook ignored");
   }
 
-  private validateCryptoDeposit(webhookData: CryptoWebhookData): { valid: boolean; statusCode: number; message: string } {
-    const asset = webhookData.asset_code?.toUpperCase();
-    console.log("asset", asset);
-    console.log("webhookData.contract_address", webhookData.contract_address.toLocaleLowerCase());
-    console.log("config.bscUsdcContract", config.bscUsdcContract.toLocaleLowerCase());
-
-    if (asset == 'USDC' && webhookData.contract_address.toLocaleLowerCase() !== config.bscUsdcContract.toLocaleLowerCase()) {
-      return { valid: false, statusCode: 400, message: 'Unsupported USDC contract address' };
-    } else {
-      return { valid: true, statusCode: 200, message: 'USDC contract validated' };
-    }
-  }
   async HandleWebhook(data: any) {
     console.log("HandleWebhook", data);
     if (data.type === "transaction_status" && data.status === "SUCCESS") {
@@ -268,157 +125,190 @@ export class Wallet extends Modal {
   }
 
   async getSupportedAssets() {
-    try {
-      const response = await blockchainHelper.getSupportedAssets();
-      return this.makeResponse(200, "Supported assets retrieved successfully", response);
-    } catch (error) {
-      console.error('Error in getSupportedAssets:', error);
-      return this.makeResponse(500, 'Error getting supported assets', null);
-    }
+    return this.makeResponse(200, "Supported assets", { assets: ["RLUSD"] });
   }
 
-  async stableCoinDeposit(body: any) {
-    console.log("stableCoinDeposit", body);
-    const { userId, amount, asset_code, chain_code, account_number } = body;
-    const currency = "UGX"
-    const refId = this.generateRandomDigits();
-
-    if (amount < 1) {
-      return this.makeResponse(400, "Minimum deposit amount is 1 USD");
-    }
-
-    const rateInfo = {
-      from_currency: currency,
-      to_currency: asset_code,
-      amount: amount
-    }
-
-    let expectedAmount = 0
-    const expectedRate: any = await this.getExchangeRate(rateInfo)
-    if (expectedRate.status == 200 && expectedRate.data.rate) {
-      const rate = expectedRate.data.rate
-      expectedAmount = rate * amount
-    } else {
-      return this.makeResponse(400, "Failed to get exchange rate");
-    }
-
-
-    const stellarAddress = await blockchainHelper.getAddressFromDb(userId, chain_code)
-    console.log("stableCoinDeposit-1", stellarAddress);
-
-    if (!stellarAddress) {
-      return this.makeResponse(400, "Failed to get deposit address");
-    }
-
-    // const transaction = await this.createTransactionRecord(userId, userId, "ADMIN", currency, expectedAmount, "deposit", "wallet", stellarAddress, "Deposit request", "", asset_code, amount);
-    //  if (!transaction) {
-    //    return this.makeResponse(400, "Failed to create transaction record");
-    // }
-    return this.makeResponse(200, "Deposit request sent", {
-      address: stellarAddress,
-      memo: refId,
-      asset_code: asset_code
-    })
-
-
+  async stableCoinDeposit(_body: any) {
+    return this.makeResponse(400, "Use onramp flow: POST /provider/onrampRequest");
   }
 
   async getDepositAddresses(userId: string) {
-    try {
-      return await blockchainHelper.getDepositAddresses(userId);
-    } catch (error) {
-      console.error('Error in getDepositAddresses:', error);
-      return this.makeResponse(500, 'Error getting deposit addresses', null);
-    }
+    return this.makeResponse(200, "XRPL-only: use your own XRPL address for onramp", { addresses: [] });
   }
 
 
 
-  async depositRequest(body: any) {
-    const { userId, amount, currency, asset_code, account_number } = body;
-    const usdIssuer = process.env.USD_ISSUER;
-    const wallet = await this.getWallet(userId);
-    if (!wallet) {
-      return this.makeResponse(404, "Wallet not found");
-    }
-
-
-
-
-    const refId = "r" + this.getRandomString();
-    const transaction = await this.createTransactionRecord(userId, userId, "ADMIN", currency, amount, "deposit", "wallet", refId, "Deposit request", account_number);
-    if (!transaction) {
-      return this.makeResponse(400, "Failed to create transaction record");
-    }
-    if (currency.toUpperCase() == "UGX") {
-      const response = await MudaPayment.makeCollection(transaction.trans_id, amount, account_number);
-      if (response.status == 202) {
-        return this.makeResponse(202, "Deposit request sent");
+  /**
+   * Get onramp quote: UGX <-> RLUSD with rate and fee.
+   */
+  async getOnrampQuote(body: any) {
+    try {
+      const { amount_ugx, amount_rlusd } = body;
+      const rate = 1 / 3720; // UGX per RLUSD (example; use getExchangeRate in production)
+      const feePct = 0.005;
+      let amount_ugx_num = 0;
+      let amount_rlusd_num = 0;
+      const ugxVal = amount_ugx != null ? parseFloat(String(amount_ugx)) : NaN;
+      const rlusdVal = amount_rlusd != null ? parseFloat(String(amount_rlusd)) : NaN;
+      if (!isNaN(ugxVal) && ugxVal > 0) {
+        amount_ugx_num = ugxVal;
+        const fee = amount_ugx_num * feePct;
+        amount_rlusd_num = (amount_ugx_num - fee) * rate;
+      } else if (!isNaN(rlusdVal) && rlusdVal > 0) {
+        amount_rlusd_num = rlusdVal;
+        amount_ugx_num = amount_rlusd_num / rate;
+        const fee = amount_ugx_num * feePct;
+        amount_ugx_num = amount_ugx_num + fee;
       } else {
-        return this.makeResponse(400, "Failed to send deposit request");
+        return this.makeResponse(400, "Provide amount_ugx or amount_rlusd");
       }
-      console.log("response", response);
-    } else if (currency.toUpperCase() == "USD") {
-      return {
-        status: 200,
-        message: "Deposit address generated",
-
-      }
-    } else {
-      return this.makeResponse(400, "Payout is only supported in USD for conversion to UGX");
+      const fee_ugx = amount_ugx_num * feePct;
+      return this.makeResponse(200, "Quote", {
+        amount_ugx: Math.round(amount_ugx_num * 100) / 100,
+        amount_rlusd: parseFloat(amount_rlusd_num.toFixed(6)),
+        rate,
+        fee_ugx: Math.round(fee_ugx * 100) / 100,
+        fee_pct: feePct,
+        expires_in_seconds: 300,
+      });
+    } catch (e: any) {
+      return this.makeResponse(500, e?.message || "Quote failed");
     }
+  }
 
+  /**
+   * Create onramp request: pending transaction and pay-in instructions (PAY_IN_ADDRESS + reference).
+   * Wallet takes over when payment is confirmed via confirmOnrampPayIn.
+   */
+  async createOnrampRequest(body: any) {
+    try {
+      const { userId, amount_ugx, amount_rlusd, destination_address, account_number, network } = body;
+      const payInAddress = process.env.PAY_IN_ADDRESS || '';
+      if (!userId || !destination_address) {
+        return this.makeResponse(400, "userId and destination_address required");
+      }
+      const ugx = parseFloat(amount_ugx);
+      const rlusd = parseFloat(amount_rlusd);
+      if (isNaN(ugx) || ugx <= 0 || isNaN(rlusd) || rlusd <= 0) {
+        return this.makeResponse(400, "Valid amount_ugx and amount_rlusd required");
+      }
+      const refId = "O" + this.getRandomString().substring(0, 10).toUpperCase();
+      const narration = "DEST:" + destination_address;
+      const transaction = await this.createTransactionRecord(
+        userId,
+        userId,
+        "1000010",
+        "UGX",
+        ugx,
+        "rlusd_onramp",
+        "MOBILE",
+        refId,
+        narration,
+        account_number || "",
+        "RLUSD",
+        rlusd,
+        0
+      );
+      if (!transaction) {
+        return this.makeResponse(400, "Failed to create onramp request");
+      }
+      await this.updateData("wl_transactions", `trans_id='${transaction.trans_id}'`, { status: "PENDING_ONRAMP" });
+      const instructions = payInAddress
+        ? `Pay ${ugx} UGX to ${payInAddress} with reference ${refId}`
+        : "Complete the payment prompt on your phone.";
+      return this.makeResponse(200, "Onramp request created", {
+        trans_id: transaction.trans_id,
+        reference: refId,
+        pay_in_address: payInAddress || undefined,
+        amount_ugx: ugx,
+        amount_rlusd: rlusd,
+        instructions,
+        expires_in_seconds: 3600,
+      });
+    } catch (e: any) {
+      console.error("createOnrampRequest", e);
+      return this.makeResponse(500, e?.message || "Create onramp request failed");
+    }
+  }
 
+  /**
+   * Confirm pay-in received (provider/webhook): mark RECEIVED and trigger wallet to send RLUSD.
+   */
+  async confirmOnrampPayIn(reference: string) {
+    try {
+      const safeRef = (reference || "").replace(/'/g, "''");
+      const rows = (await this.callQuery(
+        `SELECT * FROM wl_transactions WHERE ref_id='${safeRef}' AND status='PENDING_ONRAMP' LIMIT 1`
+      )) as any[];
+      if (!rows || rows.length === 0) {
+        return this.makeResponse(404, "No pending onramp for reference");
+      }
+      const tx = rows[0];
+      await this.updateData("wl_transactions", `trans_id='${tx.trans_id}'`, { status: "RECEIVED" });
+      return await this.issueRlusdToUser(tx.trans_id);
+    } catch (e: any) {
+      console.error("confirmOnrampPayIn", e);
+      return this.makeResponse(500, e?.message || "Confirm pay-in failed");
+    }
+  }
 
+  /**
+   * Send RLUSD from onramp source to user's destination (wallet takes over).
+   */
+  async issueRlusdToUser(transId: string) {
+    try {
+      const rows = (await this.callQuery(
+        `SELECT * FROM wl_transactions WHERE trans_id='${transId}' AND status='RECEIVED' LIMIT 1`
+      )) as any[];
+      if (!rows || rows.length === 0) {
+        return this.makeResponse(404, "Transaction not found or not received");
+      }
+      const tx = rows[0];
+      if (tx.trans_type !== "rlusd_onramp") {
+        return this.makeResponse(400, "Not an RLUSD onramp transaction");
+      }
+      await this.updateData("wl_transactions", `trans_id='${transId}'`, { status: "INPROGRESS" });
+      const narration = tx.narration || "";
+      const destMatch = narration.match(/^DEST:(r[a-zA-Z0-9]{24,34})/);
+      const destination = destMatch ? destMatch[1] : "";
+      if (!destination) {
+        await this.updateData("wl_transactions", `trans_id='${transId}'`, { status: "DEPOSIT_ERROR" });
+        return this.makeResponse(400, "Missing destination address");
+      }
+      const amountRlusd = String(tx.asset_amount || tx.amount || 0);
+      const { sendRlusdToDestination } = await import("../services/rlusdOnrampSender");
+      const result = await sendRlusdToDestination(destination, amountRlusd, transId);
+      if (result.error) {
+        await this.updateData("wl_transactions", `trans_id='${transId}'`, { status: "DEPOSIT_ERROR" });
+        return this.makeResponse(500, result.error);
+      }
+      await this.updateData("wl_transactions", `trans_id='${transId}'`, {
+        status: "SUCCESS",
+        hash: result.hash || undefined,
+      });
+      return this.makeResponse(200, "RLUSD sent successfully", { hash: result.hash });
+    } catch (e: any) {
+      console.error("issueRlusdToUser", e);
+      return this.makeResponse(500, e?.message || "Issue RLUSD failed");
+    }
+  }
+
+  async depositRequest(_body: any) {
+    return this.makeResponse(400, "Use onramp flow: POST /provider/onrampRequest with amount_ugx, amount_rlusd, destination_address (your XRPL address)");
   }
 
 
   async issueTokens(transId: string) {
     try {
-      const transInfo = await this.selectDataQuery(`wl_transactions`, `trans_id='${transId}' and status='RECEIVED'`)
+      const transInfo = await this.selectDataQuery(`wl_transactions`, `trans_id='${transId}' and status='RECEIVED'`);
 
       if (transInfo.length == 0) {
         return this.makeResponse(404, "Transaction not found");
       }
-      await this.updateData("wl_transactions", `trans_id='${transId}'`, { status: "INPROGRESS" });
-      const userId = transInfo[0].user_id;
-      // Get user wallet info
-      const userInfo: any = await this.getWallet(userId);
-      if (userInfo == null) {
-        return { status: 404, message: "User wallet not found" };
+      if (transInfo[0].trans_type === "rlusd_onramp") {
+        return await this.issueRlusdToUser(transId);
       }
-
-      const { publicKey, secret } = userInfo;
-
-      // Create escrow transaction
-      const transactionObject: Recipient = {
-        publicKey: publicKey,
-        amount: transInfo[0].amount.toString(),
-        asset_code: transInfo[0].currency,
-        asset_issuer: this.stellar.assetIssuer,
-        senderSecretKey: this.stellar.assetIssuerPv || '',
-        creditPrivateKey: secret,
-      };
-      console.log("transactionObject", transactionObject);
-
-      // Process escrow payment
-      const response = await this.stellar.makeBatchTransfers("deposit", [transactionObject]);
-      console.log("response", response);
-
-      if (response.status == 1) {
-
-        this.sendAppNotification("GENERAL_CREDIT", userId, userId, transInfo[0].amount, transInfo[0].currency, "deposit", 0);
-
-
-        this.updateData("wl_transactions", `trans_id='${transId}'`, { status: "SUCCESS" });
-        return this.makeResponse(200, "Tokens issued successfully");
-      } else {
-        this.updateData("wl_transactions", `trans_id='${transId}'`, { status: "DEPOSIT_ERROR" });
-
-        return this.makeResponse(400, "Failed to issue tokens");
-      }
-
-
+      return this.makeResponse(400, "Unsupported transaction type (XRPL-only)");
     } catch (error: unknown) {
       console.log("escrowAmount", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
@@ -474,72 +364,20 @@ export class Wallet extends Modal {
   }
 
   async getBalances(userId: string): Promise<any> {
-    try {
-      console.log(`Getting balances for user ${userId}`);
-
-      // Get user to get public key
-      const user = await this.getWallet(userId);
-      if (!user) {
-        console.log(`User ${userId} not found`);
-        return {
-          status: 404,
-          message: 'User not found'
-        };
-      }
-
-      console.log("user11", user);
-      const balances: any = await this.stellar.getBalances(user.publicKey);
-      console.log("user12", balances);
-      return {
-        status: 200,
-        message: 'Balances retrieved successfully',
-        data: balances
-      };
-
-    } catch (error) {
-      console.error('Get balances error:', error);
-      return {
-        status: 500,
-        message: 'Failed to get balances'
-      };
-    }
+    const user = await this.getWallet(userId);
+    if (!user) return { status: 404, message: 'User not found' };
+    return { status: 200, message: 'XRPL-only: check your XRPL wallet (e.g. GemWallet) for RLUSD balance', data: [] };
   }
+
   async getBalance(data: any, token: string): Promise<any> {
-    try {
-      const { userId } = data;
-      console.log(`Getting balance for user ${userId}`);
-
-      // Get user to get public key
-      const user = await this.getWallet(userId);
-      if (!user) {
-        console.log(`User ${userId} not found`);
-        return {
-          status: 404,
-          message: 'User not found'
-        };
-      }
-      console.log("user13", user);
-      const balance = await this.stellar.getBalance(user.publicKey, token, this.stellar.assetIssuer);
-      console.log("user14", balance);
-      return {
-        status: 200,
-        message: 'Balance retrieved successfully',
-        data: {
-          balance: parseFloat(balance),
-          token: token,
-          issuer: this.stellar.assetIssuer
-
-        }
-      };
-
-
-    } catch (error) {
-      console.error('Get balance error:', error);
-      return {
-        status: 500,
-        message: 'Failed to get balance'
-      };
-    }
+    const { userId } = data;
+    const user = await this.getWallet(userId);
+    if (!user) return { status: 404, message: 'User not found' };
+    return {
+      status: 200,
+      message: 'XRPL-only: balance is on your XRPL wallet',
+      data: { balance: 0, token: token || 'RLUSD', issuer: '' }
+    };
   }
 
   async getUser(userId: string) {
@@ -898,9 +736,7 @@ export class Wallet extends Modal {
       let thirdpartyPayResponse: any = null;
       let external_reference = "";
 
-      if (paymentMethod == "MOBILE_MONEY_MUDAPAY") {
-        thirdpartyPayResponse = await MudaPayment.makePayout(transId, payout_amount, account_number);
-      } else if (paymentMethod == "WALLET") {
+      if (paymentMethod == "WALLET") {
         await this.updateTransactionStatus(transId, "SUCCESS", { status: "SUCCESS", message: "payout successful" });
         return this.makeResponse(200, "payout successful", thirdpartyPayResponse);
 
@@ -955,39 +791,9 @@ export class Wallet extends Modal {
 
   async reverseTransaction(transaction: any) {
     await this.updateData("wl_transactions", `trans_id='${transaction.trans_id}'`, { status: "REVERSAL_INITIATED" });
-    const receiverWallet = await this.getWallet(transaction.cr_wallet_id);
-
-    const userInfo: any = await this.getWallet(transaction.dr_wallet_id);
-    if (userInfo == null) {
-      return { status: 404, message: "User wallet not found" };
-    }
-
-    const { publicKey, secret } = userInfo;
-
-    const totalAmount = parseFloat(transaction.amount) + parseFloat(transaction.fee);
-
-    // Create escrow transaction
-    const transactionObject: Recipient = {
-      publicKey: publicKey,
-      amount: totalAmount.toString(),
-      asset_code: transaction.currency,
-      asset_issuer: this.stellar.assetIssuer,
-      senderSecretKey: this.stellar.assetIssuerPv || '',
-      creditPrivateKey: secret,
-    };
-    console.log("transactionObject", transactionObject);
-
-    // Process escrow payment
-    const response = await this.stellar.makeBatchTransfers("deposit", [transactionObject]);
-    console.log("response", response);
-    if (response.status == 1) {
-      this.sendAppNotification("GENERAL_CREDIT", transaction.dr_wallet_id, transaction.cr_wallet_id, transaction.amount, transaction.currency, "deposit", 0);
-      this.updateData("wl_transactions", `trans_id='${transaction.trans_id}'`, { status: "REVERSED" });
-      return this.makeResponse(200, "Tokens issued successfully");
-    } else {
-      this.updateData("wl_transactions", `trans_id='${transaction.trans_id}'`, { status: "ON_HOLD" });
-    }
-    return this.makeResponse(400, "Transaction reversal failed");
+    // XRPL-only: no Stellar reversal; mark for manual review
+    await this.updateData("wl_transactions", `trans_id='${transaction.trans_id}'`, { status: "ON_HOLD" });
+    return this.makeResponse(200, "Reversal marked for review");
   }
 
   async addPaymentMethod(data: any) {
@@ -1133,229 +939,109 @@ export class Wallet extends Modal {
     }
   }
 
-  async transferRequest(data: any) {
+  async transferRequest(_data: any) {
+    return this.makeResponse(400, "XRPL-only: use POST /wallet/rlusdPayoutRequest for offramp (send RLUSD on XRPL, receive UGX)");
+  }
+
+  /**
+   * Create RLUSD offramp payout request. Returns XRPL destination address and memo.
+   * User sends RLUSD from GemWallet to that address with this memo; listener then triggers mobile money.
+   */
+  async createRlusdPayoutRequest(data: any) {
     try {
-      // Destructure and validate input data
       const {
         userId,
-        currency,
-        payment_mode,
         amount,
-        pin,
+        fiat_amount,
+        payment_mode,
+        account_number,
+        bank_name,
+        account_holder_name,
+        network,
+        payment_method_id,
         narration,
-        payment_method_id
       } = data;
-      console.log("transferRequest", data);
 
-      // Initialize billerInfo at function scope
-      let billerInfo: BillerInfo | null = null;
-
-      console.log("transferRequest", data);
-      // Validate amount
-      if (parseFloat(amount) <= 10) {
-        return this.makeResponse(400, "Invalid amount. Amount must be greater than 10");
+      if (!userId || !amount || parseFloat(amount) <= 0) {
+        return this.makeResponse(400, "Invalid amount or user");
+      }
+      if (!payment_mode || !account_number) {
+        return this.makeResponse(400, "Payment mode and account number are required");
       }
 
-      let receiverPublicKey = this.stellar.assetIssuer || ""
-      let receiverPvKey = this.stellar.assetIssuerPv || ""
-
-      const senderWallet = await this.getWallet(userId);
-      if (!senderWallet) {
-        return this.makeResponse(404, "Sender wallet not found");
-      }
-
-      // Get allowed payment types
       const paymentType = await this.getPaymentType(payment_mode);
-      if (!paymentType) {
-        return this.makeResponse(400, "Invalid payment method");
-      }
-      const fee = paymentType.fee;
-      console.log("fee==>1", fee, amount, paymentType);
-      const totalAmount = parseFloat(amount) + parseFloat(fee);
+      const fee = paymentType?.fee ?? parseFloat(amount) * 0.01;
+      const memo = "R" + this.getRandomString().substring(0, 12).toUpperCase();
 
-      const balance = await this.stellar.getBalance(senderWallet.publicKey, currency, this.stellar.assetIssuer);
-      console.log("fee==>2", balance, totalAmount);
-      if (totalAmount > parseFloat(balance)) {
-        return this.makeResponse(400, "Insufficient funds on your wallet, you need atleast " + totalAmount + " " + currency + " to complete this transaction");
-      }
-
-
-
-      let account_number = data.account_number || data.receiverId;
-      const paymentMethod: any = await this.getUserPaymentMethod(payment_method_id);
-      if (paymentMethod.length > 0) {
-        account_number = paymentMethod[0].account_number;
-      }
-      console.log(`paymentMethod`, account_number, paymentMethod);
-      const paymentMethodType = paymentMethod.type;
-      if (paymentMethodType != payment_mode) {
-        // return this.makeResponse(400, "Invalid payment method");
-      }
-
-      let recWallet = "1000010"
-      let recUserId = account_number; // Default to receiverId if not a wallet transfer
-      // Handle different payment methods
-      if (payment_mode === 'WALLET') {
-        recWallet = account_number
-        // Validate receiver wallet address
-        if (!account_number || typeof account_number !== 'string') {
-          return this.makeResponse(400, "Invalid receiver wallet address");
-        }
-      } else if (payment_mode === 'MOBILE_MONEY') {
-        // Validate phone number format
-        const phoneRegex = /^\+?[1-9]\d{1,14}$/;
-        if (!phoneRegex.test(account_number)) {
-          console.log(`Invalid phone number format`, account_number);
-        }
-      } else if (payment_mode === 'BILLER') {
-        billerInfo = data.billerInfo as BillerInfo;
-        const billerSlug = billerInfo.product_code
-        const billerAccountNumber = billerInfo.account_number
-        const billerValidationReference = billerInfo.validation_reference
-        if (!billerValidationReference) {
-          return this.makeResponse(400, "Biller validation reference is required");
-        }
-
-        if (!billerSlug || !billerAccountNumber) {
-          return this.makeResponse(400, "Biller slug and account number are required");
-        }
-
-        const billerItem: any = await this.callQuery(`SELECT * FROM billers WHERE slug='${billerSlug}'`);
-        if (billerItem.length == 0) {
-          // return this.makeResponse(404, "Biller not found");
-        }
-
-      } else if (payment_mode === 'MERCHANT_KITI_PAY') {
-        recWallet = data.merchant_id
-        if (!account_number || typeof account_number !== 'string') {
-          return this.makeResponse(400, "Invalid receiver wallet address");
-        }
-
-      } else if (payment_mode === 'MERCHANT_MOMO_PAY') {
-
-      } else if (payment_mode === 'MERCHANT_AIRTEL_PAY') {
-
-        return this.makeResponse(400, "Airtel pay is not supported yet");
-
-      } else {
-        return this.makeResponse(400, "Invalid payment method");
-      }
-
-
-      const receiverWallet: any = await this.getWallet(recWallet);
-
-      if (!receiverWallet) {
-        return this.makeResponse(404, "Receiver wallet not found");
-      }
-      recUserId = receiverWallet.user_id; // Use the user_id of the receiver's wallet
-
-      receiverPublicKey = receiverWallet.publicKey;
-      receiverPvKey = receiverWallet.secret;
-      let receiverCurrency = receiverWallet.currency;
-      let receiverAmount = amount;
-
-      let conversionRate = 2;
-      if (receiverCurrency != currency) {
-        const rate = await paymentModel.getRate(receiverCurrency, currency);
-        console.log(`rateInfo`, rate);
-        receiverAmount = amount * rate.data.rate
-        // conversionRate = await this.getConversionRate(receiverCurrency, currency);
-      }
-
-
-      // Validate PIN
-      const isValidPin = await this.validatePin(userId, pin);
-      if (isValidPin.status !== 200) {
-        return isValidPin;
-      }
-
-      // Process the transfer
-      const description = narration || "Transfer";
-
-      const reference = this.getRandomString();
-      //  const account_number = receiverId;
-
-      const transaction = await this.createTransactionRecord(userId, senderWallet.user_id, recUserId, currency, amount, "transfer", payment_mode, reference, description, account_number, currency, amount, fee);
-
+      const transaction = await this.createTransactionRecord(
+        userId,
+        userId,
+        "1000010",
+        "UGX",
+        parseFloat(fiat_amount || amount),
+        "rlusd_offramp",
+        payment_mode,
+        memo,
+        narration || "RLUSD offramp",
+        account_number,
+        "RLUSD",
+        parseFloat(amount),
+        fee
+      );
       if (!transaction) {
-        return this.makeResponse(400, "Failed to create transaction record");
+        return this.makeResponse(400, "Failed to create payout request");
       }
 
-      const drSame: Recipient = {
-        publicKey: receiverPublicKey,
-        amount: amount.toString(),
-        asset_code: currency,
-        asset_issuer: this.stellar.assetIssuer,
-        senderSecretKey: senderWallet.secret,
-        creditPrivateKey: receiverPvKey
+      await this.updateData("wl_transactions", `trans_id='${transaction.trans_id}'`, { status: "PENDING_RLUSD" });
+
+      const xrplDestination = process.env.XRPL_RLUSD_PAYOUT_ADDRESS || '';
+      if (!xrplDestination) {
+        return this.makeResponse(500, "RLUSD payout not configured (XRPL_RLUSD_PAYOUT_ADDRESS)");
       }
 
-      const drDiff: Recipient = {
-        publicKey: this.stellar.assetIssuer,
-        amount: amount.toString(),
-        asset_code: currency,
-        asset_issuer: this.stellar.assetIssuer,
-        senderSecretKey: senderWallet.secret,
-        creditPrivateKey: senderWallet.secret
-      }
-
-      const crDiff: Recipient = {
-        publicKey: receiverPublicKey,
-        amount: receiverAmount.toString(),
-        asset_code: receiverCurrency,
-        asset_issuer: this.stellar.assetIssuer,
-        senderSecretKey: this.stellar.assetIssuerPv,
-        creditPrivateKey: receiverPvKey
-      }
-
-      let txArray: Recipient[] = []
-
-
-
-      if (receiverCurrency != currency) {
-        txArray = [drDiff, crDiff]
-      } else {
-        txArray = [drSame]
-      }
-
-      if (fee > 0) {
-        const feeRecipient: Recipient = {
-          publicKey: this.stellar.assetIssuer,
-          amount: fee.toString(),
-          asset_code: currency,
-          asset_issuer: this.stellar.assetIssuer,
-          senderSecretKey: senderWallet.secret,
-          creditPrivateKey: senderWallet.secret
-        }
-        txArray.push(feeRecipient)
-      }
-
-
-
-      const response = await this.stellar.makeBatchTransfers("transfer", txArray);
-      console.log(`response`, response);
-
-      if (response.status == 1) {
-        this.sendAppNotification("GENERAL_DEBIT", userId, account_number, receiverAmount, currency, payment_mode, fee);
-
-        if (payment_mode === 'WALLET') {
-          this.sendAppNotification("GENERAL_CREDIT", recUserId, userId, amount, currency, payment_mode, fee);
-          await this.updateTransactionStatus(transaction.trans_id, "SUCCESS", reference);
-          return this.makeResponse(200, "Transfer successful");
-        } else {
-          return await this.makeThirdpartyTransfer(transaction.trans_id, userId, amount, payment_mode, account_number, currency, receiverCurrency, description, reference, billerInfo);
-        }
-      } else {
-        await this.updateData("wl_transactions", `trans_id='${transaction.trans_id}'`, { status: "FAILED" });
-        return this.makeResponse(400, "Failed to initiate transfer, " + response.message);
-      }
-
+      return this.makeResponse(200, "Payout request created", {
+        xrpl_destination: xrplDestination,
+        memo,
+        amount: parseFloat(amount),
+        trans_id: transaction.trans_id,
+        expires_in_seconds: 3600,
+      });
     } catch (error: any) {
-      console.error('Transfer request error:', error);
-      return {
-        status: 500,
-        message: error.message || 'Failed to process transfer request'
-      };
+      console.error("createRlusdPayoutRequest error:", error);
+      return this.makeResponse(500, error.message || "Failed to create payout request");
+    }
+  }
+
+  /**
+   * Process RLUSD payment received on custody account: find payout by memo and trigger mobile money.
+   */
+  async processRlusdPayoutReceived(memo: string, xrplTxHash: string) {
+    try {
+      const safeMemo = (memo || "").replace(/'/g, "''");
+      const rows = (await this.callQuery(
+        `SELECT * FROM wl_transactions WHERE ref_id='${safeMemo}' AND status='PENDING_RLUSD' LIMIT 1`
+      )) as any[];
+      if (!rows || rows.length === 0) {
+        return this.makeResponse(404, "No pending payout for memo");
+      }
+      const tx = rows[0];
+      await this.updateData("wl_transactions", `trans_id='${tx.trans_id}'`, { hash: xrplTxHash });
+      const result = await this.makeThirdpartyTransfer(
+        tx.trans_id,
+        tx.user_id,
+        parseFloat(tx.amount),
+        tx.payment_method,
+        tx.account_number,
+        "RLUSD",
+        "UGX",
+        tx.narration || "RLUSD offramp",
+        tx.ref_id,
+        null
+      );
+      return result;
+    } catch (error: any) {
+      console.error("processRlusdPayoutReceived error:", error);
+      return this.makeResponse(500, error.message || "Failed to process payout");
     }
   }
 
@@ -1593,16 +1279,9 @@ export class Wallet extends Modal {
       }
       await this.updateData("performed_tasks", `id='${performedTaskId}'`, updateObj);
 
-      // If approved, credit tokens to user
+      // If approved, mark as PAID (XRPL-only: no Stellar airdrop)
       if (status === 'APPROVED') {
-        const giveAirdrop = await this.giveAirdrop(task.user_id, task.reward, this.stellar.betToken);
-        if (giveAirdrop.status == 200) {
-          const updateObj = {
-            status: "PAID",
-          }
-          await this.updateData("performed_tasks", `id='${performedTaskId}'`, updateObj);
-        }
-
+        await this.updateData("performed_tasks", `id='${performedTaskId}'`, { status: "PAID" });
       } else {
         // If rejected
         return {

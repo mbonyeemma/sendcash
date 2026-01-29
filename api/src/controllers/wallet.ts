@@ -19,6 +19,7 @@ router.post('/stableCoinDeposit', tokenRequired, stableCoinDeposit);
 router.get('/getSupportedAssets', tokenRequired, getSupportedAssets);
 
 router.post('/transferRequest', tokenRequired, transferRequest);
+router.post('/rlusdPayoutRequest', tokenRequired, rlusdPayoutRequest);
 router.post('/payMerchant', tokenRequired, payMerchant);
 router.post('/validateMerchant', tokenRequired, validateMerchant);
 
@@ -283,6 +284,22 @@ async function transferRequest(req: Request, res: Response) {
     } catch (error) {
         new Wallet().saveLog("TRANSFER_REQUEST_ERROR", error);
             res.status(500).json({ message: 'Error processing transfer request', error });
+    }
+}
+
+async function rlusdPayoutRequest(req: Request, res: Response) {
+    try {
+        const userId = (req as any).userId || req.body?.userId;
+        if (!userId) {
+            return res.status(401).json({ status: 401, message: 'Unauthorized' });
+        }
+        const body = { ...req.body, userId };
+        const result = await new Wallet().createRlusdPayoutRequest(body);
+        const status = result.status === 200 ? 200 : result.status === 400 ? 400 : 500;
+        res.status(status).json(result);
+    } catch (error: any) {
+        console.error('rlusdPayoutRequest error:', error);
+        res.status(500).json({ status: 500, message: error?.message || 'Error creating payout request' });
     }
 }
 

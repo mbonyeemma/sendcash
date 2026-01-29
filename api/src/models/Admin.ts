@@ -4,7 +4,6 @@ import bcrypt from 'bcryptjs';
 import EmailSender from '../libs/email.helper';
 import { adminEmailTemplates } from '../helpers/email.templates';
 import jwt from 'jsonwebtoken';
-import config from '../config';
 
 const emailSender = new EmailSender();
 
@@ -517,7 +516,7 @@ export class Admin extends Modal {
           username: admin.username,
           type: 'admin'
         },
-        config.secretKey,
+        process.env.JWT_SECRET || 'your-secret-key',
         { expiresIn: '24h' }
       );
 

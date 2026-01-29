@@ -1,7 +1,7 @@
 # API Integration Status
 
 ## Base URL
-`https://api.kitypay.com`
+`https://sendcash-be-production.up.railway.app`
 
 ## ✅ Completed Endpoints
 

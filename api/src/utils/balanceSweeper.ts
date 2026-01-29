@@ -1,54 +1,34 @@
 import { BlockchainHelper } from '../libs/blockchain';
 import * as db from '../libs/db.helper';
-import { Stellar } from '../libs/Stellar';
 import * as TronWeb from 'tronweb';
 import { ethers } from 'ethers';
 import crypto from 'crypto';
 
-/**
- * BalanceSweeper class to check balances across chains and sweep funds to a central account
- */
+/** XRPL-only: BalanceSweeper stubbed; no Stellar sweeping. */
 export class BalanceSweeper {
   private blockchainHelper: BlockchainHelper;
-  private stellar: Stellar;
   private tronWeb: any;
   private binanceProvider: any;
-  
-  // Central addresses where funds will be swept to
   private centralAddresses = {
-    stellar: process.env.CENTRAL_STELLAR_ADDRESS || '',
+    stellar: '',
     tron: process.env.CENTRAL_TRON_ADDRESS || '',
     binance: process.env.CENTRAL_BINANCE_ADDRESS || ''
   };
-  
-  // Minimum balance thresholds for sweeping
   private sweepThresholds = {
-    stellar: {
-      USDC: parseFloat(process.env.STELLAR_USDC_SWEEP_THRESHOLD || '10')
-    },
-    tron: {
-      USDT: parseFloat(process.env.TRON_USDT_SWEEP_THRESHOLD || '10')
-    },
-    binance: {
-      USDC: parseFloat(process.env.BSC_USDC_SWEEP_THRESHOLD || '10')
-    }
+    stellar: { USDC: 10 },
+    tron: { USDT: parseFloat(process.env.TRON_USDT_SWEEP_THRESHOLD || '10') },
+    binance: { USDC: parseFloat(process.env.BSC_USDC_SWEEP_THRESHOLD || '10') }
   };
-  
+
   constructor() {
-    /*
     this.blockchainHelper = new BlockchainHelper();
-    this.stellar = new Stellar();
-    
-    // Initialize TronWeb
     this.tronWeb = new TronWeb({
       fullHost: process.env.TRON_API_URL || 'https://api.trongrid.io',
       headers: { "TRON-PRO-API-KEY": process.env.TRON_API_KEY },
     });
-    
-    // Initialize Binance provider
-    const RpcProvider: any = (ethers as any).providers?.JsonRpcProvider || (ethers as any).JsonRpcProvider;
+    const RpcProvider: any = (ethers as any).providers?.JsonRpcProvider ?? (ethers as any).JsonRpcProvider;
     this.binanceProvider = new RpcProvider(process.env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org/');
-*/  }
+  }
   
   /**
    * Check balances for all user addresses and sweep if above threshold
@@ -56,7 +36,7 @@ export class BalanceSweeper {
   async checkAndSweepBalances(): Promise<any> {
     try {
       const results = {
-        stellar: await this.checkAndSweepStellar(),
+        stellar: { swept: 0, message: 'XRPL-only: Stellar sweeping disabled' },
         tron: await this.checkAndSweepTron(),
         binance: await this.checkAndSweepBinance()
       };
@@ -77,85 +57,12 @@ export class BalanceSweeper {
   }
   
   /**
-   * Check and sweep Stellar balances
+   * Check and sweep Stellar balances (XRPL-only: disabled)
    */
   private async checkAndSweepStellar(): Promise<any> {
-    try {
-      // Get all Stellar wallets
-      const query = `SELECT * FROM sia_wallets WHERE chain = 'stellar'`;
-      const wallets:any= await db.default.pdo(query);
-      
-      const results = [];
-      
-      for (const wallet of wallets) {
-        try {
-          // Check balance
-          const balanceResult = await this.blockchainHelper.checkBalance('stellar', wallet.publicKey);
-          
-          if (balanceResult.status === 200 && balanceResult.data) {
-            const balances = balanceResult.data;
-            
-            // Find USDC balance
-            const usdcBalance = balances.find((b: any) => 
-              b.asset_code === 'USDC' && 
-              b.asset_issuer === process.env.STELLAR_USDC_ISSUER
-            );
-            
-            if (usdcBalance && parseFloat(usdcBalance.balance) >= this.sweepThresholds.stellar.USDC) {
-              // Sweep the funds
-              const sweepResult = await this.sweepStellarFunds(
-                wallet.publicKey, 
-                wallet.secret, 
-                this.centralAddresses.stellar,
-                usdcBalance.balance,
-                'USDC',
-                process.env.STELLAR_USDC_ISSUER || ''
-              );
-              
-              results.push({
-                address: wallet.publicKey,
-                balance: usdcBalance.balance,
-                swept: true,
-                result: sweepResult
-              });
-              
-              // Record the sweep in the database
-              await this.recordSweep(
-                wallet.user_id,
-                'stellar',
-                wallet.publicKey,
-                this.centralAddresses.stellar,
-                parseFloat(usdcBalance.balance),
-                'USDC'
-              );
-            } else {
-              results.push({
-                address: wallet.publicKey,
-                balance: usdcBalance ? usdcBalance.balance : '0',
-                swept: false,
-                reason: 'Balance below threshold'
-              });
-            }
-          }
-        } catch (error) {
-          console.error(`Error processing Stellar wallet ${wallet.publicKey}:`, error);
-          results.push({
-            address: wallet.publicKey,
-            swept: false,
-            error: error instanceof Error ? error.message : String(error)
-          });
-        }
-      }
-      
-      return results;
-    } catch (error) {
-      console.error("Error in checkAndSweepStellar:", error);
-      return {
-        error: error instanceof Error ? error.message : String(error)
-      };
-    }
+    return { swept: 0, message: 'XRPL-only' };
   }
-  
+
   /**
    * Check and sweep Tron balances
    */
@@ -306,39 +213,16 @@ export class BalanceSweeper {
     }
   }
   
-  /**
-   * Sweep Stellar funds to central address
-   */
+  /** XRPL-only: Stellar sweeping disabled */
   private async sweepStellarFunds(
-    fromAddress: string,
-    secretKey: string,
-    toAddress: string,
-    amount: string,
-    assetCode: string,
-    assetIssuer: string
+    _fromAddress: string,
+    _secretKey: string,
+    _toAddress: string,
+    _amount: string,
+    _assetCode: string,
+    _assetIssuer: string
   ): Promise<any> {
-    try {
-      const senderKeyPair = await this.stellar.getKeypairFromSecret(secretKey);
-      const txHash = await this.stellar.makePayment({
-        senderKeyPair,
-        recipientPublicKey: toAddress,
-        assetCode,
-        assetIssuer,
-        amount,
-        memo: 'Sweep'
-      });
-
-      return {
-        status: 200,
-        message: "Funds swept successfully",
-        data: {
-          transactionHash: txHash
-        }
-      };
-    } catch (error) {
-      console.error("Error sweeping Stellar funds:", error);
-      throw error;
-    }
+    return { status: 400, message: 'XRPL-only: Stellar sweeping disabled' };
   }
   
   /**

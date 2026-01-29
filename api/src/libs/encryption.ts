@@ -1,9 +1,8 @@
 import crypto from 'crypto';
-import config from '../config';
 
 // Encryption should use a proper key from environment variables
 // For production, use a strong, properly managed encryption key
-const ENCRYPTION_KEY = "siaIAB37JRC5AVCIA5Mx9RHTM37JRC5AVCIAC5A-VCIA5MOP47890M37JR" // process.env.ENCRYPTION_KEY || config.secretKey; // Fallback to JWT secret, but not ideal
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET || "siaIAB37JRC5AVCIA5Mx9RHTM37JRC5AVCIAC5A-VCIA5MOP47890M37JR";
 const IV_LENGTH = 16; // For AES, this is always 16 bytes
 
 export class Encryption {

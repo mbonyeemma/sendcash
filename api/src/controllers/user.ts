@@ -2,7 +2,6 @@ import { Router, Request, Response } from 'express';
 import { User } from '../models/User';
 import { tokenRequired } from '../middleware/auth';
 import jwt from 'jsonwebtoken';
-import config from '../config';
 
 const router = Router();
 
