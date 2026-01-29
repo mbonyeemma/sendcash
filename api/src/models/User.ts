@@ -273,10 +273,9 @@ export class User extends Modal {
 
             // Hash password
             const hashedPassword = await bcrypt.hash(password, 10);
-
-            // Default currency from country or UGX (e.g. 256 -> UGX, 254 -> KES)
             const currencyByCountry: Record<string, string> = { '256': 'UGX', '254': 'KES' };
             const currencyToSave = currency || currencyByCountry[String(country_code)] || 'UGX';
+
 
             // Insert user with wallet public key only
             const result = await this.insertData('sia_users', {
@@ -293,8 +292,12 @@ export class User extends Modal {
                 // No longer storing secret in users table
             });
 
-            // Generate OTP
-            await this.generateOTP(email);
+            if (!result) {
+                return this.makeResponse(500, "Registration failed");
+            }
+
+            // Send OTP in background – don't block the response (email/SMTP can be slow or timeout)
+            this.generateOTP(email).catch((err) => console.error('OTP send failed (background):', err));
 
             return this.makeResponse(200, "Registration successful. Please verify your email.", {
                 email
@@ -802,12 +805,13 @@ export class User extends Modal {
 
             const user = users[0];
 
-            // Generate JWT
+            // Generate JWT (middleware expects type: 'access')
             const token = jwt.sign(
                 {
                     user_id: user.user_id,
                     username: user.username,
-                    email: user.email
+                    email: user.email,
+                    type: 'access'
                 },
                 (process.env.JWT_SECRET || 'your-secret-key'),
                 { expiresIn: '24h' }

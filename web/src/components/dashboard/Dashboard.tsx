@@ -241,7 +241,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
               </PopoverContent>
             </Popover>
 
-            {/* User Avatar & Email */}
+            {/* User Avatar (email shown below in dropdown) */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 p-1 rounded-lg hover:bg-muted transition-colors">
@@ -251,22 +251,20 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
                       {getUserInitials()}
                     </AvatarFallback>
                   </Avatar>
-                  {user?.email && (
-                    <span className="hidden sm:block text-sm text-muted-foreground max-w-[120px] truncate">
-                      {user.email}
-                    </span>
-                  )}
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                {user?.email && (
-                  <>
-                    <div className="px-2 py-1.5 text-xs text-muted-foreground border-b border-border">
+                <div className="px-2 py-2 border-b border-border">
+                  <div className="font-medium text-sm text-foreground truncate">
+                    {user?.full_name || user?.username || "User"}
+                  </div>
+                  {user?.email && (
+                    <div className="text-xs text-muted-foreground truncate mt-0.5">
                       {user.email}
                     </div>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
+                  )}
+                </div>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleViewChange("settings")}>
                   <User className="mr-2 h-4 w-4" />
                   Profile
@@ -404,7 +402,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
               </PopoverContent>
             </Popover>
 
-            {/* User Avatar & Email */}
+            {/* User Avatar (email shown below in dropdown) */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors">
@@ -414,22 +412,20 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
                       {getUserInitials()}
                     </AvatarFallback>
                   </Avatar>
-                  {user?.email && (
-                    <span className="text-sm text-muted-foreground max-w-[200px] truncate">
-                      {user.email}
-                    </span>
-                  )}
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                {user?.email && (
-                  <>
-                    <div className="px-2 py-1.5 text-xs text-muted-foreground border-b border-border">
+                <div className="px-2 py-2 border-b border-border">
+                  <div className="font-medium text-sm text-foreground truncate">
+                    {user?.full_name || user?.username || "User"}
+                  </div>
+                  {user?.email && (
+                    <div className="text-xs text-muted-foreground truncate mt-0.5">
                       {user.email}
                     </div>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
+                  )}
+                </div>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleViewChange("settings")}>
                   <User className="mr-2 h-4 w-4" />
                   Profile

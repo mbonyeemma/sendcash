@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { getAuthToken, removeAuthToken } from "@/services/api";
+import { getAuthToken, setAuthToken, removeAuthToken } from "@/services/api";
 
 interface User {
   user_id: string;
@@ -56,6 +56,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoggedIn(true);
     setUser(userData);
     setToken(authToken);
+    setAuthToken(authToken);
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ user: userData }));
   };
 
