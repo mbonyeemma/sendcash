@@ -1,19 +1,34 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { User, Lock, Shield, Bell, Camera, CheckCircle, Clock, AlertCircle, Upload, FileText, Loader2, Network, Wallet } from "lucide-react";
+import { User, Lock, Shield, Bell, Camera, CheckCircle, Clock, AlertCircle, Upload, FileText, Loader2, Network, Wallet, CreditCard, Plus, Trash2, Smartphone, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { profileApi, walletApi, notificationApi, Notification } from "@/services/api";
+import { profileApi, walletApi, notificationApi, paymentMethodApi, Notification, PaymentMethod as ApiPaymentMethod } from "@/services/api";
 import { xrplService } from "@/services/xrplService";
 import { useAuth } from "@/contexts/AuthContext";
 import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
 import { OfframpModal } from "@/components/dashboard/OfframpModal";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { PhoneInput } from "@/components/ui/phone-input";
 
-type SettingsTab = "profile" | "security" | "notifications" | "offramp" | "kyc" | "network";
+type SettingsTab = "profile" | "security" | "notifications" | "offramp" | "kyc" | "network" | "payment-methods";
 
 export const SettingsView = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
@@ -42,11 +57,101 @@ export const SettingsView = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
 
+  // Payment methods state
+  const [paymentMethods, setPaymentMethods] = useState<ApiPaymentMethod[]>([]);
+  const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(false);
+  const [addPaymentMethodOpen, setAddPaymentMethodOpen] = useState(false);
+  const [addPmType, setAddPmType] = useState<"MOBILE" | "BANK">("MOBILE");
+  const [addPmForm, setAddPmForm] = useState({
+    account_name: "",
+    phone_number: "",
+    country_code: "256",
+    network: "MTN",
+    bank_name: "",
+    account_number: "",
+    currency: "UGX",
+  });
+
   useEffect(() => {
     if (activeTab === "notifications") {
       fetchNotifications();
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === "payment-methods") {
+      fetchPaymentMethods();
+    }
+  }, [activeTab]);
+
+  const fetchPaymentMethods = async () => {
+    try {
+      setIsLoadingPaymentMethods(true);
+      const response = await paymentMethodApi.getUserPaymentMethods();
+      if (response.data) setPaymentMethods(response.data);
+    } catch (e) {
+      console.error("Failed to fetch payment methods:", e);
+      toast.error("Failed to load payment methods");
+    } finally {
+      setIsLoadingPaymentMethods(false);
+    }
+  };
+
+  const handleAddPaymentMethod = async () => {
+    if (!addPmForm.account_name.trim()) {
+      toast.error("Account name is required");
+      return;
+    }
+    if (addPmType === "MOBILE" && !addPmForm.phone_number.trim()) {
+      toast.error("Phone number is required for Mobile Money");
+      return;
+    }
+    if (addPmType === "BANK" && (!addPmForm.account_number.trim() || !addPmForm.bank_name.trim())) {
+      toast.error("Bank name and account number are required");
+      return;
+    }
+    try {
+      setIsLoading(true);
+      const payload: any = {
+        type: addPmType,
+        currency: addPmForm.currency,
+        account_name: addPmForm.account_name.trim(),
+      };
+      if (addPmType === "MOBILE") {
+        payload.phone_number = addPmForm.phone_number.replace(/\D/g, "");
+        payload.country_code = addPmForm.country_code;
+        payload.network = addPmForm.network;
+      } else {
+        payload.account_number = addPmForm.account_number.trim();
+        payload.bank_name = addPmForm.bank_name.trim();
+      }
+      const response = await paymentMethodApi.addPaymentMethod(payload);
+      if (response.status === 201 || response.status === 200) {
+        toast.success("Payment method added");
+        setAddPaymentMethodOpen(false);
+        setAddPmForm({ account_name: "", phone_number: "", country_code: "256", network: "MTN", bank_name: "", account_number: "", currency: "UGX" });
+        fetchPaymentMethods();
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add payment method");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeletePaymentMethod = async (paymentMethodId: string) => {
+    if (!paymentMethodId) return;
+    try {
+      setIsLoading(true);
+      await paymentMethodApi.deletePaymentMethod(paymentMethodId);
+      toast.success("Payment method removed");
+      fetchPaymentMethods();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to remove payment method");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const fetchNotifications = async () => {
     try {
@@ -178,7 +283,7 @@ export const SettingsView = () => {
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SettingsTab)} className="w-full">
         {/* Horizontal Tabs Menu */}
         <div className="bg-card rounded-2xl border border-border p-2 mb-4">
-          <TabsList className="grid grid-cols-6 w-full h-auto bg-transparent gap-2">
+          <TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 w-full h-auto bg-transparent gap-2">
             <TabsTrigger 
               value="profile" 
               className="flex items-center gap-2 px-4 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -213,6 +318,13 @@ export const SettingsView = () => {
             >
               <Shield className="w-4 h-4" />
               <span className="font-medium">KYC</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="payment-methods"
+              className="flex items-center gap-2 px-4 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <CreditCard className="w-4 h-4" />
+              <span className="font-medium">Payment methods</span>
             </TabsTrigger>
           </TabsList>
         </div>
@@ -436,6 +548,156 @@ export const SettingsView = () => {
 
           <TabsContent value="kyc" className="mt-0">
             <KYCContent />
+          </TabsContent>
+
+          <TabsContent value="payment-methods" className="mt-0">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-foreground">Payment methods</h2>
+                <Dialog open={addPaymentMethodOpen} onOpenChange={setAddPaymentMethodOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="gap-2">
+                      <Plus className="w-4 h-4" />
+                      Add payment method
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Add payment method</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-2">
+                      <div>
+                        <Label>Type</Label>
+                        <Select value={addPmType} onValueChange={(v) => setAddPmType(v as "MOBILE" | "BANK")}>
+                          <SelectTrigger className="mt-1.5">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="MOBILE" className="gap-2">
+                              <Smartphone className="w-4 h-4 inline mr-2" />
+                              Mobile Money
+                            </SelectItem>
+                            <SelectItem value="BANK" className="gap-2">
+                              <Building2 className="w-4 h-4 inline mr-2" />
+                              Bank account
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Account / recipient name</Label>
+                        <Input
+                          value={addPmForm.account_name}
+                          onChange={(e) => setAddPmForm({ ...addPmForm, account_name: e.target.value })}
+                          placeholder="e.g. John Doe"
+                          className="mt-1.5"
+                        />
+                      </div>
+                      {addPmType === "MOBILE" && (
+                        <>
+                          <div>
+                            <Label>Phone number</Label>
+                            <PhoneInput
+                              value={addPmForm.phone_number}
+                              onChange={(v) => setAddPmForm({ ...addPmForm, phone_number: v })}
+                              defaultCountry="UG"
+                              className="mt-1.5"
+                            />
+                          </div>
+                          <div>
+                            <Label>Network</Label>
+                            <Select value={addPmForm.network} onValueChange={(v) => setAddPmForm({ ...addPmForm, network: v })}>
+                              <SelectTrigger className="mt-1.5">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="MTN">MTN Mobile Money</SelectItem>
+                                <SelectItem value="Airtel">Airtel Money</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </>
+                      )}
+                      {addPmType === "BANK" && (
+                        <>
+                          <div>
+                            <Label>Bank name</Label>
+                            <Input
+                              value={addPmForm.bank_name}
+                              onChange={(e) => setAddPmForm({ ...addPmForm, bank_name: e.target.value })}
+                              placeholder="e.g. Stanbic Bank"
+                              className="mt-1.5"
+                            />
+                          </div>
+                          <div>
+                            <Label>Account number</Label>
+                            <Input
+                              value={addPmForm.account_number}
+                              onChange={(e) => setAddPmForm({ ...addPmForm, account_number: e.target.value })}
+                              placeholder="Account number"
+                              className="mt-1.5"
+                            />
+                          </div>
+                        </>
+                      )}
+                      <Button onClick={handleAddPaymentMethod} disabled={isLoading} className="w-full">
+                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Add"}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              {isLoadingPaymentMethods ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              ) : paymentMethods.length === 0 ? (
+                <div className="text-center py-8 rounded-xl border border-dashed border-border bg-muted/30">
+                  <CreditCard className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">No payment methods yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">Add a mobile money or bank account to use when sending or receiving.</p>
+                  <Button variant="outline" className="mt-4 gap-2" onClick={() => setAddPaymentMethodOpen(true)}>
+                    <Plus className="w-4 h-4" />
+                    Add payment method
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {paymentMethods.map((pm) => (
+                    <div
+                      key={pm.payment_method_id || pm.id}
+                      className="flex items-center justify-between p-4 rounded-xl border border-border bg-card"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          {pm.type === "MOBILE" || pm.type === "MOBILE_MONEY" ? (
+                            <Smartphone className="w-5 h-5 text-primary" />
+                          ) : (
+                            <Building2 className="w-5 h-5 text-primary" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">{pm.account_name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {pm.type === "MOBILE" || pm.type === "MOBILE_MONEY"
+                              ? (pm.phone_number || "").replace(/(\d{3})(\d{3})(\d+)/, "$1 $2 $3")
+                              : `${pm.bank_name || ""} · ${pm.account_number || ""}`}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDeletePaymentMethod(pm.payment_method_id || pm.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </TabsContent>
         </motion.div>
       </Tabs>

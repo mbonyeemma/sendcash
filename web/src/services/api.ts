@@ -84,6 +84,7 @@ export interface StatementResponse {
 
 export interface PaymentMethod {
   id: string;
+  payment_method_id?: string;
   type: string;
   currency: string;
   phone_number?: string;
@@ -114,6 +115,7 @@ export interface AddPaymentMethodRequest {
   currency: string;
   phone_number?: string;
   country_code?: string;
+  network?: string;
   account_name: string;
   account_number?: string;
   bank_name?: string;
