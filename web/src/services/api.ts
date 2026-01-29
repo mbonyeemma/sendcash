@@ -108,6 +108,18 @@ export interface DepositRequest {
   amount: string;
   currency: string;
   account_number: string;
+  /** XRPL address to receive RLUSD (Buy RLUSD flow) */
+  destination_address?: string;
+  /** RLUSD amount to receive (optional, for display) */
+  amount_rlusd?: number;
+}
+
+/** Response when deposit request sends mobile money popup to user's phone */
+export interface DepositRequestResponse {
+  phone: string;
+  reference: string;
+  amount_ugx: number;
+  amount_rlusd: number;
 }
 
 export interface AddPaymentMethodRequest {
