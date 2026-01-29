@@ -250,9 +250,10 @@ async function accountStatement(req: Request, res: Response) {
 async function depositRequest(req: Request, res: Response) {
     try {
         const result = await new Wallet().depositRequest(req.body);
-        res.status(200).json(result);
+        const status = result.status === 200 ? 200 : (result.status >= 400 ? result.status : 500);
+        res.status(status).json(result);
     } catch (error) {
-        res.status(500).json({ message: 'Error processing deposit request', error });
+        res.status(500).json({ status: 500, message: 'Error processing deposit request' });
     }
 }
 

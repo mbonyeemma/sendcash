@@ -8,6 +8,7 @@
     "dev": "ts-node-dev src/server.ts",
     "build": "tsc",
     "test": "jest",
+    "test:wallet": "npx ts-node src/models/Wallet.test.ts",
     "sweep-balances": "ts-node src/scripts/sweepBalances.ts",
     "test-blockchain": "ts-node src/scripts/testBlockchain.ts"
   },

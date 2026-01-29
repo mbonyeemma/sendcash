@@ -293,8 +293,76 @@ export class Wallet extends Modal {
     }
   }
 
-  async depositRequest(_body: any) {
-    return this.makeResponse(400, "Use onramp flow: POST /provider/onrampRequest with amount_ugx, amount_rlusd, destination_address (your XRPL address)");
+  /**
+   * Buy RLUSD via mobile money: send a payment request (popup) to the user's phone.
+   * User approves on their phone; when payment is received, confirmOnrampPayIn issues RLUSD.
+   */
+  async depositRequest(body: any) {
+    try {
+      const { userId, amount, currency, account_number, destination_address, amount_rlusd } = body;
+      if (!userId || !destination_address) {
+        return this.makeResponse(400, "userId and destination_address required");
+      }
+      const ugx = parseFloat(amount);
+      if (isNaN(ugx) || ugx <= 0) {
+        return this.makeResponse(400, "Valid amount required");
+      }
+      const phone = (account_number || "").replace(/\D/g, "");
+      if (!phone) {
+        return this.makeResponse(400, "Phone number (account_number) required");
+      }
+      const businessAccount = process.env.RELWORX_BUSINESS_ACCOUNT || "";
+      if (!businessAccount) {
+        return this.makeResponse(400, "Mobile money not configured (RELWORX_BUSINESS_ACCOUNT)");
+      }
+      const refId = "O" + this.getRandomString().substring(0, 10).toUpperCase();
+      const rlusd = amount_rlusd != null ? parseFloat(String(amount_rlusd)) : ugx / 3720;
+      const narration = "DEST:" + destination_address;
+      const transaction = await this.createTransactionRecord(
+        userId,
+        userId,
+        "1000010",
+        currency || "UGX",
+        ugx,
+        "rlusd_onramp",
+        "MOBILE",
+        refId,
+        narration,
+        phone,
+        "RLUSD",
+        rlusd,
+        0
+      );
+      if (!transaction) {
+        return this.makeResponse(400, "Failed to create deposit request");
+      }
+      await this.updateData("wl_transactions", `trans_id='${transaction.trans_id}'`, { status: "PENDING_ONRAMP" });
+      const requestResult = await mm.requestPayment(
+        businessAccount,
+        refId,
+        phone,
+        currency || "UGX",
+        ugx,
+        "Buy RLUSD"
+      );
+      if (requestResult.status !== 200) {
+        await this.updateData("wl_transactions", `trans_id='${transaction.trans_id}'`, { status: "FAILED" });
+        return this.makeResponse(requestResult.status, requestResult.message || "Failed to send payment request");
+      }
+      const maskedPhone = phone.length >= 4
+        ? phone.slice(0, 3) + " *** *** " + phone.slice(-3)
+        : "*** *** ***";
+      return this.makeResponse(200, "A popup has been sent to your phone. Please approve it.", {
+        phone: maskedPhone,
+        phone_raw: phone,
+        reference: refId,
+        amount_ugx: ugx,
+        amount_rlusd: rlusd,
+      });
+    } catch (e: any) {
+      console.error("depositRequest", e);
+      return this.makeResponse(500, e?.message || "Deposit request failed");
+    }
   }
 
 
@@ -808,9 +876,6 @@ export class Wallet extends Modal {
         return this.makeResponse(400, "Invalid payment method");
       }
 
-
-
-      // Validate input
       if (!user_id || !type) {
         return this.makeResponse(400, "User ID and type are required");
       }

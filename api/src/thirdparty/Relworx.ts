@@ -8,7 +8,7 @@ interface emResponse {
   data: any;         // Entire API response data
   internal_reference: string;
 }
-const businessAccount = process.env.RELWORX_BUSINESS_ACCOUNT || "RELC55DA3FF80"
+const businessAccount = process.env.RELWORX_BUSINESS_ACCOUNT || "REL91EBEDF358"
 
 class RelworxMobileMoney {
   private axiosInstance: AxiosInstance;
@@ -70,24 +70,28 @@ class RelworxMobileMoney {
    *
    * @param error The error thrown by Axios
    */
-  private handleError(error: unknown) {
-    if (error && typeof error === 'object' && 'response' in error && error.response) {
-      const apiData = (error as any).response.data;
-
-      // Gracefully extract meaningful fields if available
-      const message = apiData?.message || 'API returned an error.';
-
+  private handleError(error: unknown): emResponse {
+    if (error && typeof error === 'object' && 'response' in error && (error as any).response) {
+      const res = (error as any).response;
+      const status = res.status || 500;
+      const apiData = res.data;
+      let message = 'API returned an error.';
+      if (typeof apiData === 'string') {
+        message = status === 500 ? 'Mobile money provider is temporarily unavailable.' : message;
+      } else if (apiData?.message) {
+        message = apiData.message;
+      } else if (status === 500) {
+        message = 'Mobile money provider is temporarily unavailable.';
+      }
       return {
-        status: 400,
+        status,
         message,
-        data: apiData, // include the whole error response for debugging
+        data: apiData,
         internal_reference: "",
       };
     }
-
-    // fallback for unknown or network errors
     return {
-      status: 400,
+      status: 500,
       message: 'A network or unexpected error occurred.',
       data: null,
       internal_reference: "",
@@ -105,7 +109,7 @@ class RelworxMobileMoney {
     description?: string
   ): Promise<emResponse> {
     const payload = {
-      account_no: accountNo,
+      account_no: businessAccount,
       reference,
       msisdn,
       currency,
@@ -114,12 +118,13 @@ class RelworxMobileMoney {
     };
 
     try {
-      const response = await this.axiosInstance.post('/request-payment', payload);
+      const response = await this.axiosInstance.post('/mobile-money/request-payment', payload);
       console.log('requestPayment success:', response.data);
       return this.transformResponse(response.data);
-    } catch (error) {
-      console.error('requestPayment error:', error);
-      return this.handleError(error);
+    } catch (error: any) {
+      const result = this.handleError(error);
+      console.error('requestPayment error:', result.status, result.message);
+      return result;
     }
   }
 

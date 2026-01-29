@@ -118,7 +118,8 @@ export const SettingsView = () => {
         account_name: addPmForm.account_name.trim(),
       };
       if (addPmType === "MOBILE") {
-        payload.phone_number = addPmForm.phone_number.replace(/\D/g, "");
+        // Preserve + (e.g. +256787719618): only strip spaces, not the plus
+        payload.phone_number = addPmForm.phone_number.replace(/\s/g, "").trim();
         payload.country_code = addPmForm.country_code;
         payload.network = addPmForm.network;
       } else {
@@ -680,7 +681,12 @@ export const SettingsView = () => {
                           <p className="font-medium text-foreground">{pm.account_name}</p>
                           <p className="text-sm text-muted-foreground">
                             {pm.type === "MOBILE" || pm.type === "MOBILE_MONEY"
-                              ? (pm.phone_number || "").replace(/(\d{3})(\d{3})(\d+)/, "$1 $2 $3")
+                              ? (() => {
+                                  const p = (pm.phone_number || "").replace(/\s/g, "");
+                                  const digits = p.replace(/\D/g, "");
+                                  const plus = p.startsWith("+") ? "+" : "";
+                                  return plus + digits.replace(/(\d{3})(\d{3})(\d+)/, "$1 $2 $3");
+                                })()
                               : `${pm.bank_name || ""} · ${pm.account_number || ""}`}
                           </p>
                         </div>
