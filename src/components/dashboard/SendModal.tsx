@@ -22,6 +22,7 @@ import { AmountWithCurrency } from "@/components/ui/amount-with-currency";
 import { AssetAmountItem } from "@/components/dashboard/AmountItem";
 import { loadFavorites, saveFavorites, type XrplFavorite } from "@/components/dashboard/SendCryptoModal";
 import { AddPaymentMethodModal } from "@/components/dashboard/AddPaymentMethodModal";
+import { AddXRPLAddressModal } from "@/components/dashboard/AddXRPLAddressModal";
 
 interface SendModalProps {
   isOpen: boolean;
