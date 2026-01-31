@@ -1,9 +1,0 @@
-services:
-  api:
-    build: .
-    image: sendcash-api
-    container_name: sendcash-api
-    restart: unless-stopped
-    env_file: .env
-    ports:
-      - "3000:3000"
