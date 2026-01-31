@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
-import { ArrowDownCircle, ArrowUpCircle, Send, Filter, Search, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, Send, Filter, Search, Loader2, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { walletApi, Transaction as ApiTransaction } from "@/services/api";
+import { walletApi } from "@/services/api";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -27,6 +27,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type TransactionType = "all" | "deposit" | "withdrawal" | "send" | "receive";
 
@@ -114,6 +120,9 @@ export const StatementView = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [rawTransactions, setRawTransactions] = useState<any[]>([]);
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+  const [selectedRaw, setSelectedRaw] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
 
@@ -149,16 +158,17 @@ export const StatementView = () => {
       
       if (transactionsArray.length > 0) {
         const mappedTransactions = transactionsArray.map(mapApiTransactionToUI);
-        console.log("Mapped transactions:", mappedTransactions); // Debug log
         setTransactions(mappedTransactions);
+        setRawTransactions(transactionsArray);
       } else {
-        console.log("No transactions found in response");
         setTransactions([]);
+        setRawTransactions([]);
       }
     } catch (error: any) {
       console.error("Statement fetch error:", error);
       toast.error(error.message || "Failed to fetch transactions");
       setTransactions([]);
+      setRawTransactions([]);
     } finally {
       setIsLoading(false);
     }
@@ -179,6 +189,14 @@ export const StatementView = () => {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex);
+
+  const openDetail = (tx: Transaction) => {
+    setSelectedTx(tx);
+    const raw = rawTransactions.find(
+      (r) => String(r.id || r.trans_id) === tx.id
+    ) || null;
+    setSelectedRaw(raw);
+  };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -359,6 +377,64 @@ export const StatementView = () => {
           </>
         )}
       </div>
+
+      {/* Transaction detail dialog */}
+      <Dialog open={!!selectedTx} onOpenChange={(open) => !open && setSelectedTx(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Transaction details</DialogTitle>
+          </DialogHeader>
+          {selectedTx && (
+            <div className="space-y-4 pt-2">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Type</span>
+                  <p className="font-medium capitalize">{selectedTx.type}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Status</span>
+                  <p>
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[selectedTx.status]}`}>
+                      {selectedTx.status}
+                    </span>
+                  </p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Amount</span>
+                  <p className="font-semibold">
+                    {selectedTx.type === "deposit" || selectedTx.type === "receive" ? "+" : "-"}
+                    {selectedTx.amount.toLocaleString()} {selectedTx.currency}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Currency</span>
+                  <p className="font-medium">{selectedTx.currency}</p>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-muted-foreground">Description</span>
+                  <p className="font-medium">{selectedTx.description}</p>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-muted-foreground">Date</span>
+                  <p className="text-muted-foreground">{selectedTx.date}</p>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-muted-foreground">Transaction ID</span>
+                  <p className="font-mono text-xs break-all">{selectedTx.id}</p>
+                </div>
+              </div>
+              {selectedRaw && Object.keys(selectedRaw).length > 0 && (
+                <div className="border-t pt-3">
+                  <p className="text-xs text-muted-foreground mb-2">Raw details</p>
+                  <pre className="text-xs bg-muted rounded-lg p-3 overflow-auto max-h-40">
+                    {JSON.stringify(selectedRaw, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

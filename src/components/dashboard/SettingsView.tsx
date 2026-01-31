@@ -70,6 +70,7 @@ export const SettingsView = () => {
     bank_name: "",
     account_number: "",
     currency: "UGX",
+    address: "",
   });
 
   useEffect(() => {
@@ -117,6 +118,9 @@ export const SettingsView = () => {
         currency: addPmForm.currency,
         account_name: addPmForm.account_name.trim(),
       };
+      if (addPmForm.address?.trim()) {
+        payload.bank_address = addPmForm.address.trim();
+      }
       if (addPmType === "MOBILE") {
         // Preserve + (e.g. +256787719618): only strip spaces, not the plus
         payload.phone_number = addPmForm.phone_number.replace(/\s/g, "").trim();
@@ -130,7 +134,7 @@ export const SettingsView = () => {
       if (response.status === 201 || response.status === 200) {
         toast.success("Payment method added");
         setAddPaymentMethodOpen(false);
-        setAddPmForm({ account_name: "", phone_number: "", country_code: "256", network: "MTN", bank_name: "", account_number: "", currency: "UGX" });
+        setAddPmForm({ account_name: "", phone_number: "", country_code: "256", network: "MTN", bank_name: "", account_number: "", currency: "UGX", address: "" });
         fetchPaymentMethods();
       }
     } catch (err: any) {
@@ -641,6 +645,15 @@ export const SettingsView = () => {
                           </div>
                         </>
                       )}
+                      <div>
+                        <Label>Address (optional)</Label>
+                        <Input
+                          value={addPmForm.address}
+                          onChange={(e) => setAddPmForm({ ...addPmForm, address: e.target.value })}
+                          placeholder="e.g. physical address or reference"
+                          className="mt-1.5"
+                        />
+                      </div>
                       <Button onClick={handleAddPaymentMethod} disabled={isLoading} className="w-full">
                         {isLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Add"}
                       </Button>
@@ -689,6 +702,11 @@ export const SettingsView = () => {
                                 })()
                               : `${pm.bank_name || ""} · ${pm.account_number || ""}`}
                           </p>
+                          {pm.bank_address && (
+                            <p className="text-xs text-muted-foreground mt-1 truncate max-w-[200px]" title={pm.bank_address}>
+                              {pm.bank_address}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <Button

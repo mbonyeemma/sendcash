@@ -67,6 +67,16 @@ export interface BalanceResponse {
   currency: string;
 }
 
+/** Supported fiat currency for onramp/offramp (from API) */
+export interface SupportedCurrency {
+  id: string;
+  symbol: string;
+  name: string;
+  logo: string;
+  rlusd_rate: number;
+  fee_percent: number;
+}
+
 export interface Transaction {
   id: string;
   type: string;
@@ -91,6 +101,7 @@ export interface PaymentMethod {
   account_name: string;
   account_number?: string;
   bank_name?: string;
+  bank_address?: string;
   country_code?: string;
 }
 
@@ -132,6 +143,7 @@ export interface AddPaymentMethodRequest {
   account_number?: string;
   bank_name?: string;
   bank_code?: string;
+  /** Optional address (physical or other); sent as bank_address for storage */
   bank_address?: string;
   bank_phone_number?: string;
   bank_country?: string;
@@ -242,6 +254,10 @@ export const walletApi = {
 
   getSupportedAssets: async (): Promise<ApiResponse> => {
     return api.get("/wallet/getSupportedAssets");
+  },
+
+  getSupportedCurrencies: async (): Promise<ApiResponse<SupportedCurrency[]>> => {
+    return api.get<SupportedCurrency[]>("/wallet/supportedCurrencies");
   },
 
   stableCoinDeposit: async (amount: number, assetCode: string, chainCode: string): Promise<ApiResponse> => {

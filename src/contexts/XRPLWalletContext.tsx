@@ -1,12 +1,15 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { isInstalled, getAddress, getNetwork } from "@gemwallet/api";
 
+export type XRPLWalletProviderType = "gemwallet" | "xaman" | "osmwallet";
+
 interface XRPLWalletContextType {
   isConnected: boolean;
   address: string | null;
   network: string | null;
   isGemWalletInstalled: boolean;
-  connectWallet: () => Promise<void>;
+  /** Connect with the chosen provider. Call with 'gemwallet' or 'xaman' (e.g. from Connect modal). */
+  connectWallet: (provider?: XRPLWalletProviderType) => Promise<void>;
   disconnectWallet: () => void;
   isConnecting: boolean;
   setNetwork: (network: string) => void;
@@ -94,7 +97,69 @@ export const XRPLWalletProvider = ({ children }: XRPLWalletProviderProps) => {
 
   const CONNECT_TIMEOUT_MS = 45000; // 45s – user may need time to approve in extension popup
 
-  const connectWallet = async () => {
+  const connectWallet = async (provider: XRPLWalletProviderType = "gemwallet") => {
+    const w = typeof window !== "undefined" ? (window as any) : undefined;
+
+    if (provider === "xaman") {
+      try {
+        setIsConnecting(true);
+        if (w?.xumm?.getAddress) {
+          const addr = await Promise.race([
+            Promise.resolve(w.xumm.getAddress()),
+            new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Connection timed out.")), CONNECT_TIMEOUT_MS)),
+          ]);
+          if (addr) {
+            setAddress(addr);
+            setNetwork(w.xumm.getNetwork?.() || "Mainnet");
+            setIsConnected(true);
+            localStorage.setItem("xrpl_wallet_address", addr);
+            localStorage.setItem("xrpl_wallet_network", "Mainnet");
+            return;
+          }
+        }
+        window.open("https://xaman.app/", "_blank");
+        throw new Error("Xaman wallet not detected. Install the Xaman app or extension and try again.");
+      } catch (err: any) {
+        if (err?.message?.includes("not detected") || err?.message?.includes("timed out")) throw err;
+        throw new Error(err?.message || "Failed to connect Xaman.");
+      } finally {
+        setIsConnecting(false);
+      }
+    }
+
+    if (provider === "osmwallet") {
+      try {
+        setIsConnecting(true);
+        // OsmWallet Chrome extension may inject window.xrpl or window.osmWallet
+        const osm = w?.osmWallet ?? w?.xrpl;
+        const getAddr = osm?.getAddress ?? osm?.getWalletAddress;
+        if (typeof getAddr === "function") {
+          const addr = await Promise.race([
+            Promise.resolve(getAddr()),
+            new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Connection timed out.")), CONNECT_TIMEOUT_MS)),
+          ]);
+          const resolvedAddr = typeof addr === "string" ? addr : (addr as any)?.address ?? (addr as any)?.result?.address;
+          if (resolvedAddr) {
+            setAddress(resolvedAddr);
+            const net = osm?.getNetwork?.() ?? (addr as any)?.network ?? "Mainnet";
+            setNetwork(typeof net === "string" ? net : "Mainnet");
+            setIsConnected(true);
+            localStorage.setItem("xrpl_wallet_address", resolvedAddr);
+            localStorage.setItem("xrpl_wallet_network", typeof net === "string" ? net : "Mainnet");
+            return;
+          }
+        }
+        window.open("https://osmwallet.io/", "_blank");
+        throw new Error("OsmWallet not detected. Install the Chrome extension and try again.");
+      } catch (err: any) {
+        if (err?.message?.includes("not detected") || err?.message?.includes("timed out")) throw err;
+        throw new Error(err?.message || "Failed to connect OsmWallet.");
+      } finally {
+        setIsConnecting(false);
+      }
+    }
+
+    // GemWallet
     try {
       setIsConnecting(true);
       console.log("Attempting to connect to GemWallet...");
@@ -103,7 +168,6 @@ export const XRPLWalletProvider = ({ children }: XRPLWalletProviderProps) => {
         setTimeout(() => reject(new Error("Connection timed out. Check for a GemWallet popup and approve it, then try again.")), CONNECT_TIMEOUT_MS);
       });
 
-      // Race getAddress against timeout so we don't hang forever
       const addressResponse = await Promise.race([getAddress(), timeoutPromise]) as Awaited<ReturnType<typeof getAddress>>;
       console.log("Address response:", addressResponse);
 
@@ -113,14 +177,10 @@ export const XRPLWalletProvider = ({ children }: XRPLWalletProviderProps) => {
 
       const walletAddress = addressResponse.result.address;
 
-      // Get network
       const networkResponse = await getNetwork();
       const walletNetwork = networkResponse?.result?.network || "Mainnet";
 
       console.log("✅ Successfully connected to GemWallet");
-      console.log("Address:", walletAddress);
-      console.log("Network:", walletNetwork);
-
       setAddress(walletAddress);
       setNetwork(walletNetwork);
       setIsConnected(true);

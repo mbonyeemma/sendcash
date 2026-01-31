@@ -1,6 +1,6 @@
-import { X } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { getCurrencyById } from "@/data/currencies";
+import { getCurrencyById, SEND_RECEIVE_CURRENCIES } from "@/data/currencies";
 import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
 import {
   Dialog,
@@ -8,16 +8,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ReceiveModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Currency user selected to receive (ugx, kes, tzs) - for display only */
-  currencyId?: string;
 }
 
-export const ReceiveModal = ({ isOpen, onClose, currencyId = "ugx" }: ReceiveModalProps) => {
+export const ReceiveModal = ({ isOpen, onClose }: ReceiveModalProps) => {
   const { isConnected, address } = useXRPLWallet();
+  const [currencyId, setCurrencyId] = useState<string>("ugx");
   const currency = getCurrencyById(currencyId);
   const symbol = currency?.symbol ?? "UGX";
 
@@ -25,14 +32,31 @@ export const ReceiveModal = ({ isOpen, onClose, currencyId = "ugx" }: ReceiveMod
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {currency && (
-              <img src={currency.logo} alt={currency.symbol} className="w-6 h-4 object-contain rounded" />
-            )}
-            Receive RLUSD → {symbol}
-          </DialogTitle>
+          <DialogTitle>Receive RLUSD</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          <div>
+            <Label className="text-sm font-medium">Receive to (cash out as)</Label>
+            <Select value={currencyId} onValueChange={setCurrencyId}>
+              <SelectTrigger className="mt-1.5 h-11 bg-muted">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SEND_RECEIVE_CURRENCIES.map((id) => {
+                  const c = getCurrencyById(id);
+                  if (!c) return null;
+                  return (
+                    <SelectItem key={id} value={id}>
+                      <span className="flex items-center gap-2">
+                        <img src={c.logo} alt={c.symbol} className="w-5 h-4 object-contain rounded" />
+                        {c.symbol}
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
           {!isConnected ? (
             <p className="text-muted-foreground text-sm">
               Connect your XRPL wallet to see your receive address and get RLUSD.

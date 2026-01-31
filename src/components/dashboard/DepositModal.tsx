@@ -6,9 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { toast } from "sonner";
-import { walletApi, paymentMethodApi, PaymentMethod as ApiPaymentMethod } from "@/services/api";
+import { walletApi, paymentMethodApi, PaymentMethod as ApiPaymentMethod, type SupportedCurrency } from "@/services/api";
 import type { DepositRequestResponse } from "@/services/api";
-import { exchangeRates } from "@/data/currencies";
 import { useAuth } from "@/contexts/AuthContext";
 import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
 import {
@@ -18,6 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AmountItem, ReceiveAmountDisplay } from "@/components/dashboard/AmountItem";
+import { AddPaymentMethodModal } from "@/components/dashboard/AddPaymentMethodModal";
 
 interface DepositModalProps {
   isOpen: boolean;
@@ -33,11 +34,17 @@ const mobileNetworks = [
 export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) => {
   const { user } = useAuth();
   const { isConnected, address, connectWallet } = useXRPLWallet();
-  const userCurrency = user?.currency || "UGX";
-  
+  const [supportedCurrencies, setSupportedCurrencies] = useState<SupportedCurrency[]>([]);
+  const [depositCurrencyId, setDepositCurrencyId] = useState<string>("");
+  const [ratesLoading, setRatesLoading] = useState(false);
+  const [ratesError, setRatesError] = useState<string | null>(null);
+  const selectedCurrency = supportedCurrencies.find((c) => c.id === depositCurrencyId);
+  const rate = selectedCurrency?.rlusd_rate ?? 0; // fiat per 1 RLUSD
+  const feePercent = selectedCurrency?.fee_percent ?? 0.5;
+
   const [network, setNetwork] = useState("");
   const [phone, setPhone] = useState("");
-  const [ugxAmount, setUgxAmount] = useState("");
+  const [fiatAmount, setFiatAmount] = useState("");
   const [rlusdAmount, setRlusdAmount] = useState("");
   const [paymentMethods, setPaymentMethods] = useState<ApiPaymentMethod[]>([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
@@ -47,22 +54,42 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPreview, setShowPreview] = useState(false);
   const [payInInstructions, setPayInInstructions] = useState<DepositRequestResponse | null>(null);
+  const [addPaymentMethodOpen, setAddPaymentMethodOpen] = useState(false);
 
-  // Exchange rate UGX to RLUSD (local fallback; provider quote used on submit)
-  const rate = exchangeRates["ugx"]?.["rlusd"] || 0.00027;
-
-  // Calculate RLUSD when UGX changes
+  // Fetch supported currencies (rate/quote) when modal opens — public endpoint, no auth required
   useEffect(() => {
-    if (ugxAmount && !isNaN(parseFloat(ugxAmount)) && rate > 0) {
-      const ugxNum = parseFloat(ugxAmount);
-      const fee = ugxNum * 0.005; // 0.5% fee
-      const netAmount = ugxNum - fee;
-      const rlusdValue = (netAmount * rate).toFixed(6);
+    if (!isOpen) return;
+    setRatesError(null);
+    setRatesLoading(true);
+    walletApi
+      .getSupportedCurrencies()
+      .then((res) => {
+        if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+          setSupportedCurrencies(res.data);
+          setDepositCurrencyId((id) => (id && res.data!.some((c) => c.id === id) ? id : res.data![0].id));
+        } else {
+          setRatesError("Could not load rates.");
+        }
+      })
+      .catch((err) => {
+        console.error("getSupportedCurrencies failed", err);
+        setRatesError(err?.message || "Could not load rates. Try again.");
+      })
+      .finally(() => setRatesLoading(false));
+  }, [isOpen]);
+
+  // Calculate RLUSD when fiat amount changes (rate = fiat per 1 RLUSD; fee from API)
+  useEffect(() => {
+    if (fiatAmount && !isNaN(parseFloat(fiatAmount)) && rate > 0) {
+      const fiatNum = parseFloat(fiatAmount);
+      const fee = fiatNum * (feePercent / 100);
+      const netFiat = fiatNum - fee;
+      const rlusdValue = (netFiat / rate).toFixed(6); // RLUSD = fiat / (fiat per 1 RLUSD)
       setRlusdAmount(rlusdValue);
     } else {
       setRlusdAmount("");
     }
-  }, [ugxAmount, rate]);
+  }, [fiatAmount, rate, feePercent]);
 
   // Fetch payment methods when modal opens
   useEffect(() => {
@@ -100,8 +127,8 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     
-    if (!ugxAmount || parseFloat(ugxAmount) <= 0) {
-      newErrors.ugxAmount = "Please enter a valid amount";
+    if (!fiatAmount || parseFloat(fiatAmount) <= 0) {
+      newErrors.fiatAmount = "Please enter a valid amount";
     }
     if (!network) {
       newErrors.network = "Please select a network";
@@ -146,8 +173,8 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
         : phone.replace(/\s/g, "").replace(/\D/g, "");
 
       const response = await walletApi.depositRequest({
-        amount: ugxAmount,
-        currency: userCurrency,
+        amount: fiatAmount,
+        currency: selectedCurrency?.symbol ?? "",
         account_number: phoneNumber,
         destination_address: address || "",
         amount_rlusd: parseFloat(rlusdAmount) || undefined,
@@ -171,7 +198,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
   const resetAndClose = () => {
     setNetwork("");
     setPhone("");
-    setUgxAmount("");
+    setFiatAmount("");
     setRlusdAmount("");
     setSelectedPaymentMethod("");
     setReceiverType("saved");
@@ -224,7 +251,10 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                 <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Amount</span>
-                    <span className="font-bold text-lg">{payInInstructions.amount_ugx} {userCurrency}</span>
+                    <span className="font-bold text-lg flex items-center gap-2">
+                      {selectedCurrency?.logo && <img src={selectedCurrency.logo} alt={selectedCurrency.symbol} className="w-5 h-4 object-contain rounded" />}
+                      {payInInstructions.amount_ugx} {selectedCurrency?.symbol ?? ""}
+                    </span>
                   </div>
                   <div>
                     <span className="text-sm text-muted-foreground">Sent to your phone: </span>
@@ -280,95 +310,33 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
 
             {!payInInstructions && !showPreview ? (
               <div className="p-6 space-y-5">
-                {/* Info */}
-                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium">RLUSD Onramp</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Deposit {userCurrency} via mobile money and receive RLUSD in your wallet
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <AmountItem
+                  currencyId={depositCurrencyId}
+                  onCurrencyChange={setDepositCurrencyId}
+                  amount={fiatAmount}
+                  onAmountChange={setFiatAmount}
+                  currencySymbol={selectedCurrency?.symbol ?? ""}
+                  currencyLogo={selectedCurrency?.logo}
+                  supportedCurrencies={supportedCurrencies.map((c) => ({ id: c.id, symbol: c.symbol, logo: c.logo }))}
+                  amountError={errors.fiatAmount}
+                  onClearAmountError={() => errors.fiatAmount && setErrors({ ...errors, fiatAmount: "" })}
+                />
 
-                {/* UGX Amount */}
-                <div>
-                  <Label className="text-sm font-medium">Amount ({userCurrency})</Label>
-                  <Input
-                    type="number"
-                    value={ugxAmount}
-                    onChange={(e) => {
-                      setUgxAmount(e.target.value);
-                      if (errors.ugxAmount) setErrors({ ...errors, ugxAmount: "" });
-                    }}
-                    placeholder="Enter amount"
-                    className="mt-1.5 h-12"
-                  />
-                  {errors.ugxAmount && (
-                    <p className="text-sm text-destructive flex items-center gap-1 mt-1">
-                      <AlertCircle className="w-4 h-4" />
-                      {errors.ugxAmount}
-                    </p>
-                  )}
-                </div>
-
-                {/* RLUSD Amount Display */}
-                {rlusdAmount && (
-                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">You'll receive</p>
-                        <p className="text-2xl font-bold text-foreground">{rlusdAmount} RLUSD</p>
-                      </div>
-                      <ArrowRight className="w-6 h-6 text-primary" />
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-primary/20 space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Amount:</span>
-                        <span>{ugxAmount} {userCurrency}</span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Fee (0.5%):</span>
-                        <span>{(parseFloat(ugxAmount) * 0.005).toFixed(2)} {userCurrency}</span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Rate:</span>
-                        <span>1 {userCurrency} = {rate.toFixed(6)} RLUSD</span>
-                      </div>
-                    </div>
-                  </div>
+                {ratesError && (
+                  <p className="text-sm text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    {ratesError}
+                  </p>
                 )}
-
-                {/* Mobile Network */}
-                <div>
-                  <Label className="text-sm font-medium">Mobile Network</Label>
-                  <Select value={network} onValueChange={(v) => {
-                    setNetwork(v);
-                    if (errors.network) setErrors({ ...errors, network: "" });
-                  }}>
-                    <SelectTrigger className="mt-1.5 h-12 bg-background">
-                      <SelectValue placeholder="Select network" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover border-border">
-                      {mobileNetworks.map((net) => (
-                        <SelectItem key={net.id} value={net.id}>
-                          <div className="flex items-center gap-2">
-                            <img src={net.logo} alt={net.name} className="w-5 h-5" />
-                            <span>{net.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.network && (
-                    <p className="text-sm text-destructive flex items-center gap-1 mt-1">
-                      <AlertCircle className="w-4 h-4" />
-                      {errors.network}
-                    </p>
-                  )}
-                </div>
+                <ReceiveAmountDisplay
+                  rlusdAmount={rlusdAmount}
+                  fiatAmount={fiatAmount}
+                  currencySymbol={selectedCurrency?.symbol ?? ""}
+                  currencyLogo={selectedCurrency?.logo}
+                  rate={rate}
+                  feePercent={feePercent}
+                  isLoading={ratesLoading}
+                />
 
                 {/* Receiver Type Toggle */}
                 <div>
@@ -450,6 +418,13 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                     )}
                   </div>
                 )}
+                <button
+                  type="button"
+                  className="text-sm text-primary hover:underline"
+                  onClick={() => setAddPaymentMethodOpen(true)}
+                >
+                  Add new payment method
+                </button>
 
                 {/* Phone Number Input */}
                 {receiverType === "onetime" && (
@@ -479,16 +454,22 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                 <div className="space-y-4">
                   <div className="flex justify-between items-center py-2">
                     <span className="text-sm text-muted-foreground">You Pay</span>
-                    <span className="font-semibold text-lg">{ugxAmount} {userCurrency}</span>
+                    <span className="font-semibold text-lg flex items-center gap-2">
+                      {selectedCurrency?.logo && <img src={selectedCurrency.logo} alt={selectedCurrency.symbol} className="w-5 h-4 object-contain rounded" />}
+                      {fiatAmount} {selectedCurrency?.symbol ?? ""}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center py-2">
                     <span className="text-sm text-muted-foreground">You Receive</span>
                     <span className="font-semibold text-lg text-primary">{rlusdAmount} RLUSD</span>
                   </div>
-                  <div className="border-t border-border pt-3">
-                    <div className="flex justify-between items-center py-1.5">
-                      <span className="text-sm text-muted-foreground">Fee (0.5%)</span>
-                      <span className="text-sm font-medium">{(parseFloat(ugxAmount) * 0.005).toFixed(2)} {userCurrency}</span>
+                    <div className="border-t border-border pt-3">
+                      <div className="flex justify-between items-center py-1.5">
+                        <span className="text-sm text-muted-foreground">Fee (0.5%)</span>
+                        <span className="text-sm font-medium flex items-center gap-1">
+                        {selectedCurrency?.logo && <img src={selectedCurrency.logo} alt="" className="w-4 h-3 object-contain rounded" />}
+                        {(parseFloat(fiatAmount) * (feePercent / 100)).toFixed(2)} {selectedCurrency?.symbol ?? ""}
+                      </span>
                     </div>
                   </div>
                   <div className="border-t border-border pt-3 space-y-2">
@@ -560,6 +541,12 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
           </div>
         </motion.div>
       </div>
+
+      <AddPaymentMethodModal
+        open={addPaymentMethodOpen}
+        onOpenChange={setAddPaymentMethodOpen}
+        onSuccess={fetchPaymentMethods}
+      />
     </AnimatePresence>
   );
 };

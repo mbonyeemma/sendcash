@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Wallet, ExternalLink, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { X, Wallet, ExternalLink, Loader2, CheckCircle2, AlertCircle, Smartphone, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
+import { useXRPLWallet, type XRPLWalletProviderType } from "@/contexts/XRPLWalletContext";
 import { toast } from "sonner";
 
 interface ConnectXRPLWalletModalProps {
@@ -20,27 +21,30 @@ export const ConnectXRPLWalletModal = ({ isOpen, onClose }: ConnectXRPLWalletMod
     isConnecting 
   } = useXRPLWallet();
 
-  const handleConnect = async () => {
+  const [connectingProvider, setConnectingProvider] = useState<XRPLWalletProviderType | null>(null);
+
+  const handleConnect = async (provider: XRPLWalletProviderType) => {
     try {
-      console.log("Connect button clicked");
-      await connectWallet();
+      setConnectingProvider(provider);
+      await connectWallet(provider);
       toast.success("Wallet connected successfully!");
       setTimeout(() => onClose(), 1500);
     } catch (error: any) {
       console.error("Connection error:", error);
-      
-      // Show user-friendly error message
       const errorMessage = error.message || "Failed to connect wallet";
-      
       if (errorMessage.includes("rejected") || errorMessage.includes("denied")) {
-        toast.error("Connection rejected. Please accept the connection in GemWallet.");
+        const rejectMsg = provider === "gemwallet" ? "GemWallet" : provider === "xaman" ? "Xaman" : "OsmWallet";
+        toast.error(`Connection rejected. Please accept the connection in ${rejectMsg}.`);
       } else if (errorMessage.includes("timed out")) {
-        toast.error("Connection timed out. Look for a GemWallet popup (it may be behind this window) and approve it.");
-      } else if (errorMessage.includes("not found") || errorMessage.includes("install")) {
-        toast.error("GemWallet not detected. Please install the extension and refresh.");
+        toast.error("Connection timed out. Look for the wallet popup (it may be behind this window) and approve it.");
+      } else if (errorMessage.includes("not found") || errorMessage.includes("not detected") || errorMessage.includes("install")) {
+        const installMsg = provider === "gemwallet" ? "GemWallet not detected. Please install the extension and refresh." : provider === "osmwallet" ? "OsmWallet not detected. Please install the Chrome extension and refresh." : errorMessage;
+        toast.error(installMsg);
       } else {
         toast.error(errorMessage);
       }
+    } finally {
+      setConnectingProvider(null);
     }
   };
 
@@ -95,103 +99,113 @@ export const ConnectXRPLWalletModal = ({ isOpen, onClose }: ConnectXRPLWalletMod
                         <div className="space-y-1">
                           <p className="text-sm font-medium">Connect Your XRPL Wallet</p>
                           <p className="text-xs text-muted-foreground">
-                            Connect GemWallet to enable RLUSD offramp and XRPL features. Your wallet stays under your control.
+                            Choose a wallet to connect. Your keys stay in your wallet; we never see them.
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    {/* GemWallet Option */}
-                    <div className="space-y-3">
+                    {/* Which wallet to connect */}
+                    <p className="text-sm font-medium text-foreground">Which wallet do you want to connect?</p>
+                    <div className="grid grid-cols-1 gap-3">
+                      {/* GemWallet */}
                       <button
-                        onClick={handleConnect}
-                        disabled={isConnecting}
-                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl p-4 flex items-center justify-between transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        type="button"
+                        onClick={() => handleConnect("gemwallet")}
+                        disabled={isConnecting && connectingProvider !== "gemwallet"}
+                        className="w-full rounded-xl border border-border hover:border-primary hover:bg-primary/5 p-4 flex items-center justify-between transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-left"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-primary-foreground/10 flex items-center justify-center">
-                            <Wallet className="w-5 h-5" />
+                          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                            <Wallet className="w-6 h-6 text-primary" />
                           </div>
-                          <div className="text-left">
-                            <p className="font-semibold">GemWallet</p>
-                            <p className="text-xs opacity-90">
-                              {isGemWalletInstalled ? "Click to connect" : "Install extension"}
+                          <div>
+                            <p className="font-semibold text-foreground">GemWallet</p>
+                            <p className="text-xs text-muted-foreground">
+                              {isGemWalletInstalled ? "Browser extension" : "Install extension"}
                             </p>
                           </div>
                         </div>
-                        {isConnecting ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
+                        {connectingProvider === "gemwallet" ? (
+                          <Loader2 className="w-5 h-5 animate-spin text-primary shrink-0" />
                         ) : (
-                          <ExternalLink className="w-5 h-5" />
+                          <ExternalLink className="w-5 h-5 text-muted-foreground shrink-0" />
                         )}
                       </button>
-                      {isConnecting && (
-                        <p className="text-xs text-muted-foreground text-center">
-                          Check for the GemWallet popup (extension icon or behind this window) and approve the connection.
-                        </p>
-                      )}
 
-                      <div className="text-center space-y-2">
-                        {!isGemWalletInstalled ? (
-                          <>
-                            <p className="text-sm text-muted-foreground mb-2">
-                              Don't have GemWallet installed?
-                            </p>
-                            <a
-                              href="https://gemwallet.app/"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-primary hover:underline inline-flex items-center gap-1"
-                            >
-                              Download GemWallet <ExternalLink className="w-3 h-3" />
-                            </a>
-                          </>
-                        ) : (
-                          <p className="text-xs text-green-600 dark:text-green-400">
-                            ✓ GemWallet detected
-                          </p>
-                        )}
-                        
-                        <details className="text-xs text-muted-foreground">
-                          <summary className="cursor-pointer hover:text-foreground">
-                            Troubleshooting
-                          </summary>
-                          <div className="mt-2 p-2 bg-muted rounded text-left space-y-1">
-                            <p>Detection Status: {isGemWalletInstalled ? "✓ Detected" : "✗ Not detected"}</p>
-                            <p className="text-xs pt-2 text-yellow-600 dark:text-yellow-400">
-                              ⚠️ Detection may fail even if extension is installed.
-                              <br />Try clicking "Connect" anyway - it should work!
-                            </p>
-                            <p className="text-xs pt-2">
-                              If connection fails:
-                              <br />1. Make sure GemWallet extension is enabled
-                              <br />2. Refresh the page (Cmd+R or Ctrl+R)
-                              <br />3. Check browser console (F12) for errors
-                              <br />4. Try restarting your browser
-                            </p>
+                      {/* Xaman */}
+                      <button
+                        type="button"
+                        onClick={() => handleConnect("xaman")}
+                        disabled={isConnecting && connectingProvider !== "xaman"}
+                        className="w-full rounded-xl border border-border hover:border-primary hover:bg-primary/5 p-4 flex items-center justify-between transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-left"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                            <Smartphone className="w-6 h-6 text-primary" />
                           </div>
-                        </details>
-                      </div>
+                          <div>
+                            <p className="font-semibold text-foreground">Xaman</p>
+                            <p className="text-xs text-muted-foreground">App &amp; browser</p>
+                          </div>
+                        </div>
+                        {connectingProvider === "xaman" ? (
+                          <Loader2 className="w-5 h-5 animate-spin text-primary shrink-0" />
+                        ) : (
+                          <ExternalLink className="w-5 h-5 text-muted-foreground shrink-0" />
+                        )}
+                      </button>
+
+                      {/* OsmWallet */}
+                      <button
+                        type="button"
+                        onClick={() => handleConnect("osmwallet")}
+                        disabled={isConnecting && connectingProvider !== "osmwallet"}
+                        className="w-full rounded-xl border border-border hover:border-primary hover:bg-primary/5 p-4 flex items-center justify-between transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-left"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                            <Monitor className="w-6 h-6 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-foreground">OsmWallet</p>
+                            <p className="text-xs text-muted-foreground">Chrome extension</p>
+                          </div>
+                        </div>
+                        {connectingProvider === "osmwallet" ? (
+                          <Loader2 className="w-5 h-5 animate-spin text-primary shrink-0" />
+                        ) : (
+                          <ExternalLink className="w-5 h-5 text-muted-foreground shrink-0" />
+                        )}
+                      </button>
                     </div>
 
-                    {/* Features */}
-                    <div className="space-y-2 pt-4 border-t border-border">
-                      <p className="text-sm font-medium mb-3">What you can do:</p>
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-primary mt-0.5" />
-                          <p className="text-sm text-muted-foreground">Convert RLUSD to local currency</p>
+                    {(connectingProvider === "gemwallet" || connectingProvider === "xaman" || connectingProvider === "osmwallet") && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        Check for a popup from your wallet (it may be behind this window) and approve the connection.
+                      </p>
+                    )}
+
+                    <div className="text-center space-y-2 pt-2 border-t border-border">
+                      <p className="text-xs text-muted-foreground">
+                        Don&apos;t have a wallet?{" "}
+                        <a href="https://gemwallet.app/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">GemWallet</a>
+                        {" · "}
+                        <a href="https://xaman.app/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Xaman</a>
+                        {" · "}
+                        <a href="https://osmwallet.io/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">OsmWallet</a>
+                      </p>
+                      <details className="text-xs text-muted-foreground">
+                        <summary className="cursor-pointer hover:text-foreground">Troubleshooting</summary>
+                        <div className="mt-2 p-2 bg-muted rounded text-left space-y-1">
+                          <p>GemWallet: {isGemWalletInstalled ? "✓ Detected" : "✗ Not detected"}. Try connecting anyway if you have the extension.</p>
+                          <p className="pt-2">OsmWallet: Chrome extension — install from osmwallet.io if not detected.</p>
+                          <p className="pt-2">If connection fails: enable the extension, refresh the page, or try another wallet.</p>
                         </div>
-                        <div className="flex items-start gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-primary mt-0.5" />
-                          <p className="text-sm text-muted-foreground">Send RLUSD instantly</p>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-primary mt-0.5" />
-                          <p className="text-sm text-muted-foreground">Non-custodial - you own your keys</p>
-                        </div>
-                      </div>
+                      </details>
                     </div>
+
+                  
                   </>
                 ) : (
                   <>

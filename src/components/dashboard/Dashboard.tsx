@@ -5,7 +5,7 @@ import { DashboardSidebar, type DashboardView } from "@/components/dashboard/Das
 import { BalanceOverview } from "@/components/dashboard/BalanceCard";
 import { DepositModal } from "@/components/dashboard/DepositModal";
 import { SendModal } from "@/components/dashboard/SendModal";
-import { ReceiveModal } from "@/components/dashboard/ReceiveModal";
+import { SwapModal } from "@/components/dashboard/SwapModal";
 import { ConnectXRPLWalletModal } from "@/components/dashboard/ConnectXRPLWalletModal";
 import { StatementView } from "@/components/dashboard/StatementView";
 import { SettingsView } from "@/components/dashboard/SettingsView";
@@ -41,9 +41,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
-  const [sendCurrency, setSendCurrency] = useState<string>("ugx");
-  const [receiveOpen, setReceiveOpen] = useState(false);
-  const [receiveCurrency, setReceiveCurrency] = useState<string>("ugx");
+  const [swapOpen, setSwapOpen] = useState(false);
   const [connectWalletOpen, setConnectWalletOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
@@ -106,14 +104,8 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
           <div className="space-y-8">
             <BalanceOverview
               onDeposit={() => setDepositOpen(true)}
-              onReceive={(currency) => {
-                setReceiveCurrency(currency);
-                setReceiveOpen(true);
-              }}
-              onSend={(currency) => {
-                setSendCurrency(currency);
-                setSendOpen(true);
-              }}
+              onSend={() => setSendOpen(true)}
+              onSwap={() => setSwapOpen(true)}
               onBalanceUpdate={() => {}}
             />
             <StatementView />
@@ -130,14 +122,8 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
           <div className="space-y-8">
             <BalanceOverview
               onDeposit={() => setDepositOpen(true)}
-              onReceive={(currency) => {
-                setReceiveCurrency(currency);
-                setReceiveOpen(true);
-              }}
-              onSend={(currency) => {
-                setSendCurrency(currency);
-                setSendOpen(true);
-              }}
+              onSend={() => setSendOpen(true)}
+              onSwap={() => setSwapOpen(true)}
               onBalanceUpdate={() => {}}
             />
             <StatementView />
@@ -482,15 +468,13 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       <SendModal
         isOpen={sendOpen}
         onClose={() => setSendOpen(false)}
-        initialPayoutCurrency={sendCurrency}
         onSuccess={() => {
           window.location.reload();
         }}
       />
-      <ReceiveModal
-        isOpen={receiveOpen}
-        onClose={() => setReceiveOpen(false)}
-        currencyId={receiveCurrency}
+      <SwapModal
+        isOpen={swapOpen}
+        onClose={() => setSwapOpen(false)}
       />
       <ConnectXRPLWalletModal
         isOpen={connectWalletOpen}
