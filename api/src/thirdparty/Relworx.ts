@@ -111,7 +111,7 @@ class RelworxMobileMoney {
     const payload = {
       account_no: businessAccount,
       reference,
-      msisdn,
+      msisdn: this.normalizePhoneNumber(msisdn, "UG"),
       currency,
       amount,
       description,
@@ -138,6 +138,7 @@ class RelworxMobileMoney {
     description?: string
   ): Promise<emResponse> {
 
+   // msisdn = this.normalizePhoneNumber(msisdn, "UG")
 
     const payload = {
       account_no: businessAccount,
@@ -147,7 +148,7 @@ class RelworxMobileMoney {
       amount: Number(amount),
       description,
     };
-    console.log(`sendPaymentInformation`, payload)
+    console.log(`sendPaymentInformations`, payload)
 
     try {
       new Model().logOperation(`MOBILE_MONEY_REQUEST`, reference, businessAccount, "", payload)

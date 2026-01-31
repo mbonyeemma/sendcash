@@ -1,0 +1,11 @@
+# Production: use pre-built image from Docker Hub (no build on server).
+# Ensure .env exists on server in this directory.
+
+services:
+  api:
+    image: embonye/send-cash:latest
+    container_name: sendcash-api
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "3000:3000"

@@ -110,19 +110,7 @@ export class Wallet extends Modal {
     return this.makeResponse(200, "XRPL-only: crypto webhook ignored");
   }
 
-  async HandleWebhook(data: any) {
-    console.log("HandleWebhook", data);
-    if (data.type === "transaction_status" && data.status === "SUCCESS") {
-      const transaction = await this.selectDataQuery(
-        `wl_transactions`,
-        `trans_id='${data.transaction_id}' and status='PENDING'`
-      );
-
-      if (transaction.length > 0) {
-        await this.issueTokens(data.transaction_id);
-      }
-    }
-  }
+  
 
   async getSupportedAssets() {
     return this.makeResponse(200, "Supported assets", { assets: ["RLUSD"] });
@@ -231,46 +219,18 @@ export class Wallet extends Modal {
     }
   }
 
-  /**
-   * Confirm pay-in received (provider/webhook): mark RECEIVED and trigger wallet to send RLUSD.
-   */
-  async confirmOnrampPayIn(reference: string) {
+ 
+  async issueRlusdToUser(tx: any) {
+    console.log("issueRlusdToUs", tx);
     try {
-      const safeRef = (reference || "").replace(/'/g, "''");
-      const rows = (await this.callQuery(
-        `SELECT * FROM wl_transactions WHERE ref_id='${safeRef}' AND status='PENDING_ONRAMP' LIMIT 1`
-      )) as any[];
-      if (!rows || rows.length === 0) {
-        return this.makeResponse(404, "No pending onramp for reference");
-      }
-      const tx = rows[0];
-      await this.updateData("wl_transactions", `trans_id='${tx.trans_id}'`, { status: "RECEIVED" });
-      return await this.issueRlusdToUser(tx.trans_id);
-    } catch (e: any) {
-      console.error("confirmOnrampPayIn", e);
-      return this.makeResponse(500, e?.message || "Confirm pay-in failed");
-    }
-  }
-
-  /**
-   * Send RLUSD from onramp source to user's destination (wallet takes over).
-   */
-  async issueRlusdToUser(transId: string) {
-    try {
-      const rows = (await this.callQuery(
-        `SELECT * FROM wl_transactions WHERE trans_id='${transId}' AND status='RECEIVED' LIMIT 1`
-      )) as any[];
-      if (!rows || rows.length === 0) {
-        return this.makeResponse(404, "Transaction not found or not received");
-      }
-      const tx = rows[0];
+   
+      const transId = tx.trans_id;
       if (tx.trans_type !== "rlusd_onramp") {
         return this.makeResponse(400, "Not an RLUSD onramp transaction");
       }
       await this.updateData("wl_transactions", `trans_id='${transId}'`, { status: "INPROGRESS" });
       const narration = tx.narration || "";
-      const destMatch = narration.match(/^DEST:(r[a-zA-Z0-9]{24,34})/);
-      const destination = destMatch ? destMatch[1] : "";
+       const destination = narration;
       if (!destination) {
         await this.updateData("wl_transactions", `trans_id='${transId}'`, { status: "DEPOSIT_ERROR" });
         return this.makeResponse(400, "Missing destination address");
@@ -288,7 +248,7 @@ export class Wallet extends Modal {
       });
       return this.makeResponse(200, "RLUSD sent successfully", { hash: result.hash });
     } catch (e: any) {
-      console.error("issueRlusdToUser", e);
+      console.error("issueRlusfdToUser", e);
       return this.makeResponse(500, e?.message || "Issue RLUSD failed");
     }
   }
@@ -317,7 +277,7 @@ export class Wallet extends Modal {
       }
       const refId = "O" + this.getRandomString().substring(0, 10).toUpperCase();
       const rlusd = amount_rlusd != null ? parseFloat(String(amount_rlusd)) : ugx / 3720;
-      const narration = "DEST:" + destination_address;
+      const narration =  destination_address;
       const transaction = await this.createTransactionRecord(
         userId,
         userId,
@@ -366,23 +326,7 @@ export class Wallet extends Modal {
   }
 
 
-  async issueTokens(transId: string) {
-    try {
-      const transInfo = await this.selectDataQuery(`wl_transactions`, `trans_id='${transId}' and status='RECEIVED'`);
-
-      if (transInfo.length == 0) {
-        return this.makeResponse(404, "Transaction not found");
-      }
-      if (transInfo[0].trans_type === "rlusd_onramp") {
-        return await this.issueRlusdToUser(transId);
-      }
-      return this.makeResponse(400, "Unsupported transaction type (XRPL-only)");
-    } catch (error: unknown) {
-      console.log("escrowAmount", error);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-      return { status: 403, message: errorMessage };
-    }
-  }
+ 
 
 
 
@@ -538,6 +482,7 @@ export class Wallet extends Modal {
   async webhookRel(data: any) {
     try {
       console.log(`webhookRel`, data)
+      this.saveLog("webhookRel", data);
 
       const { status, charge, customer_reference } = data;
 
@@ -546,22 +491,27 @@ export class Wallet extends Modal {
       }
 
       // Retrieve the transaction using the internal reference
-      const transaction: any = await this.callQuery(`SELECT * FROM wl_transactions WHERE trans_id='${customer_reference}'`);
+      const transaction: any = await this.callQuery(`SELECT * FROM wl_transactions WHERE ref_id='${customer_reference}'`);
       if (transaction.length === 0) {
         return this.makeResponse(404, "Transaction not found");
       }
 
-      // Update the transaction status based on the webhook data
-      const updatedStatus = status === "success" ? "SUCCESS" : "FAILED";
-      await this.updateData('wl_transactions', `trans_id='${customer_reference}'`, { provider_fee: charge, status: updatedStatus });
+        this.issueRlusdToUser(transaction[0]);
 
-      if (updatedStatus == "SUCCESS") {
+
+      // Update the transaction status: RECEIVED so  can send RLUSD, then it sets SUCCESS
+      const updatedStatus = status === "success" ? "RECEIVED" : "FAILED";
+      await this.updateData('wl_transactions', `ref_id='${customer_reference}'`, { provider_fee: charge, status: updatedStatus });
+
+      if (updatedStatus == "RECEIVED") {
         const userInfo: any = await this.getUser(transaction[0].user_id);
         const narration = transaction[0].narration;
         const account_number = transaction[0].account_number;
         const trans_type = transaction[0].trans_type;
         const { full_name, username } = userInfo;
         const phone_number = userInfo.phone_number;
+
+        // Send RLUSD from custody to user's XRPL address ( sets status to SUCCESS)
 
         if (account_number != phone_number) {
           const message = `Greetings, you have received ${transaction[0].amount} ${transaction[0].currency} from ${full_name} with reason ${narration} via KITY PAY on ${new Date().toLocaleString()}. Download KITYPAY app on playstore and send money for less.`;
@@ -789,7 +739,7 @@ export class Wallet extends Modal {
     billerInfo: BillerInfo = null
   ) {
     try {
-      console.log(`makeThirdpartyTransfer`, userId, amount, paymentMethod, account_number, currency, payout_currency, narration, refId)
+      console.log(`makeThirdpartyTransfer`, userId, amount, paymentMethod, account_number, currency, narration, refId)
 
       let thirdpartyAccount = account_number;
 
@@ -804,19 +754,10 @@ export class Wallet extends Modal {
       let thirdpartyPayResponse: any = null;
       let external_reference = "";
 
-      if (paymentMethod == "WALLET") {
-        await this.updateTransactionStatus(transId, "SUCCESS", { status: "SUCCESS", message: "payout successful" });
-        return this.makeResponse(200, "payout successful", thirdpartyPayResponse);
-
-      } else if (paymentMethod == "MOBILE_MONEY") {
-        thirdpartyPayResponse = await mm.sendPayment(thirdpartyAccount, transId, account_number, payout_currency, payout_amount, narration);
+       if (paymentMethod == "MOBILE") {
+        thirdpartyPayResponse = await mm.sendPayment(thirdpartyAccount, transId, account_number, currency, payout_amount, narration);
         external_reference = thirdpartyPayResponse.internal_reference || "";
-      } else if (paymentMethod == "BILLER") {
-        let billerInfoData = billerInfo;
-        let billerValidationReference = billerInfoData.validation_reference;
-
-        thirdpartyPayResponse = await mm.purchaseProduct(billerValidationReference);
-      } else {
+      }  else {
         return this.makeResponse(400, "Invalid payment method");
       }
 
@@ -836,6 +777,9 @@ export class Wallet extends Modal {
         message = "payout failed";
         await this.updateTransactionStatus(transId, "ON_HOLD", external_reference);
       }
+
+      await this.updateTransactionStatus(transId, "SUCCESS", external_reference);
+
 
       return this.makeResponse(statusCode, message, thirdpartyPayResponse);
     } catch (error: any) {
@@ -914,6 +858,19 @@ export class Wallet extends Modal {
       result += digits.charAt(Math.floor(Math.random() * digits.length));
     }
     return result;
+  }
+
+  /**
+   * Convert RLUSD amount to UGX (or other fiat) using env rate.
+   * @param rlusdAmount amount in RLUSD
+   * @param rate optional rate (default: RLUSD_UGX_RATE env or 3720)
+   * @returns converted amount, rounded to 2 decimals
+   */
+  getConvertedAmount(rlusdAmount: number, rate?: number): number {
+    console.log("rlusdAmount", rlusdAmount);
+    console.log("rate", rate);
+    const r = rate ?? parseFloat(process.env.RLUSD_UGX_RATE || "3720");
+    return Math.round((rlusdAmount || 0) * r * 100) / 100;
   }
 
   async deletePaymentMethod(payment_method_id: string, userId: string) {
@@ -1036,7 +993,8 @@ export class Wallet extends Modal {
 
       const paymentType = await this.getPaymentType(payment_mode);
       const fee = paymentType?.fee ?? parseFloat(amount) * 0.01;
-      const memo = "R" + this.getRandomString().substring(0, 12).toUpperCase();
+      // Numeric-only memo (5 digits – must fit 32-bit unsigned, e.g. destination tag)
+      const memo = this.generateRandomDigits(5);
 
       const transaction = await this.createTransactionRecord(
         userId,
@@ -1082,6 +1040,7 @@ export class Wallet extends Modal {
    */
   async processRlusdPayoutReceived(memo: string, xrplTxHash: string) {
     try {
+      console.log("processRlusdPayoutReceived", memo, xrplTxHash);
       const safeMemo = (memo || "").replace(/'/g, "''");
       const rows = (await this.callQuery(
         `SELECT * FROM wl_transactions WHERE ref_id='${safeMemo}' AND status='PENDING_RLUSD' LIMIT 1`
@@ -1091,14 +1050,17 @@ export class Wallet extends Modal {
       }
       const tx = rows[0];
       await this.updateData("wl_transactions", `trans_id='${tx.trans_id}'`, { hash: xrplTxHash });
+      const rlusdAmount = parseFloat(tx.asset_amount) || parseFloat(tx.amount) || 0;
+      const payoutUgx = this.getConvertedAmount(rlusdAmount);
+      console.log("payoutUgx", payoutUgx);
       const result = await this.makeThirdpartyTransfer(
         tx.trans_id,
         tx.user_id,
-        parseFloat(tx.amount),
+        payoutUgx,
         tx.payment_method,
         tx.account_number,
-        "RLUSD",
-        "UGX",
+        tx.currency,
+        tx.currency,
         tx.narration || "RLUSD offramp",
         tx.ref_id,
         null

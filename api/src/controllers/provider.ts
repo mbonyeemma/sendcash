@@ -35,19 +35,6 @@ router.post("/onrampRequest", tokenRequired, async (req: Request, res: Response)
   }
 });
 
-/** Confirm pay-in received at PAY_IN_ADDRESS (provider/webhook): wallet takes over and sends RLUSD */
-router.post("/confirmPayIn", async (req: Request, res: Response) => {
-  try {
-    const { reference } = req.body;
-    if (!reference) {
-      return res.status(400).json({ status: 400, message: "reference required" });
-    }
-    const result = await new Wallet().confirmOnrampPayIn(reference);
-    res.status(result.status === 200 ? 200 : result.status === 404 ? 404 : 500).json(result);
-  } catch (e: any) {
-    console.error("provider/confirmPayIn error:", e);
-    res.status(500).json({ status: 500, message: e?.message || "Confirm pay-in failed" });
-  }
-});
+ 
 
 export default router;

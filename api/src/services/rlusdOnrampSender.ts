@@ -7,9 +7,7 @@ import { Client, Wallet as XrplWallet, Payment } from "xrpl";
 const SOURCE_SECRET = process.env.ONRAMP_RLUSD_SOURCE_SECRET || '';
 const SOURCE_ADDRESS = process.env.ONRAMP_RLUSD_SOURCE_ADDRESS || '';
 const WS_URL = process.env.XRPL_WS_URL || "wss://s.altnet.rippletest.net:51233";
-const RLUSD_ISSUER_TESTNET = process.env.RLUSD_ISSUER_TESTNET || 'rQhWct2fv4Vc4KRjRgMrxa8xPN9Zx9iLKV';
-const RLUSD_ISSUER_MAINNET = process.env.RLUSD_ISSUER_MAINNET || 'rN5JM3R9Y4rCNQbhHDsJAKkpHBLJzx3yXA';
-const RLUSD_ISSUER = WS_URL.includes("altnet") ? RLUSD_ISSUER_TESTNET : RLUSD_ISSUER_MAINNET;
+const RLUSD_ISSUER = process.env.RLUSD_ISSUER || 'rQhWct2fv4Vc4KRjRgMrxa8xPN9Zx9iLKV';
 
 export async function sendRlusdToDestination(
   destinationAddress: string,
@@ -25,7 +23,7 @@ export async function sendRlusdToDestination(
     const wallet = XrplWallet.fromSeed(SOURCE_SECRET);
     const amount = {
       currency: "RLUSD",
-      issuer: RLUSD_ISSUER || RLUSD_ISSUER_TESTNET,
+      issuer: RLUSD_ISSUER,
       value: amountRlusd,
     };
     const tx: Payment = {

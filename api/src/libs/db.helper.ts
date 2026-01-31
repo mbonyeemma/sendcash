@@ -89,8 +89,11 @@ class DbHelper {
           const isProcedureCall = query.trim().startsWith('CALL');
           if (isProcedureCall) {
             data = results.length > 0 ? JSON.parse(JSON.stringify(results[0])) : [];
-          } else {
+          } else if (Array.isArray(results)) {
             data = results.length > 0 ? JSON.parse(JSON.stringify(results)) : [];
+          } else {
+            // INSERT/UPDATE/DELETE return OkPacket (object with insertId, affectedRows)
+            data = results;
           }
           resolve(data);
         });

@@ -10,7 +10,6 @@ router.get('/deposit/addresses', tokenRequired, getDepositAddresses);
 router.get('/balances', tokenRequired, getBalances);
 
 router.post('/webhook_rel', webhookRel);
-router.post('/webhook', webhook);
 router.post('/cryptoWebhook', cryptoWebhook);
 router.get('/getBalance', tokenRequired, getBalance);
 router.get('/accountStatement', tokenRequired, accountStatement);
@@ -36,7 +35,6 @@ router.post('/setTransactionPin', tokenRequired, setTransactionPin);
 router.post('/withdrawRequest', tokenRequired, withdrawRequest);
 router.post('/resetTransactionPin', tokenRequired, resetTransactionPin);
 
-router.post('/issueTokens', tokenRequired, issueTokens);
 
 router.post('/getExchangeRate', tokenRequired, getExchangeRate);
 router.get('/getTransactionById/:id', getTransactionById);
@@ -97,14 +95,7 @@ async function userTaskHistory(req: Request, res: Response) {
     res.status(200).json(result);
 }
 
-async function issueTokens(req: Request, res: Response) {
-    try {
-        const result = await new Wallet().issueTokens(req.body.transId);
-        res.status(200).json(result);
-    } catch (error) {
-        res.status(500).json({ message: 'Error issuing tokens', error });
-    }
-}
+ 
 
 async function validateUserAccount(req: Request, res: Response) {
     try {
@@ -321,14 +312,7 @@ async function cryptoWebhook(req: Request, res: Response) {
         res.status(500).json({ message: 'Error verifying phone', error });
     }
 }
-async function webhook(req: Request, res: Response) {
-    try {
-        const result = await new Wallet().HandleWebhook(req);
-        res.json({ received: true });
-    } catch (error) {
-        res.status(500).json({ message: 'Error verifying phone', error });
-    }
-}
+ 
 
 async function getBalances(req: Request, res: Response) {
     try {

@@ -24,6 +24,8 @@ interface SendModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  /** Payout currency from home dropdown: ugx, kes, tzs */
+  initialPayoutCurrency?: string;
 }
 
 interface SavedContact {
@@ -49,11 +51,16 @@ const calculateFee = (amount: number): number => {
   return amount * 0.01; // 1% fee for all RLUSD offramp
 };
 
-export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
+const PAYOUT_CURRENCY_MAP: Record<string, string> = { ugx: "UGX", kes: "KES", tzs: "TZS" };
+
+export const SendModal = ({ isOpen, onClose, onSuccess, initialPayoutCurrency }: SendModalProps) => {
   const { user } = useAuth();
   const { isConnected, address, connectWallet, network: xrplNetwork } = useXRPLWallet();
   const userCurrency = user?.currency || "UGX";
-  
+  const payoutCurrency =
+    (initialPayoutCurrency && PAYOUT_CURRENCY_MAP[initialPayoutCurrency.toLowerCase()]) ||
+    userCurrency;
+
   const [method, setMethod] = useState<SendMethod>("");
   const [network, setNetwork] = useState("");
   const [recipient, setRecipient] = useState("");
@@ -66,7 +73,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
   const [receiverType, setReceiverType] = useState<"saved" | "onetime">("saved");
   const [paymentMethods, setPaymentMethods] = useState<ApiPaymentMethod[]>([]);
   const [rlusdAmount, setRlusdAmount] = useState("");
-  const [ugxAmount, setUgxAmount] = useState("");
+  const [fiatAmount, setFiatAmount] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(false);
@@ -74,19 +81,19 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
   const sendCancelledRef = useRef(false);
   const SEND_TIMEOUT_MS = 90000; // 90s – user may need time to approve in GemWallet
 
-  // Exchange rate RLUSD to UGX
-  const rate = exchangeRates["rlusd"]?.["ugx"] || 3720;
+  const payoutCurrencyKey = payoutCurrency.toLowerCase();
+  const rate = exchangeRates["rlusd"]?.[payoutCurrencyKey] ?? exchangeRates["rlusd"]?.["ugx"] ?? 3720;
 
-  // Calculate UGX when RLUSD changes
+  // Calculate fiat (UGX/KES/TZS) when RLUSD changes
   useEffect(() => {
     if (rlusdAmount && !isNaN(parseFloat(rlusdAmount)) && rate > 0) {
       const rlusdNum = parseFloat(rlusdAmount);
       const fee = rlusdNum * 0.01; // 1% fee
       const netAmount = rlusdNum - fee;
-      const ugxValue = (netAmount * rate).toFixed(2);
-      setUgxAmount(ugxValue);
+      const value = (netAmount * rate).toFixed(2);
+      setFiatAmount(value);
     } else {
-      setUgxAmount("");
+      setFiatAmount("");
     }
   }, [rlusdAmount, rate]);
 
@@ -212,7 +219,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
       // 1) Create payout request – backend returns XRPL address + memo (numeric)
       const payoutPayload = {
         amount: parseFloat(rlusdAmount),
-        fiat_amount: parseFloat(ugxAmount),
+        fiat_amount: parseFloat(fiatAmount),
         payment_mode: paymentMode,
         account_number: accountNumber,
         bank_name: bankName || undefined,
@@ -251,7 +258,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
         return;
       }
       if (sendResult?.type === "response" && sendResult?.result?.hash) {
-        toast.success(`Sent ${rlusdAmount} RLUSD. Once confirmed on XRPL, ${ugxAmount} ${userCurrency} will be sent to the recipient.`);
+        toast.success(`Sent ${rlusdAmount} RLUSD. Once confirmed on XRPL, ${fiatAmount} ${payoutCurrency} will be sent to the recipient.`);
         resetAndClose();
         if (onSuccess) onSuccess();
       } else {
@@ -392,7 +399,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                     <div>
                       <p className="text-sm font-medium">RLUSD Offramp</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Send your RLUSD and recipient receives {userCurrency} via mobile money or bank transfer
+                        Send your RLUSD and recipient receives {payoutCurrency} via mobile money or bank transfer
                       </p>
                     </div>
                   </div>
@@ -445,12 +452,12 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                 </div>
 
                 {/* UGX Amount Display */}
-                {ugxAmount && (
+                {fiatAmount && (
                   <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">Recipient gets</p>
-                        <p className="text-2xl font-bold text-foreground">{ugxAmount} {userCurrency}</p>
+                        <p className="text-2xl font-bold text-foreground">{fiatAmount} {payoutCurrency}</p>
                       </div>
                       <ArrowRight className="w-6 h-6 text-primary" />
                     </div>
@@ -465,7 +472,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                       </div>
                       <div className="flex justify-between text-xs">
                         <span className="text-muted-foreground">Rate:</span>
-                        <span>1 RLUSD = {rate.toFixed(2)} {userCurrency}</span>
+                        <span>1 RLUSD = {rate.toFixed(2)} {payoutCurrency}</span>
                       </div>
                     </div>
                   </div>
@@ -571,12 +578,12 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                 </div>
 
                 {/* UGX Amount Display */}
-                {ugxAmount && (
+                {fiatAmount && (
                   <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">Recipient gets</p>
-                        <p className="text-2xl font-bold text-foreground">{ugxAmount} {userCurrency}</p>
+                        <p className="text-2xl font-bold text-foreground">{fiatAmount} {payoutCurrency}</p>
                       </div>
                       <ArrowRight className="w-6 h-6 text-primary" />
                     </div>
@@ -591,7 +598,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                       </div>
                       <div className="flex justify-between text-xs">
                         <span className="text-muted-foreground">Rate:</span>
-                        <span>1 RLUSD = {rate.toFixed(2)} {userCurrency}</span>
+                        <span>1 RLUSD = {rate.toFixed(2)} {payoutCurrency}</span>
                       </div>
                     </div>
                   </div>
@@ -750,7 +757,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                   </div>
                   <div className="flex justify-between items-center py-2">
                     <span className="text-sm text-muted-foreground">They Receive</span>
-                    <span className="font-semibold text-lg text-primary">{ugxAmount} {userCurrency}</span>
+                    <span className="font-semibold text-lg text-primary">{fiatAmount} {payoutCurrency}</span>
                   </div>
                   <div className="border-t border-border pt-3">
                     <div className="flex justify-between items-center py-1.5">

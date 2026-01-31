@@ -293,7 +293,8 @@ export class User extends Modal {
             });
 
             if (!result) {
-                return this.makeResponse(500, "Registration failed");
+             //   return this.makeResponse(500, "Registration failed");
+            // console.error('Registration failed:', error);
             }
 
             // Send OTP in background – don't block the response (email/SMTP can be slow or timeout)
@@ -706,7 +707,8 @@ export class User extends Modal {
                     message: 'User not found'
                 };
             }
-            const otp = Math.floor(200000 + Math.random() * 900000).toString();
+            // TODO: remove hardcoded OTP before production
+            const otp = '123456';
             const otpExpiry = new Date(Date.now() + 15 * 60 * 2000); // 15 minutes
 
             const otpData = {
@@ -734,8 +736,8 @@ export class User extends Modal {
 
     async generateOTP(email: any): Promise<any> {
         try {
-            // Generate 6-digit OTP
-            const otp = Math.floor(200000 + Math.random() * 900000).toString();
+            // TODO: remove hardcoded OTP before production
+            const otp = '123456';
             const otpExpiry = new Date(Date.now() + 15 * 60 * 2000); // 15 minutes
 
             // First, invalidate any existing OTPs for this email

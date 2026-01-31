@@ -38,7 +38,8 @@ export const AppDataSource = new DataSource({
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'kitipay',
   synchronize: true,
-  logging: process.env.NODE_ENV === 'development',
+  // Only enable query logging when explicitly set (avoids Railway 500 logs/sec limit)
+  logging: process.env.TYPEORM_LOGGING === 'true',
   entities: [
     User,
     Transaction,

@@ -17,6 +17,15 @@ function hexToUtf8(hex: string): string {
   }
 }
 
+/** Normalize XRPL currency: hex (40 chars) decodes to ASCII e.g. RLUSD */
+function normalizeCurrency(code: string | undefined): string {
+  if (!code || typeof code !== "string") return "";
+  if (code.length === 40 && /^[0-9A-Fa-f]+$/.test(code)) {
+    return hexToUtf8(code).replace(/\0/g, "").trim();
+  }
+  return code;
+}
+
 function getMemosAsText(tx: { Memos?: Array<{ Memo?: { MemoData?: string } }> }): string[] {
   const out: string[] = [];
   const memos = tx.Memos;
@@ -29,15 +38,17 @@ function getMemosAsText(tx: { Memos?: Array<{ Memo?: { MemoData?: string } }> })
 }
 
 function isRlusdPayment(tx: any): boolean {
-  if (tx.TransactionType !== "Payment") return false;
-  const dest = tx.Destination;
+  const txType = tx.TransactionType ?? tx.transaction_type;
+  if (txType !== "Payment") return false;
+  const dest = tx.Destination ?? tx.destination;
   if (!dest || dest !== PAYOUT_ADDRESS) return false;
-  const amount = tx.Amount;
+  // XRPL Payment can have Amount or DeliverMax (stream sends DeliverMax for token payments)
+  const amount = tx.Amount ?? tx.amount ?? tx.DeliverMax ?? tx.deliver_max;
   if (typeof amount === "string") return true; // XRP in drops
-  if (amount && typeof amount === "object" && amount.currency) {
-    const code = amount.currency;
-    const rlusd = code === "RLUSD" || (typeof code === "string" && code.toUpperCase() === "RLUSD");
-    return rlusd;
+  if (amount && typeof amount === "object") {
+    const raw = amount.currency ?? amount.Currency;
+    const code = normalizeCurrency(raw) || (typeof raw === "string" ? raw : "");
+    return code.toUpperCase() === "RLUSD";
   }
   return false;
 }
@@ -83,22 +94,52 @@ export async function startRlusdListener(): Promise<void> {
 
   c.on("transaction", async (tx: any) => {
     if (!isRunning) return;
-    // Stream message: { type, transaction?, hash? } or raw tx
-    const txn = tx.transaction ?? tx;
-    if (!txn) return;
-    if (!isRlusdPayment(txn)) return;
-    const memos = getMemosAsText(txn);
-    const memo = memos[0] ? memos[0].trim() : "";
-    if (!memo) {
-      console.log("[RLUSD listener] Payment with no memo ignored");
+    // Server may send transaction in .transaction or .tx_json (rippled stream format)
+    const txn = tx.transaction ?? tx.tx_json ?? tx;
+    const hash = tx.hash ?? txn?.hash ?? "";
+    const dest = txn?.Destination ?? txn?.destination;
+    const tag = txn?.DestinationTag ?? txn?.destination_tag;
+    const amount = txn?.Amount ?? txn?.amount ?? txn?.DeliverMax ?? txn?.deliver_max;
+    const txType = txn?.TransactionType ?? txn?.transaction_type ?? tx?.type;
+    // Always log every transaction event (at least one line)
+    console.log("[RLUSD listener] TX received | type:", txType, "| dest:", dest === PAYOUT_ADDRESS ? "OUR_ACCOUNT" : (dest || "?"), "| tag:", tag ?? "-", "| amount:", typeof amount === "object" ? JSON.stringify(amount) : (amount ?? "-"), "| hash:", hash || "-", "| validated:", tx.validated);
+    if (!txn) {
+      console.log("[RLUSD listener] Skipped: no transaction body, keys:", Object.keys(tx || {}));
       return;
     }
-    const hash = tx.hash ?? txn.hash ?? "";
+    if (dest == null && txn) {
+      console.log("[RLUSD listener] txn keys (for debug):", Object.keys(txn));
+    }
+    if (tx.validated === false) {
+      console.log("[RLUSD listener] Skipped: not validated yet");
+      return;
+    }
+    if (dest !== PAYOUT_ADDRESS) {
+      console.log("[RLUSD listener] Skipped: destination not custody account");
+      return;
+    }
+    if (!isRlusdPayment(txn)) {
+      console.log("[RLUSD listener] Skipped: not RLUSD/XRP payment, Amount:", amount);
+      return;
+    }
+    let refId = "";
+    if (tag != null && tag !== undefined) {
+      refId = String(tag);
+    }
+    if (!refId) {
+      const memos = getMemosAsText(txn);
+      refId = memos[0] ? memos[0].trim() : "";
+    }
+    if (!refId) {
+      console.log("[RLUSD listener] Skipped: no destination tag or memo");
+      return;
+    }
+    console.log("[RLUSD listener] Processing payout | ref:", refId, "| hash:", hash);
     try {
-      const result = await wallet.processRlusdPayoutReceived(memo, hash || "");
-      console.log("[RLUSD listener] Processed memo:", memo, "result:", result?.status, result?.message);
+      const result = await wallet.processRlusdPayoutReceived(refId, hash || "");
+      console.log("[RLUSD listener] Payout result | ref:", refId, "| status:", result?.status, "| message:", result?.message);
     } catch (e) {
-      console.error("[RLUSD listener] Error processing payout:", e);
+      console.error("[RLUSD listener] Payout error | ref:", refId, "|", e);
     }
   });
 }

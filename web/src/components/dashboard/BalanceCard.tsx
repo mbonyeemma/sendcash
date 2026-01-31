@@ -1,20 +1,27 @@
 import { motion } from "framer-motion";
-import { Eye, EyeOff, ArrowDownCircle, Send, ArrowLeftRight, Loader2, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, ArrowDownCircle, ArrowUpCircle, Send, ArrowLeftRight, Loader2, RefreshCw, ChevronDown } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { getCurrencyById } from "@/data/currencies";
+import { getCurrencyById, SEND_RECEIVE_CURRENCIES } from "@/data/currencies";
 import { xrplService } from "@/services/xrplService";
 import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface BalanceOverviewProps {
   onDeposit: () => void;
-  onSend: () => void;
+  onReceive: (currency: string) => void;
+  onSend: (currency: string) => void;
   onBalanceUpdate?: () => void;
 }
 
-export const BalanceOverview = ({ onDeposit, onSend, onBalanceUpdate }: BalanceOverviewProps) => {
+export const BalanceOverview = ({ onDeposit, onReceive, onSend, onBalanceUpdate }: BalanceOverviewProps) => {
   const [hidden, setHidden] = useState(false);
   const [balance, setBalance] = useState<string>("0");
   const [isLoading, setIsLoading] = useState(true);
@@ -145,21 +152,65 @@ export const BalanceOverview = ({ onDeposit, onSend, onBalanceUpdate }: BalanceO
         </div>
       </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-2 flex-wrap">
           <Button
             onClick={onDeposit}
-            className="flex-1 bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground border-0 h-11"
+            className="flex-1 min-w-[100px] bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground border-0 h-11"
           >
             <ArrowDownCircle className="w-4 h-4 mr-2" />
             Buy RLUSD
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="flex-1 min-w-[100px] bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground border-0 h-11">
+                <ArrowUpCircle className="w-4 h-4 mr-2" />
+                Receive
+                <ChevronDown className="w-4 h-4 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              {SEND_RECEIVE_CURRENCIES.map((id) => {
+                const c = getCurrencyById(id);
+                if (!c) return null;
+                return (
+                  <DropdownMenuItem key={id} onClick={() => onReceive(id)}>
+                    <img src={c.logo} alt={c.symbol} className="w-6 h-4 object-contain rounded mr-2" />
+                    <span>{c.symbol}</span>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button
-            onClick={onSend}
-            className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground border-0 h-11 font-semibold"
+            disabled
+            className="flex-1 min-w-[100px] bg-primary-foreground/10 text-primary-foreground/60 border-0 h-11 cursor-not-allowed"
+            title="Coming soon"
           >
-            <Send className="w-4 h-4 mr-2" />
-            Send
+            <ArrowLeftRight className="w-4 h-4 mr-2" />
+            Swap
+            <span className="text-xs ml-1">(Soon)</span>
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="flex-1 min-w-[100px] bg-accent hover:bg-accent/90 text-accent-foreground border-0 h-11 font-semibold">
+                <Send className="w-4 h-4 mr-2" />
+                Send
+                <ChevronDown className="w-4 h-4 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {SEND_RECEIVE_CURRENCIES.map((id) => {
+                const c = getCurrencyById(id);
+                if (!c) return null;
+                return (
+                  <DropdownMenuItem key={id} onClick={() => onSend(id)}>
+                    <img src={c.logo} alt={c.symbol} className="w-6 h-4 object-contain rounded mr-2" />
+                    <span>Send to {c.symbol}</span>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
     </motion.div>
   );

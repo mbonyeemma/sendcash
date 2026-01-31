@@ -56,6 +56,13 @@ export const currencies: Currency[] = [
     logo: "https://flagcdn.com/w40/ke.png"
   },
   {
+    id: "tzs",
+    name: "Tanzanian Shilling",
+    symbol: "TZS",
+    type: "fiat",
+    logo: "https://flagcdn.com/w40/tz.png"
+  },
+  {
     id: "eur",
     name: "Euro",
     symbol: "EUR",
@@ -71,11 +78,15 @@ export const getCurrencyById = (id: string) => currencies.find(c => c.id === id)
 
 // Exchange rates (mock)
 export const exchangeRates: Record<string, Record<string, number>> = {
-  usdc: { ugx: 3720, usd: 1, kes: 129, eur: 0.92 },
-  usdt: { ugx: 3720, usd: 1, kes: 129, eur: 0.92 },
-  rlusd: { ugx: 3720, usd: 1, kes: 129, eur: 0.92 },
-  usd: { ugx: 3720, kes: 129, eur: 0.92 },
-  ugx: { usd: 0.00027, usdt: 0.00027, usdc: 0.00027, rlusd: 0.00027, kes: 0.035, eur: 0.00025 },
-  kes: { ugx: 28.8, usd: 0.0078, eur: 0.0071 },
-  eur: { ugx: 4043, usd: 1.09, kes: 140 }
+  usdc: { ugx: 3720, usd: 1, kes: 129, tzs: 2550, eur: 0.92 },
+  usdt: { ugx: 3720, usd: 1, kes: 129, tzs: 2550, eur: 0.92 },
+  rlusd: { ugx: 3720, usd: 1, kes: 129, tzs: 2550, eur: 0.92 },
+  usd: { ugx: 3720, kes: 129, tzs: 2550, eur: 0.92 },
+  ugx: { usd: 0.00027, usdt: 0.00027, usdc: 0.00027, rlusd: 0.00027, kes: 0.035, tzs: 0.00069, eur: 0.00025 },
+  kes: { ugx: 28.8, usd: 0.0078, tzs: 19.8, eur: 0.0071 },
+  tzs: { ugx: 1.46, usd: 0.00039, kes: 0.05, eur: 0.00036 },
+  eur: { ugx: 4043, usd: 1.09, kes: 140, tzs: 2770 }
 };
+
+// Send/Receive destination currencies (fiat with flags)
+export const SEND_RECEIVE_CURRENCIES = ["ugx", "kes", "tzs"] as const;
