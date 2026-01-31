@@ -89,6 +89,78 @@ export const AmountItem = ({
   );
 };
 
+/** Unified amount + asset selector (XRP/RLUSD) – same visual as AmountItem for consistency. */
+export type CryptoAssetId = "XRP" | "RLUSD";
+
+interface AssetAmountItemProps {
+  assetId: CryptoAssetId;
+  onAssetChange: (value: CryptoAssetId) => void;
+  amount: string;
+  onAmountChange: (value: string) => void;
+  amountError?: string;
+  onClearAmountError?: () => void;
+}
+
+const CRYPTO_ASSET_OPTIONS: { id: CryptoAssetId; symbol: string; logo?: string }[] = [
+  { id: "XRP", symbol: "XRP" },
+  { id: "RLUSD", symbol: "RLUSD", logo: "https://cryptologos.cc/logos/xrp-xrp-logo.png?v=040" },
+];
+
+export const AssetAmountItem = ({
+  assetId,
+  onAssetChange,
+  amount,
+  onAmountChange,
+  amountError,
+  onClearAmountError,
+}: AssetAmountItemProps) => {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-sm font-medium">Amount</Label>
+      <div className="flex h-12 rounded-lg border border-input bg-background overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+        <Input
+          type="number"
+          step={assetId === "XRP" ? "0.000001" : "0.01"}
+          value={amount}
+          onChange={(e) => {
+            onAmountChange(e.target.value);
+            onClearAmountError?.();
+          }}
+          placeholder="0.00"
+          className="h-full min-w-0 flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
+        />
+        <div className="flex items-center border-l border-input bg-muted/50 px-2">
+          <Select value={assetId} onValueChange={(v) => onAssetChange(v as CryptoAssetId)}>
+            <SelectTrigger className="h-9 w-[100px] border-0 bg-transparent shadow-none focus:ring-0 gap-1.5 pr-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CRYPTO_ASSET_OPTIONS.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  <span className="flex items-center gap-2">
+                    {c.logo ? (
+                      <img src={c.logo} alt={c.symbol} className="w-5 h-4 object-contain rounded" />
+                    ) : (
+                      <span className="w-5 h-4 rounded bg-white text-black flex items-center justify-center text-[10px] font-bold">XRP</span>
+                    )}
+                    {c.symbol}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      {amountError && (
+        <p className="text-sm text-destructive flex items-center gap-1">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          {amountError}
+        </p>
+      )}
+    </div>
+  );
+};
+
 /** Compact read-only "You'll receive" / quote display. Always shows rate and fee when rate > 0; shows RLUSD amount when user entered fiat. */
 interface ReceiveAmountDisplayProps {
   rlusdAmount: string;

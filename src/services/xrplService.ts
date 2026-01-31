@@ -70,6 +70,7 @@ export const xrplService = {
   /**
    * Send payment using GemWallet (optionally with memo for RLUSD offramp)
    */
+  /** XRP: 1 XRP = 1e6 drops. GemWallet expects native XRP amount as drops (string). */
   sendPayment: async (
     destination: string,
     amount: string,
@@ -78,9 +79,14 @@ export const xrplService = {
     memo?: string
   ) => {
     try {
+      // User-facing amount is in XRP; protocol expects drops (integer string)
+      const amountForPayment =
+        currency === "XRP"
+          ? String(Math.round(parseFloat(amount || "0") * 1_000_000))
+          : amount;
       const payment: Record<string, unknown> = {
         amount: currency === "XRP"
-          ? amount
+          ? amountForPayment
           : {
               currency: currency,
               issuer: issuer || "",

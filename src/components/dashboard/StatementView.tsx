@@ -48,45 +48,38 @@ interface Transaction {
 
 // Helper function to map API transaction to UI transaction
 const mapApiTransactionToUI = (apiTx: any): Transaction => {
-  // The API returns transactions with fields like: id, trans_id, user_id, status, currency, amount, running_balance, created_at, etc.
-  
-  // Determine transaction type from API response
-  // Check various possible fields for transaction type
-  const txType = (apiTx.type || apiTx.transaction_type || apiTx.tx_type || "").toLowerCase();
-  const type = txType.includes("deposit") ? "deposit" :
-               txType.includes("withdraw") ? "withdrawal" :
-               txType.includes("send") || txType.includes("transfer") ? "send" :
-               txType.includes("receive") ? "receive" : 
-               // Fallback: check if it's a credit (receive) or debit (send)
-               (apiTx.cr_wallet_id && apiTx.dr_wallet_id) ? "send" : "deposit";
-  
-  // Map status - API uses "SUCCESS", "PENDING", "FAILED"
+  const txType = (apiTx.trans_type || apiTx.type || apiTx.tx_type || "").toLowerCase();
+  const type =
+    txType.includes("onramp") || txType.includes("deposit") ? "deposit" :
+    txType.includes("offramp") || txType.includes("withdraw") ? "withdrawal" :
+    txType.includes("send") || txType.includes("transfer") ? "send" :
+    txType.includes("receive") ? "receive" :
+    (apiTx.cr_wallet_id && apiTx.dr_wallet_id) ? "send" : "deposit";
+
   const apiStatus = (apiTx.status || "").toUpperCase();
-  const status = apiStatus === "SUCCESS" || apiStatus === "COMPLETED" ? "completed" :
-                 apiStatus === "PENDING" ? "pending" : "failed";
+  const status =
+    apiStatus === "SUCCESS" || apiStatus === "COMPLETED" ? "completed" :
+    apiStatus === "PENDING" || apiStatus === "PENDING_RLUSD" || apiStatus === "PENDING_ONRAMP" || apiStatus === "INPROGRESS" ? "pending" :
+    "failed";
 
-  // Get description from various possible fields
-  const description = apiTx.description || apiTx.narration || apiTx.remarks || apiTx.type || "Transaction";
+  const description = apiTx.narration || apiTx.description || apiTx.remarks || apiTx.trans_type || "Transaction";
 
-  // Format date - handle different date formats
-  let formattedDate = apiTx.created_at || apiTx.date || apiTx.timestamp || new Date().toISOString();
-  if (formattedDate && typeof formattedDate === 'string') {
+  let formattedDate = apiTx.created_on || apiTx.created_at || apiTx.date || new Date().toISOString();
+  if (formattedDate && typeof formattedDate === "string") {
     try {
       const date = new Date(formattedDate);
-      if (!isNaN(date.getTime())) {
-        formattedDate = date.toLocaleString();
-      }
-    } catch (e) {
-      // Keep original if parsing fails
+      if (!isNaN(date.getTime())) formattedDate = date.toLocaleString();
+    } catch {
+      // keep original
     }
   }
 
   return {
-    id: String(apiTx.id || apiTx.trans_id || Math.random().toString()),
+    id: String(apiTx.id ?? apiTx.trans_id ?? Math.random().toString()),
     type: type as Transaction["type"],
     amount: Math.abs(parseFloat(apiTx.amount || "0")),
     currency: (apiTx.currency || "UGX").toUpperCase(),
-    description: description,
+    description,
     date: formattedDate,
     status: status as Transaction["status"],
   };
@@ -112,6 +105,24 @@ const statusColors = {
   failed: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
 
+/** Format API trans_type for table display */
+const formatTransType = (transType: string | undefined): string => {
+  if (!transType) return "—";
+  const t = String(transType).toLowerCase().replace(/_/g, " ");
+  if (t.includes("onramp")) return "Onramp";
+  if (t.includes("offramp")) return "Offramp";
+  return t.charAt(0).toUpperCase() + t.slice(1);
+};
+
+/** Description for table: hide raw DEST:address, show friendly label */
+const formatDescription = (description: string | undefined, transType: string | undefined): string => {
+  const d = (description || "").trim();
+  if (d.startsWith("DEST:")) return "Buy RLUSD";
+  const t = (transType || "").toLowerCase();
+  if (t.includes("onramp") && !d) return "Buy RLUSD";
+  return d || "—";
+};
+
 const ITEMS_PER_PAGE = 10;
 
 export const StatementView = () => {
@@ -128,13 +139,12 @@ export const StatementView = () => {
 
   useEffect(() => {
     fetchStatement();
-  }, [user?.currency]);
+  }, []);
 
   const fetchStatement = async () => {
     try {
       setIsLoading(true);
-      const currency = user?.currency || "UGX";
-      const response = await walletApi.getStatement(currency);
+      const response = await walletApi.getStatement();
       console.log("Statement API Response:", response); // Debug log
       
       // API returns: { status: 200, message: "...", data: [...] }
@@ -281,6 +291,7 @@ export const StatementView = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[50px]">Type</TableHead>
+                  <TableHead className="w-[100px]">Trans type</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
@@ -290,31 +301,47 @@ export const StatementView = () => {
               <TableBody>
                 {paginatedTransactions.map((tx) => {
                   const Icon = typeIcons[tx.type];
+                  const raw = rawTransactions.find((r) => String(r.id ?? r.trans_id) === tx.id);
+                  const assetAmount = raw?.asset_amount != null ? parseFloat(String(raw.asset_amount)) : null;
+                  const asset = raw?.asset || null;
+                  const transType = raw?.trans_type;
+                  const description = formatDescription(tx.description, transType);
                   return (
-                    <TableRow key={tx.id}>
+                    <TableRow
+                      key={tx.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => openDetail(tx)}
+                    >
                       <TableCell>
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${typeColors[tx.type]}`}>
                           <Icon className="w-5 h-5" />
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div>
-                          <p className="font-medium text-foreground">{tx.description}</p>
-                          <p className="text-sm text-muted-foreground">{tx.currency}</p>
-                        </div>
+                        <span className="text-sm font-medium text-foreground">{formatTransType(transType)}</span>
+                      </TableCell>
+                      <TableCell>
+                        <p className="font-medium text-foreground">{description}</p>
                       </TableCell>
                       <TableCell>
                         <span className="text-sm text-muted-foreground">{tx.date}</span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <p className={`font-semibold ${
-                          tx.type === "deposit" || tx.type === "receive" 
-                            ? "text-emerald-600 dark:text-emerald-400" 
-                            : "text-foreground"
-                        }`}>
-                          {tx.type === "deposit" || tx.type === "receive" ? "+" : "-"}
-                          {tx.amount.toLocaleString()} {tx.currency}
-                        </p>
+                        <div>
+                          <p className={`font-semibold ${
+                            tx.type === "deposit" || tx.type === "receive"
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-foreground"
+                          }`}>
+                            {tx.type === "deposit" || tx.type === "receive" ? "+" : "-"}
+                            {tx.amount.toLocaleString()} {tx.currency}
+                          </p>
+                          {assetAmount != null && asset && (
+                            <p className="text-xs text-muted-foreground">
+                              {assetAmount.toLocaleString()} {asset}
+                            </p>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-center">
                         <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${statusColors[tx.status]}`}>
@@ -380,7 +407,7 @@ export const StatementView = () => {
 
       {/* Transaction detail dialog */}
       <Dialog open={!!selectedTx} onOpenChange={(open) => !open && setSelectedTx(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Transaction details</DialogTitle>
           </DialogHeader>
@@ -388,11 +415,11 @@ export const StatementView = () => {
             <div className="space-y-4 pt-2">
               <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Type</span>
+                  <span className="text-muted-foreground block text-xs">Type</span>
                   <p className="font-medium capitalize">{selectedTx.type}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Status</span>
+                  <span className="text-muted-foreground block text-xs">Status</span>
                   <p>
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[selectedTx.status]}`}>
                       {selectedTx.status}
@@ -400,37 +427,63 @@ export const StatementView = () => {
                   </p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Amount</span>
+                  <span className="text-muted-foreground block text-xs">Amount</span>
                   <p className="font-semibold">
                     {selectedTx.type === "deposit" || selectedTx.type === "receive" ? "+" : "-"}
                     {selectedTx.amount.toLocaleString()} {selectedTx.currency}
                   </p>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Currency</span>
-                  <p className="font-medium">{selectedTx.currency}</p>
-                </div>
+                {selectedRaw?.asset_amount != null && selectedRaw?.asset && (
+                  <div>
+                    <span className="text-muted-foreground block text-xs">Asset</span>
+                    <p className="font-medium">
+                      {parseFloat(String(selectedRaw.asset_amount)).toLocaleString()} {selectedRaw.asset}
+                    </p>
+                  </div>
+                )}
+                {selectedRaw?.fee != null && parseFloat(String(selectedRaw.fee)) !== 0 && (
+                  <div>
+                    <span className="text-muted-foreground block text-xs">Fee</span>
+                    <p className="font-medium">{selectedRaw.fee} {selectedRaw.currency}</p>
+                  </div>
+                )}
                 <div className="col-span-2">
-                  <span className="text-muted-foreground">Description</span>
+                  <span className="text-muted-foreground block text-xs">Narration</span>
                   <p className="font-medium">{selectedTx.description}</p>
                 </div>
+                {selectedRaw?.ref_id && (
+                  <div>
+                    <span className="text-muted-foreground block text-xs">Reference</span>
+                    <p className="font-mono text-xs">{selectedRaw.ref_id}</p>
+                  </div>
+                )}
+                {selectedRaw?.account_number && (
+                  <div>
+                    <span className="text-muted-foreground block text-xs">Account / Phone</span>
+                    <p className="font-medium">{selectedRaw.account_number}</p>
+                  </div>
+                )}
+                {selectedRaw?.destination_address && (
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground block text-xs">Destination (XRPL)</span>
+                    <p className="font-mono text-xs break-all">{selectedRaw.destination_address}</p>
+                  </div>
+                )}
                 <div className="col-span-2">
-                  <span className="text-muted-foreground">Date</span>
+                  <span className="text-muted-foreground block text-xs">Date</span>
                   <p className="text-muted-foreground">{selectedTx.date}</p>
                 </div>
                 <div className="col-span-2">
-                  <span className="text-muted-foreground">Transaction ID</span>
-                  <p className="font-mono text-xs break-all">{selectedTx.id}</p>
+                  <span className="text-muted-foreground block text-xs">Transaction ID</span>
+                  <p className="font-mono text-xs break-all">{selectedRaw?.trans_id ?? selectedTx.id}</p>
                 </div>
+                {selectedRaw?.hash && (
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground block text-xs">Hash</span>
+                    <p className="font-mono text-xs break-all">{selectedRaw.hash}</p>
+                  </div>
+                )}
               </div>
-              {selectedRaw && Object.keys(selectedRaw).length > 0 && (
-                <div className="border-t pt-3">
-                  <p className="text-xs text-muted-foreground mb-2">Raw details</p>
-                  <pre className="text-xs bg-muted rounded-lg p-3 overflow-auto max-h-40">
-                    {JSON.stringify(selectedRaw, null, 2)}
-                  </pre>
-                </div>
-              )}
             </div>
           )}
         </DialogContent>

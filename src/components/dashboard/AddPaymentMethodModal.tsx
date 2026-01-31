@@ -180,6 +180,7 @@ export const AddPaymentMethodModal = ({
               placeholder="e.g. physical address or reference"
               className="mt-1.5"
             />
+            <p className="text-xs text-muted-foreground mt-1">Saved with this payment method for reference.</p>
           </div>
           <Button onClick={handleSubmit} disabled={isLoading} className="w-full">
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Add"}

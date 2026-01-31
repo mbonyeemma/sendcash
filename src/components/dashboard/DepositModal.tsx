@@ -26,11 +26,6 @@ interface DepositModalProps {
   onSuccess?: () => void;
 }
 
-const mobileNetworks = [
-  { id: "mtn", name: "MTN Mobile Money", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/New-mtn-logo.svg/1200px-New-mtn-logo.svg.png" },
-  { id: "airtel", name: "Airtel Money", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Airtel_Africa_logo.svg/1200px-Airtel_Africa_logo.svg.png" },
-];
-
 export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) => {
   const { user } = useAuth();
   const { isConnected, address, connectWallet } = useXRPLWallet();
@@ -42,7 +37,6 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
   const rate = selectedCurrency?.rlusd_rate ?? 0; // fiat per 1 RLUSD
   const feePercent = selectedCurrency?.fee_percent ?? 0.5;
 
-  const [network, setNetwork] = useState("");
   const [phone, setPhone] = useState("");
   const [fiatAmount, setFiatAmount] = useState("");
   const [rlusdAmount, setRlusdAmount] = useState("");
@@ -130,9 +124,6 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
     if (!fiatAmount || parseFloat(fiatAmount) <= 0) {
       newErrors.fiatAmount = "Please enter a valid amount";
     }
-    if (!network) {
-      newErrors.network = "Please select a network";
-    }
     if (receiverType === "saved" && !selectedPaymentMethod) {
       newErrors.payment = "Please select a payment method";
     } else if (receiverType === "onetime" && !phone) {
@@ -196,7 +187,6 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
   };
 
   const resetAndClose = () => {
-    setNetwork("");
     setPhone("");
     setFiatAmount("");
     setRlusdAmount("");
@@ -338,11 +328,12 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                   isLoading={ratesLoading}
                 />
 
-                {/* Receiver Type Toggle */}
+                {/* Payment From: fixed layout so "Add new payment method" stays in same place */}
                 <div>
                   <Label className="text-sm font-medium mb-2">Payment From</Label>
                   <div className="flex gap-2">
                     <button
+                      type="button"
                       onClick={() => {
                         setReceiverType("saved");
                         setSelectedPaymentMethod("");
@@ -357,6 +348,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                       Saved Account
                     </button>
                     <button
+                      type="button"
                       onClick={() => {
                         setReceiverType("onetime");
                         setSelectedPaymentMethod("");
@@ -373,7 +365,16 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                   </div>
                 </div>
 
-                {/* Payment Method Selection */}
+                {/* Link always in same place to avoid flicker */}
+                <button
+                  type="button"
+                  className="text-sm text-primary hover:underline block"
+                  onClick={() => setAddPaymentMethodOpen(true)}
+                >
+                  Add new payment method
+                </button>
+
+                {/* Saved: Select payment method */}
                 {receiverType === "saved" && (
                   <div>
                     <Label className="text-sm font-medium">Select Payment Method</Label>
@@ -404,6 +405,11 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                                 <span className="text-xs text-muted-foreground">
                                   {pm.phone_number}
                                 </span>
+                                {pm.bank_address && (
+                                  <span className="text-xs text-muted-foreground truncate max-w-[200px]" title={pm.bank_address}>
+                                    {pm.bank_address}
+                                  </span>
+                                )}
                               </div>
                             </SelectItem>
                           ))
@@ -418,15 +424,8 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                     )}
                   </div>
                 )}
-                <button
-                  type="button"
-                  className="text-sm text-primary hover:underline"
-                  onClick={() => setAddPaymentMethodOpen(true)}
-                >
-                  Add new payment method
-                </button>
 
-                {/* Phone Number Input */}
+                {/* New Number: Phone input with unified border */}
                 {receiverType === "onetime" && (
                   <div>
                     <Label className="text-sm font-medium">Phone Number</Label>
@@ -473,10 +472,6 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                     </div>
                   </div>
                   <div className="border-t border-border pt-3 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Network</span>
-                      <span className="text-sm font-medium capitalize">{network}</span>
-                    </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Phone</span>
                       <span className="text-sm font-medium">{phone}</span>

@@ -228,8 +228,8 @@ export const walletApi = {
     return api.get<BalanceResponse>(`/wallet/balance/${currency}`);
   },
 
-  getStatement: async (currency: string = "UGX"): Promise<ApiResponse<StatementResponse>> => {
-    return api.get<StatementResponse>(`/wallet/accountStatement?currency=${currency}`);
+  getStatement: async (): Promise<ApiResponse<StatementResponse>> => {
+    return api.get<StatementResponse>("/wallet/accountStatement");
   },
 
   transfer: async (data: TransferRequest): Promise<ApiResponse> => {

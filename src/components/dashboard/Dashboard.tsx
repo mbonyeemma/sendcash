@@ -164,7 +164,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
             {/* Notifications */}
             <Popover open={notificationOpen} onOpenChange={setNotificationOpen}>
               <PopoverTrigger asChild>
-                <button className="relative p-2 rounded-lg hover:bg-muted transition-colors">
+                <button type="button" className="relative p-2 rounded-lg hover:bg-muted transition-colors">
                   <Bell className="w-5 h-5 text-foreground" />
                   {unreadCount > 0 && (
                     <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-destructive text-destructive-foreground">
@@ -173,7 +173,12 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
                   )}
                 </button>
               </PopoverTrigger>
-              <PopoverContent align="end" className="w-80 p-0">
+              <PopoverContent align="end" className="w-80 p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
+                <div
+                  className="min-h-[200px]"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
                 <div className="p-4 border-b border-border">
                   <h3 className="font-semibold text-foreground">Notifications</h3>
                 </div>
@@ -191,14 +196,19 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
                     <div className="divide-y divide-border">
                       {notifications.slice(0, 10).map((notification) => (
                         <div
-                          key={notification.id}
+                          key={String(notification.id)}
+                          role="button"
+                          tabIndex={0}
                           className={`p-4 hover:bg-muted/50 transition-colors cursor-pointer ${
                             !notification.read ? "bg-primary/5" : ""
                           }`}
-                          onClick={async () => {
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
                             if (!notification.read) {
                               try {
-                                await notificationApi.markAsRead([notification.id]);
+                                await notificationApi.markAsRead([String(notification.id)]);
                                 setNotifications(prev =>
                                   prev.map(n =>
                                     n.id === notification.id ? { ...n, read: true } : n
@@ -230,6 +240,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
                 {notifications.length > 0 && (
                   <div className="p-2 border-t border-border">
                     <button
+                      type="button"
                       onClick={() => {
                         handleViewChange("settings");
                         setNotificationOpen(false);
@@ -240,6 +251,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
                     </button>
                   </div>
                 )}
+                </div>
               </PopoverContent>
             </Popover>
 
@@ -325,7 +337,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
             {/* Notifications */}
             <Popover open={notificationOpen} onOpenChange={setNotificationOpen}>
               <PopoverTrigger asChild>
-                <button className="relative p-2 rounded-lg hover:bg-muted transition-colors">
+                <button type="button" className="relative p-2 rounded-lg hover:bg-muted transition-colors">
                   <Bell className="w-5 h-5 text-foreground" />
                   {unreadCount > 0 && (
                     <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-destructive text-destructive-foreground">
@@ -334,7 +346,12 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
                   )}
                 </button>
               </PopoverTrigger>
-              <PopoverContent align="end" className="w-80 p-0">
+              <PopoverContent align="end" className="w-80 p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
+                <div
+                  className="min-h-[200px]"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
                 <div className="p-4 border-b border-border">
                   <h3 className="font-semibold text-foreground">Notifications</h3>
                 </div>
@@ -352,14 +369,19 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
                     <div className="divide-y divide-border">
                       {notifications.slice(0, 10).map((notification) => (
                         <div
-                          key={notification.id}
+                          key={String(notification.id)}
+                          role="button"
+                          tabIndex={0}
                           className={`p-4 hover:bg-muted/50 transition-colors cursor-pointer ${
                             !notification.read ? "bg-primary/5" : ""
                           }`}
-                          onClick={async () => {
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
                             if (!notification.read) {
                               try {
-                                await notificationApi.markAsRead([notification.id]);
+                                await notificationApi.markAsRead([String(notification.id)]);
                                 setNotifications(prev =>
                                   prev.map(n =>
                                     n.id === notification.id ? { ...n, read: true } : n
@@ -391,6 +413,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
                 {notifications.length > 0 && (
                   <div className="p-2 border-t border-border">
                     <button
+                      type="button"
                       onClick={() => {
                         handleViewChange("settings");
                         setNotificationOpen(false);
@@ -401,6 +424,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
                     </button>
                   </div>
                 )}
+                </div>
               </PopoverContent>
             </Popover>
 
