@@ -63,6 +63,20 @@ export const currencies: Currency[] = [
     logo: "https://flagcdn.com/w40/tz.png"
   },
   {
+    id: "rwf",
+    name: "Rwandan Franc",
+    symbol: "RWF",
+    type: "fiat",
+    logo: "https://flagcdn.com/w40/rw.png"
+  },
+  {
+    id: "ssd",
+    name: "South Sudanese Pound",
+    symbol: "SSD",
+    type: "fiat",
+    logo: "https://flagcdn.com/w40/ss.png"
+  },
+  {
     id: "eur",
     name: "Euro",
     symbol: "EUR",
@@ -76,6 +90,15 @@ export const fiatCurrencies = currencies.filter(c => c.type === "fiat");
 
 export const getCurrencyById = (id: string) => currencies.find(c => c.id === id);
 
+// Fiat to USD rate (for display; 1 USD = this many units of fiat)
+export const fiatToUsdRate: Record<string, number> = {
+  UGX: 0.00027,
+  KES: 0.0078,
+  TZS: 0.00039,
+  RWF: 0.00078,
+  SSD: 0.0016,
+};
+
 // Exchange rates (mock)
 export const exchangeRates: Record<string, Record<string, number>> = {
   usdc: { ugx: 3720, usd: 1, kes: 129, tzs: 2550, eur: 0.92 },
@@ -85,6 +108,8 @@ export const exchangeRates: Record<string, Record<string, number>> = {
   ugx: { usd: 0.00027, usdt: 0.00027, usdc: 0.00027, rlusd: 0.00027, kes: 0.035, tzs: 0.00069, eur: 0.00025 },
   kes: { ugx: 28.8, usd: 0.0078, tzs: 19.8, eur: 0.0071 },
   tzs: { ugx: 1.46, usd: 0.00039, kes: 0.05, eur: 0.00036 },
+  rwf: { usd: 0.00078 },
+  ssd: { usd: 0.0016 },
   eur: { ugx: 4043, usd: 1.09, kes: 140, tzs: 2770 }
 };
 

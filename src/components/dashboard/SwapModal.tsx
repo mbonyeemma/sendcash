@@ -4,12 +4,19 @@ import { X, ArrowDownCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { getCurrencyById } from "@/data/currencies";
 
 interface SwapModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+const stableCoinsForSwap = [
+  { id: "rlusd", label: "RLUSD", available: true },
+  { id: "usdc", label: "USDC", available: false },
+  { id: "usdt", label: "USDT", available: false },
+];
 
 export const SwapModal = ({ isOpen, onClose }: SwapModalProps) => {
   const [amount, setAmount] = useState("");
@@ -46,6 +53,29 @@ export const SwapModal = ({ isOpen, onClose }: SwapModalProps) => {
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-5">
+            <p className="text-sm text-muted-foreground">Stablecoins</p>
+            <div className="space-y-2">
+              {stableCoinsForSwap.map((coin) => {
+                const info = getCurrencyById(coin.id);
+                return (
+                  <div
+                    key={coin.id}
+                    className="flex items-center justify-between p-3 rounded-xl border border-border bg-muted/30"
+                  >
+                    <div className="flex items-center gap-3">
+                      {info?.logo && (
+                        <img src={info.logo} alt={coin.label} className="w-8 h-6 object-contain rounded" />
+                      )}
+                      <span className="font-semibold text-foreground">{coin.label}</span>
+                    </div>
+                    {!coin.available && (
+                      <Badge variant="secondary" className="text-xs">COMING SOON</Badge>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
             <div className="rounded-xl border border-border bg-muted/30 p-4">
               <p className="text-sm text-muted-foreground mb-2">From</p>
               <div className="flex items-center gap-3">
@@ -69,6 +99,7 @@ export const SwapModal = ({ isOpen, onClose }: SwapModalProps) => {
                   <img src={usdcInfo.logo} alt="USDC" className="w-8 h-6 object-contain rounded" />
                 )}
                 <span className="font-semibold text-foreground">USDC</span>
+                <Badge variant="secondary" className="text-xs">COMING SOON</Badge>
               </div>
             </div>
 

@@ -13,7 +13,7 @@ const Index = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Show landing page
+  // Show landing page (optional marketing page; main entry is now / = Login)
   return (
     <div className="min-h-screen bg-background">
       <Header />

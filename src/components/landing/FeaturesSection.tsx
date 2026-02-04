@@ -9,8 +9,8 @@ const features = [
   },
   {
     icon: Bitcoin,
-    title: "Crypto Support",
-    description: "Buy, sell, and store TRON, DCS, XLUSD and other cryptocurrencies securely.",
+    title: "Cash-In & Cash-Out",
+    description: "Cash in with mobile money, cash out to mobile or bank. Support for RLUSD, USDC, and more.",
   },
   {
     icon: CreditCard,

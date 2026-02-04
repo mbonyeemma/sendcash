@@ -23,6 +23,18 @@ export const removeAuthToken = (): void => {
   localStorage.removeItem("auth_token");
 };
 
+/** User-friendly messages for common API errors (all toasts are dismissible via Sonner close button) */
+function getFriendlyMessage(serverMessage: string, status: number): string {
+  const lower = (serverMessage || "").toLowerCase();
+  if (status === 401 || lower.includes("invalid access token") || lower.includes("unauthorized")) {
+    return "Your session has expired. Please sign in again.";
+  }
+  if (lower.includes("account not found")) {
+    return "No account found with that information. Check your details or sign up.";
+  }
+  return serverMessage;
+}
+
 // Generic API request function
 const request = async <T>(
   endpoint: string,
@@ -41,40 +53,32 @@ const request = async <T>(
       headers,
     });
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
+    const status = response.status || data.status || 500;
+    const serverMessage = data.message || data.error || `Request failed (${status})`;
 
-    // Check HTTP status code OR error status in response body
-    // Some APIs return 200 OK but include error status in the response body
-    const isError = !response.ok || (data.status && data.status >= 400);
-    
-    if (isError) {
-      // Show toast notification with server message
-      const serverMessage = data.message || data.error || `Request failed with status ${response.status || data.status || 'unknown'}`;
-      toast.error(serverMessage);
+    // 401: clear token and redirect to login so user can sign in again
+    if (status === 401) {
+      removeAuthToken();
+      toast.error(getFriendlyMessage(serverMessage, status), { duration: 8000 });
+      window.location.href = "/login?reason=session_expired";
       throw new Error(serverMessage);
     }
 
-    // Return the data in the expected ApiResponse format
-    // The API returns { status, message, data } so we return it as-is
+    const isError = !response.ok || (status >= 400);
+    if (isError) {
+      const friendly = getFriendlyMessage(serverMessage, status);
+      toast.error(friendly, { duration: 6000 });
+      throw new Error(serverMessage);
+    }
+
     return data;
   } catch (error: any) {
-    // Handle network errors
+    if (error.message && (error.message.includes("session") || error.message.includes("401"))) throw error;
     if (error instanceof TypeError) {
-      const networkError = "Network error. Please check your connection.";
-      toast.error(networkError);
-      throw new Error(networkError);
+      toast.error("Network error. Please check your connection.", { duration: 6000 });
+      throw new Error("Network error");
     }
-    
-    // If error already has a message (from server), it's already shown in toast above
-    // Only re-throw if it's not already handled
-    if (error.message && !error.message.includes("Network error")) {
-      // Error message was already shown in toast, just re-throw
-      throw error;
-    }
-    
-    // For any other unhandled errors
-    const errorMessage = error.message || "An unexpected error occurred";
-    toast.error(errorMessage);
     throw error;
   }
 };

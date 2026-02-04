@@ -93,7 +93,7 @@ export const BalanceOverview = ({ onDeposit, onSend, onSwap, onBalanceUpdate }: 
     >
       <div className="flex items-start justify-between mb-6">
         <div className="flex-1">
-          <p className="text-primary-foreground/70 text-sm font-medium mb-1">RLUSD Balance</p>
+          <p className="text-primary-foreground/70 text-sm font-medium mb-1">Cash-Out & Cash-In</p>
           {!isConnected ? (
             <div className="space-y-2">
               <p className="text-primary-foreground/90 text-sm">Wallet not connected</p>
@@ -152,7 +152,7 @@ export const BalanceOverview = ({ onDeposit, onSend, onSwap, onBalanceUpdate }: 
             className="flex-1 min-w-[100px] bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground border-0 h-11"
           >
             <ArrowDownCircle className="w-4 h-4 mr-2" />
-            Buy RLUSD
+            Cash-In
           </Button>
           <Button
             onClick={onSwap}

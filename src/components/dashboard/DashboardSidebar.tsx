@@ -8,12 +8,13 @@ import {
   ChevronRight,
   LogOut,
   ArrowDownCircle,
-  DollarSign
+  DollarSign,
+  Building2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import sendicashLogo from "@/assets/sendicash-logo.png";
 
-type DashboardView = "balance" | "balances" | "deposit" | "statement" | "settings";
+type DashboardView = "balance" | "balances" | "deposit" | "statement" | "banks" | "settings";
 
 interface DashboardSidebarProps {
   activeView: DashboardView;
@@ -26,6 +27,7 @@ const menuItems = [
   { id: "balances" as const, label: "Balance", icon: DollarSign },
   { id: "deposit" as const, label: "Deposit", icon: ArrowDownCircle },
   { id: "statement" as const, label: "Statement", icon: FileText },
+  { id: "banks" as const, label: "Banks", icon: Building2, comingSoon: true }, // view shows COMING SOON
   { id: "settings" as const, label: "Settings", icon: Settings },
 ];
 
@@ -59,6 +61,7 @@ export const DashboardSidebar = ({ activeView, onViewChange, onLogout }: Dashboa
       <nav className="flex-1 p-3 space-y-1">
         {menuItems.map((item) => {
           const isActive = activeView === item.id;
+          const comingSoon = "comingSoon" in item && item.comingSoon;
           return (
             <button
               key={item.id}
@@ -75,10 +78,13 @@ export const DashboardSidebar = ({ activeView, onViewChange, onLogout }: Dashboa
                 <motion.span
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="font-medium"
+                  className="font-medium flex-1 text-left"
                 >
                   {item.label}
                 </motion.span>
+              )}
+              {!collapsed && comingSoon && (
+                <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded">COMING SOON</span>
               )}
             </button>
           );

@@ -115,6 +115,14 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
         return <BalanceView />;
       case "statement":
         return <StatementView />;
+      case "banks":
+        return (
+          <div className="rounded-2xl border border-border bg-card p-8 text-center max-w-md mx-auto">
+            <h2 className="text-xl font-semibold text-foreground mb-2">Banks</h2>
+            <p className="text-muted-foreground mb-4">Send XRP or RLUSD to supported banks.</p>
+            <Badge variant="secondary" className="text-sm">COMING SOON</Badge>
+          </div>
+        );
       case "settings":
         return <SettingsView />;
       default:

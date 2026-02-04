@@ -30,6 +30,13 @@ export default function Login() {
     return null;
   }
 
+  // Optional: show "Session expired" if redirected from 401
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("reason") === "session_expired") {
+    // One-time message handled by api layer toast; clear param
+    window.history.replaceState({}, "", "/login");
+  }
+
   const validateEmail = (email: string): boolean => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
