@@ -18,9 +18,23 @@ interface OTPVerificationProps {
 export const OTPVerification = ({ email, onBack }: OTPVerificationProps) => {
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [errors, setErrors] = useState<string>("");
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  const handleResendCode = async () => {
+    setIsResending(true);
+    setErrors("");
+    try {
+      await authApi.requestVerificationCode(email);
+      toast.success("Verification code sent", { description: `Check ${email} for the 6-digit code.` });
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to send code. Try again.");
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   const handleVerify = async () => {
     if (otp.length !== 6) {
@@ -65,7 +79,7 @@ export const OTPVerification = ({ email, onBack }: OTPVerificationProps) => {
       animate={{ opacity: 1, y: 0 }}
       className="w-full"
     >
-      <div className="bg-card rounded-2xl shadow-xl p-6 border border-border">
+      <div className="w-full">
         {/* Header */}
         <div className="text-center mb-6">
           <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
@@ -141,12 +155,12 @@ export const OTPVerification = ({ email, onBack }: OTPVerificationProps) => {
           <p className="text-center text-sm text-muted-foreground">
             Didn't receive the code?{" "}
             <button
-              onClick={() => {
-                toast.info("Resend Code: Please check your email for the verification code.");
-              }}
-              className="text-primary hover:underline"
+              type="button"
+              onClick={handleResendCode}
+              disabled={isResending}
+              className="text-primary hover:underline disabled:opacity-50"
             >
-              Resend
+              {isResending ? "Sending…" : "Resend"}
             </button>
           </p>
         </div>

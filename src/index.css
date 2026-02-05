@@ -113,6 +113,12 @@
   }
 }
 
+/* Phone input country dropdown: stack above form fields when open */
+.react-international-phone-country-selector-dropdown {
+  z-index: 50;
+  max-height: 220px;
+}
+
 @layer utilities {
   .bg-gradient-primary {
     background-image: var(--gradient-primary);

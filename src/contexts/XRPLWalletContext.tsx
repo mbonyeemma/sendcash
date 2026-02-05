@@ -12,9 +12,6 @@ interface XRPLWalletContextType {
   connectWallet: (provider?: XRPLWalletProviderType) => Promise<void>;
   disconnectWallet: () => void;
   isConnecting: boolean;
-  setNetwork: (network: string) => void;
-  switchToTestnet: () => void;
-  switchToMainnet: () => void;
 }
 
 const XRPLWalletContext = createContext<XRPLWalletContextType | undefined>(undefined);
@@ -34,7 +31,8 @@ interface XRPLWalletProviderProps {
 export const XRPLWalletProvider = ({ children }: XRPLWalletProviderProps) => {
   const [isConnected, setIsConnected] = useState(false);
   const [address, setAddress] = useState<string | null>(null);
-  const [network, setNetwork] = useState<string | null>(null);
+  // Frontend is Mainnet-only
+  const [network, setNetwork] = useState<string | null>("Mainnet");
   const [isGemWalletInstalled, setIsGemWalletInstalled] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
 
@@ -88,9 +86,10 @@ export const XRPLWalletProvider = ({ children }: XRPLWalletProviderProps) => {
     const savedAddress = localStorage.getItem("xrpl_wallet_address");
     const savedNetwork = localStorage.getItem("xrpl_wallet_network");
     
-    if (savedAddress && savedNetwork) {
+    if (savedAddress) {
       setAddress(savedAddress);
-      setNetwork(savedNetwork);
+      // Force Mainnet even if something stored Testnet before
+      setNetwork("Mainnet");
       setIsConnected(true);
     }
   }, []);
@@ -110,7 +109,7 @@ export const XRPLWalletProvider = ({ children }: XRPLWalletProviderProps) => {
           ]);
           if (addr) {
             setAddress(addr);
-            setNetwork(w.xumm.getNetwork?.() || "Mainnet");
+            setNetwork("Mainnet");
             setIsConnected(true);
             localStorage.setItem("xrpl_wallet_address", addr);
             localStorage.setItem("xrpl_wallet_network", "Mainnet");
@@ -141,11 +140,10 @@ export const XRPLWalletProvider = ({ children }: XRPLWalletProviderProps) => {
           const resolvedAddr = typeof addr === "string" ? addr : (addr as any)?.address ?? (addr as any)?.result?.address;
           if (resolvedAddr) {
             setAddress(resolvedAddr);
-            const net = osm?.getNetwork?.() ?? (addr as any)?.network ?? "Mainnet";
-            setNetwork(typeof net === "string" ? net : "Mainnet");
+            setNetwork("Mainnet");
             setIsConnected(true);
             localStorage.setItem("xrpl_wallet_address", resolvedAddr);
-            localStorage.setItem("xrpl_wallet_network", typeof net === "string" ? net : "Mainnet");
+            localStorage.setItem("xrpl_wallet_network", "Mainnet");
             return;
           }
         }
@@ -178,7 +176,8 @@ export const XRPLWalletProvider = ({ children }: XRPLWalletProviderProps) => {
       const walletAddress = addressResponse.result.address;
 
       const networkResponse = await getNetwork();
-      const walletNetwork = networkResponse?.result?.network || "Mainnet";
+      // Ignore extension network; app is Mainnet-only
+      const walletNetwork = "Mainnet";
 
       console.log("✅ Successfully connected to GemWallet");
       setAddress(walletAddress);
@@ -210,23 +209,10 @@ export const XRPLWalletProvider = ({ children }: XRPLWalletProviderProps) => {
 
   const disconnectWallet = () => {
     setAddress(null);
-    setNetwork(null);
+    setNetwork("Mainnet");
     setIsConnected(false);
     localStorage.removeItem("xrpl_wallet_address");
     localStorage.removeItem("xrpl_wallet_network");
-  };
-
-  const setNetworkManual = (newNetwork: string) => {
-    setNetwork(newNetwork);
-    localStorage.setItem("xrpl_wallet_network", newNetwork);
-  };
-
-  const switchToTestnet = () => {
-    setNetworkManual("Testnet");
-  };
-
-  const switchToMainnet = () => {
-    setNetworkManual("Mainnet");
   };
 
   return (
@@ -239,9 +225,6 @@ export const XRPLWalletProvider = ({ children }: XRPLWalletProviderProps) => {
         connectWallet,
         disconnectWallet,
         isConnecting,
-        setNetwork: setNetworkManual,
-        switchToTestnet,
-        switchToMainnet,
       }}
     >
       {children}

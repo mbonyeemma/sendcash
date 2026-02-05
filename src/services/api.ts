@@ -189,6 +189,11 @@ export const authApi = {
     return response;
   },
 
+  /** Request a new verification code for an email (new signup or existing unverified account) */
+  requestVerificationCode: async (email: string): Promise<ApiResponse> => {
+    return api.post({ email }, "/user/send-otp");
+  },
+
   login: async (data: LoginRequest): Promise<ApiResponse<LoginResponse>> => {
     const response = await api.post<LoginResponse>(data, "/user/login");
     if (response.data?.token) {

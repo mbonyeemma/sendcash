@@ -29,6 +29,9 @@ function getFriendlyMessage(serverMessage: string, status: number): string {
   if (status === 401 || lower.includes("invalid access token") || lower.includes("unauthorized")) {
     return "Your session has expired. Please sign in again.";
   }
+  if (status === 409 || lower.includes("username already exists") || lower.includes("already exists")) {
+    return "An account with this email already exists. Sign in to continue or request a new verification code.";
+  }
   if (lower.includes("account not found")) {
     return "No account found with that information. Check your details or sign up.";
   }
@@ -54,7 +57,11 @@ const request = async <T>(
     });
 
     const data = await response.json().catch(() => ({}));
-    const status = response.status || data.status || 500;
+    // Prefer body.status when it indicates an error (e.g. 200 + { status: 409 })
+    const status =
+      typeof data.status === "number" && data.status >= 400
+        ? data.status
+        : response.status || data.status || 500;
     const serverMessage = data.message || data.error || `Request failed (${status})`;
 
     // 401: clear token and redirect to login so user can sign in again
@@ -68,7 +75,16 @@ const request = async <T>(
     const isError = !response.ok || (status >= 400);
     if (isError) {
       const friendly = getFriendlyMessage(serverMessage, status);
-      toast.error(friendly, { duration: 6000 });
+      const isAlreadyExists = status === 409 || (serverMessage || "").toLowerCase().includes("already exists");
+      toast.error(friendly, {
+        duration: isAlreadyExists ? 12000 : 6000,
+        ...(isAlreadyExists && {
+          action: {
+            label: "Sign in",
+            onClick: () => { window.location.href = "/login"; },
+          },
+        }),
+      });
       throw new Error(serverMessage);
     }
 

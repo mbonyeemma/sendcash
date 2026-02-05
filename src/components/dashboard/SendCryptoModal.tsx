@@ -91,7 +91,7 @@ export const SendCryptoModal = ({ isOpen, onClose, onSuccess }: SendCryptoModalP
     try {
       const issuer =
         asset === "RLUSD"
-          ? xrplService.getRLUSDIssuer(xrplNetwork === "Testnet" ? "Testnet" : "Mainnet")
+          ? xrplService.getRLUSDIssuer("Mainnet")
           : undefined;
       const result = (await xrplService.sendPayment(
         destinationAddress,

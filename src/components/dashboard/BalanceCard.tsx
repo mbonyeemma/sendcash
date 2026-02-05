@@ -47,7 +47,7 @@ export const BalanceOverview = ({ onDeposit, onSend, onSwap, onBalanceUpdate }: 
       
       if (isConnected && address) {
         // Fetch RLUSD balance from XRPL
-        const xrplBalances = await xrplService.getAccountBalances(address, network || "Testnet");
+        const xrplBalances = await xrplService.getAccountBalances(address, "Mainnet");
         console.log("XRPL Balances:", xrplBalances);
         
         // Find RLUSD balance
@@ -124,7 +124,7 @@ export const BalanceOverview = ({ onDeposit, onSend, onSwap, onBalanceUpdate }: 
           )}
           {isConnected && address && (
             <p className="text-xs text-primary-foreground/60 mt-2">
-              {address.slice(0, 8)}...{address.slice(-6)} • {network || "Testnet"}
+              {address.slice(0, 8)}...{address.slice(-6)} • Mainnet
             </p>
           )}
         </div>

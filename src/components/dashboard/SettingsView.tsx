@@ -731,67 +731,14 @@ export const SettingsView = () => {
 
 // Network Content Component
 const NetworkContent = () => {
-  const { isConnected, address, network, switchToTestnet, switchToMainnet } = useXRPLWallet();
-  const [isRequesting, setIsRequesting] = useState(false);
-  const [isCreatingTrustline, setIsCreatingTrustline] = useState(false);
-
-  const handleRequestTestXRP = async () => {
-    if (!address) {
-      toast.error("Please connect your wallet first");
-      return;
-    }
-
-    if (network !== "Testnet") {
-      toast.error("Please switch to Testnet to request test funds");
-      return;
-    }
-
-    try {
-      setIsRequesting(true);
-      await xrplService.requestTestXRP(address);
-      toast.success("Test XRP requested successfully! It may take a few moments to arrive.");
-    } catch (error: any) {
-      console.error("Failed to request test XRP:", error);
-      toast.error("Failed to request test XRP. Please try again.");
-    } finally {
-      setIsRequesting(false);
-    }
-  };
-
-  const handleSetupRLUSDTrustline = async () => {
-    if (!address) {
-      toast.error("Please connect your wallet first");
-      return;
-    }
-
-    if (network !== "Testnet") {
-      toast.error("Please switch to Testnet to setup RLUSD");
-      return;
-    }
-
-    try {
-      setIsCreatingTrustline(true);
-      const issuer = xrplService.getRLUSDIssuer("Testnet");
-      await xrplService.setTrustline("RLUSD", issuer, "1000000");
-      toast.success("RLUSD trustline created! You can now receive RLUSD.");
-    } catch (error: any) {
-      console.error("Failed to create trustline:", error);
-      toast.error(error.message || "Failed to create trustline. Please try again.");
-    } finally {
-      setIsCreatingTrustline(false);
-    }
-  };
-
-  const handleOpenRLUSDFaucet = () => {
-    window.open(xrplService.getRLUSDFaucetURL(), "_blank");
-  };
+  const { isConnected, address, network } = useXRPLWallet();
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold text-foreground mb-2">XRPL Network Settings</h2>
         <p className="text-sm text-muted-foreground">
-          Configure your XRPL network and manage test funds
+          Frontend is locked to Mainnet.
         </p>
       </div>
 
@@ -817,118 +764,10 @@ const NetworkContent = () => {
         <div>
           <h3 className="font-semibold text-foreground mb-1">Network</h3>
           <p className="text-xs text-muted-foreground">
-            Current network: <span className="font-medium text-foreground">{network || "Not connected"}</span>
+            Current network: <span className="font-medium text-foreground">{network || "Mainnet"}</span>
           </p>
         </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={switchToMainnet}
-            className={`p-4 rounded-xl border transition-all ${
-              network === "Mainnet"
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-muted hover:bg-muted/80 border-border"
-            }`}
-          >
-            <div className="flex flex-col items-center gap-2">
-              <Network className="w-6 h-6" />
-              <div>
-                <p className="font-semibold">Mainnet</p>
-                <p className="text-xs opacity-80">Production network</p>
-              </div>
-            </div>
-          </button>
-
-          <button
-            onClick={switchToTestnet}
-            className={`p-4 rounded-xl border transition-all ${
-              network === "Testnet"
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-muted hover:bg-muted/80 border-border"
-            }`}
-          >
-            <div className="flex flex-col items-center gap-2">
-              <Network className="w-6 h-6" />
-              <div>
-                <p className="font-semibold">Testnet</p>
-                <p className="text-xs opacity-80">Testing network</p>
-              </div>
-            </div>
-          </button>
-        </div>
       </div>
-
-      {/* Test Faucet */}
-      {network === "Testnet" && (
-        <div className="bg-card rounded-xl border border-border p-6 space-y-4">
-          <div>
-            <h3 className="font-semibold text-foreground mb-1">Test Faucet</h3>
-            <p className="text-sm text-muted-foreground">
-              Get free test XRP and RLUSD for testing
-            </p>
-          </div>
-
-          <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-foreground">Testnet Funds</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  These funds have no real value and are only for testing purposes.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <Button
-              onClick={handleRequestTestXRP}
-              disabled={!isConnected || isRequesting}
-              variant="outline"
-              className="w-full"
-            >
-              {isRequesting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Requesting XRP...
-                </>
-              ) : (
-                "1. Request Test XRP"
-              )}
-            </Button>
-
-            <Button
-              onClick={handleSetupRLUSDTrustline}
-              disabled={!isConnected || isCreatingTrustline}
-              variant="outline"
-              className="w-full"
-            >
-              {isCreatingTrustline ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Creating Trustline...
-                </>
-              ) : (
-                "2. Setup RLUSD Trustline"
-              )}
-            </Button>
-
-            <Button
-              onClick={handleOpenRLUSDFaucet}
-              disabled={!isConnected}
-              className="w-full"
-            >
-              3. Get Test RLUSD from Faucet
-            </Button>
-          </div>
-
-          <div className="text-xs text-muted-foreground space-y-1">
-            <p>• <strong>Step 1:</strong> Get XRP for transaction fees</p>
-            <p>• <strong>Step 2:</strong> Create trustline to receive RLUSD</p>
-            <p>• <strong>Step 3:</strong> Get RLUSD from tryrlusd.com (requires GitHub login)</p>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

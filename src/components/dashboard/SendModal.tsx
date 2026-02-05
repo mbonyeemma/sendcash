@@ -39,11 +39,6 @@ interface SavedContact {
   network?: string;
 }
 
-const mobileNetworks = [
-  { id: "mtn", name: "MTN Mobile Money", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/New-mtn-logo.svg/1200px-New-mtn-logo.svg.png" },
-  { id: "airtel", name: "Airtel Money", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Airtel_Africa_logo.svg/1200px-Airtel_Africa_logo.svg.png" },
-];
-
 type SendMode = "" | "offramp" | "crypto";
 type CryptoAsset = "XRP" | "RLUSD";
 
@@ -62,7 +57,6 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
   const payoutCurrency = PAYOUT_CURRENCY_MAP[payoutCurrencyId] || userCurrency;
   const payoutCurrencyInfo = getCurrencyById(payoutCurrencyId);
 
-  const [network, setNetwork] = useState("");
   const [recipient, setRecipient] = useState("");
   const [recipientName, setRecipientName] = useState("");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("");
@@ -210,13 +204,17 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
         ? paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.phone_number || recipient
         : recipient.replace(/\s/g, "").replace(/\D/g, "");
 
+      // Network is auto-detected; for saved payment methods we pass the stored network if available
+      const selectedPm = selectedPaymentMethod ? paymentMethods.find(pm => pm.id === selectedPaymentMethod) : undefined;
+      const autoNetwork = receiverType === "saved" ? (selectedPm as any)?.network : undefined;
+
       // 1) Create payout request – backend returns XRPL address + memo (numeric)
       const payoutPayload = {
         amount: parseFloat(rlusdAmount),
         fiat_amount: parseFloat(fiatAmount),
         payment_mode: "MOBILE",
         account_number: accountNumber,
-        network: network || undefined,
+        network: autoNetwork || undefined,
         payment_method_id: selectedPaymentMethod || undefined,
         narration: "RLUSD offramp",
       };
@@ -228,7 +226,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
       }
 
       // 2) Open GemWallet: send RLUSD to custody address with memo (race with timeout so we don't hang)
-      const issuer = xrplService.getRLUSDIssuer(xrplNetwork === "Testnet" ? "Testnet" : "Mainnet");
+      const issuer = xrplService.getRLUSDIssuer("Mainnet");
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error("SEND_TIMEOUT")), SEND_TIMEOUT_MS);
       });
@@ -279,7 +277,6 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
     setSendMode("");
     setRlusdAmount("");
     setFiatAmount("");
-    setNetwork("");
     setRecipient("");
     setRecipientName("");
     setSelectedPaymentMethod("");
@@ -319,7 +316,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
     try {
       const issuer =
         cryptoAsset === "RLUSD"
-          ? xrplService.getRLUSDIssuer(xrplNetwork === "Testnet" ? "Testnet" : "Mainnet")
+          ? xrplService.getRLUSDIssuer("Mainnet")
           : undefined;
       const result = (await xrplService.sendPayment(
         cryptoDestinationAddress,
@@ -714,33 +711,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                 )}
 
                 {/* Network Selection */}
-                <div>
-                  <Label className="text-sm font-medium">Mobile Network</Label>
-                  <Select value={network} onValueChange={(v) => {
-                    setNetwork(v);
-                    if (errors.network) setErrors({ ...errors, network: "" });
-                  }}>
-                    <SelectTrigger className="mt-1.5 h-12 bg-background">
-                      <SelectValue placeholder="Select network" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover border-border">
-                      {mobileNetworks.map((n) => (
-                        <SelectItem key={n.id} value={n.id}>
-                          <div className="flex items-center gap-3">
-                            <img src={n.logo} alt={n.name} className="w-5 h-5 object-contain" />
-                            <span>{n.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.network && (
-                    <p className="text-sm text-destructive flex items-center gap-1 mt-1">
-                      <AlertCircle className="w-4 h-4" />
-                      {errors.network}
-                    </p>
-                  )}
-                </div>
+                {/* Mobile network is auto-detected */}
 
                 <div>
                   <Label className="text-sm font-medium mb-2">Payment From</Label>

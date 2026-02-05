@@ -16,7 +16,8 @@ export const xrplService = {
    * Get account balances from XRPL
    */
   getAccountBalances: async (address: string, network: string = "Mainnet"): Promise<XRPLBalance[]> => {
-    const client = new Client(network === "Testnet" ? XRPL_TESTNET : XRPL_MAINNET);
+    // Frontend is Mainnet-only; ignore Testnet requests
+    const client = new Client(XRPL_MAINNET);
     
     try {
       await client.connect();
