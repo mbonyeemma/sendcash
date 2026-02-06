@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Loader2, AlertCircle, Smartphone, Wallet, ChevronLeft, Plus, ArrowRight, Send } from "lucide-react";
+import { X, Loader2, AlertCircle, Smartphone, Wallet, ChevronLeft, Plus, ArrowRight, Send, Landmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AmountWithCurrency } from "@/components/ui/amount-with-currency";
+import { Badge } from "@/components/ui/badge";
 import { AssetAmountItem } from "@/components/dashboard/AmountItem";
 import { loadFavorites, saveFavorites, type XrplFavorite } from "@/components/dashboard/SendCryptoModal";
 import { AddPaymentMethodModal } from "@/components/dashboard/AddPaymentMethodModal";
@@ -213,6 +214,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
         amount: parseFloat(rlusdAmount),
         fiat_amount: parseFloat(fiatAmount),
         payment_mode: "MOBILE",
+        currency: payoutCurrency,
         account_number: accountNumber,
         network: autoNetwork || undefined,
         payment_method_id: selectedPaymentMethod || undefined,
@@ -444,6 +446,21 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                       <p className="text-xs text-muted-foreground mt-1">Send XRP or RLUSD to a wallet address or favorite</p>
                     </div>
                   </button>
+                  <div
+                    className="p-4 rounded-xl border border-border bg-muted/30 text-left flex items-start gap-3 cursor-not-allowed opacity-90"
+                    aria-disabled="true"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                      <Landmark className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-foreground flex items-center gap-2">
+                        To bank
+                        <Badge variant="secondary" className="text-xs font-normal">Coming soon</Badge>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Send RLUSD to a bank account</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

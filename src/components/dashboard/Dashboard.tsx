@@ -43,6 +43,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   const [sendOpen, setSendOpen] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
   const [connectWalletOpen, setConnectWalletOpen] = useState(false);
+  const [balanceRefreshTrigger, setBalanceRefreshTrigger] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -107,6 +108,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
               onSend={() => setSendOpen(true)}
               onSwap={() => setSwapOpen(true)}
               onBalanceUpdate={() => {}}
+              refreshTrigger={balanceRefreshTrigger}
             />
             <StatementView />
           </div>
@@ -133,6 +135,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
               onSend={() => setSendOpen(true)}
               onSwap={() => setSwapOpen(true)}
               onBalanceUpdate={() => {}}
+              refreshTrigger={balanceRefreshTrigger}
             />
             <StatementView />
           </div>
@@ -507,6 +510,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       <SwapModal
         isOpen={swapOpen}
         onClose={() => setSwapOpen(false)}
+        onSwapSuccess={() => setBalanceRefreshTrigger((t) => t + 1)}
       />
       <ConnectXRPLWalletModal
         isOpen={connectWalletOpen}

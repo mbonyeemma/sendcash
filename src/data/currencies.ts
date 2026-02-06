@@ -10,6 +10,14 @@ export interface Currency {
 export const currencies: Currency[] = [
   // Crypto
   {
+    id: "xrp",
+    name: "XRP",
+    symbol: "XRP",
+    type: "crypto",
+    logo: "https://cryptologos.cc/logos/xrp-xrp-logo.png?v=040",
+    network: "XRPL",
+  },
+  {
     id: "usdc",
     name: "USD Coin",
     symbol: "USDC",

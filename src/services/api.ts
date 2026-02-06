@@ -273,12 +273,44 @@ export const walletApi = {
   createPayoutRequest: async (data: RlusdPayoutRequest): Promise<ApiResponse<RlusdPayoutResponse>> => {
     return api.post<RlusdPayoutResponse>(data, "/wallet/rlusdPayoutRequest");
   },
+
+  /** Get swap rate for an asset pair (e.g. XRP -> RLUSD) */
+  getSwapRate: async (fromAsset: string, toAsset: string, amount: number): Promise<ApiResponse<{ fromAsset: string; toAsset: string; amount: number; rate: number }>> => {
+    const qs = new URLSearchParams({
+      fromAsset,
+      toAsset,
+      amount: String(amount),
+    });
+    return api.get<{ fromAsset: string; toAsset: string; amount: number; rate: number }>(`/wallet/swapRate?${qs.toString()}`);
+  },
+
+  /** Perform a swap (backend currently returns a mock success response) */
+  swap: async (fromAsset: string, toAsset: string, amount: number): Promise<ApiResponse<{ receivedAmount: number; transactionId: string }>> => {
+    return api.post<{ receivedAmount: number; transactionId: string }>(
+      { fromAsset, toAsset, amount },
+      "/wallet/swap"
+    );
+  },
+
+  /** Record a DEX swap in the database (after successful on-chain swap). */
+  recordSwap: async (params: {
+    fromAsset: string;
+    toAsset: string;
+    amountSwapped: number;
+    receivedAmount: number;
+    txHash?: string;
+    walletAddress?: string;
+  }): Promise<ApiResponse<{ trans_id: string; hash: string }>> => {
+    return api.post<{ trans_id: string; hash: string }>("/wallet/recordSwap", params);
+  },
 };
 
 export interface RlusdPayoutRequest {
   amount: number;
   fiat_amount: number;
   payment_mode: string;
+  /** Payout currency (e.g. UGX, KES, TZS) – used for statement display and conversion */
+  currency?: string;
   account_number: string;
   bank_name?: string;
   account_holder_name?: string;

@@ -13,9 +13,11 @@ interface BalanceOverviewProps {
   onSend: () => void;
   onSwap: () => void;
   onBalanceUpdate?: () => void;
+  /** When this value changes, balance is refetched (e.g. after a swap). */
+  refreshTrigger?: number;
 }
 
-export const BalanceOverview = ({ onDeposit, onSend, onSwap, onBalanceUpdate }: BalanceOverviewProps) => {
+export const BalanceOverview = ({ onDeposit, onSend, onSwap, onBalanceUpdate, refreshTrigger }: BalanceOverviewProps) => {
   const [hidden, setHidden] = useState(false);
   const [balance, setBalance] = useState<string>("0");
   const [isLoading, setIsLoading] = useState(true);
@@ -28,6 +30,13 @@ export const BalanceOverview = ({ onDeposit, onSend, onSwap, onBalanceUpdate }: 
   useEffect(() => {
     fetchBalance();
   }, [isConnected, address, network]);
+
+  // Refetch when parent signals (e.g. after swap)
+  useEffect(() => {
+    if (refreshTrigger != null && refreshTrigger > 0) {
+      fetchBalance();
+    }
+  }, [refreshTrigger]);
 
   // Expose refresh function to parent
   useEffect(() => {
