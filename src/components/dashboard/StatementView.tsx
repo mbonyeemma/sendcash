@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { ArrowDownCircle, ArrowUpCircle, Send, Filter, Search, Loader2, X } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, Send, Filter, Search, Loader2, X, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { walletApi } from "@/services/api";
 import { toast } from "sonner";
@@ -479,8 +479,17 @@ export const StatementView = () => {
                 </div>
                 {selectedRaw?.hash && (
                   <div className="col-span-2">
-                    <span className="text-muted-foreground block text-xs">Hash</span>
-                    <p className="font-mono text-xs break-all">{selectedRaw.hash}</p>
+                    <span className="text-muted-foreground block text-xs mb-1">Hash</span>
+                    <a
+                      href={`https://xrpscan.com/tx/${selectedRaw.hash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-xs break-all text-primary hover:underline flex items-center gap-1.5 group"
+                      title="View on XRPScan Explorer"
+                    >
+                      <span className="break-all">{selectedRaw.hash}</span>
+                      <ExternalLink className="w-3.5 h-3.5 flex-shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
+                    </a>
                   </div>
                 )}
               </div>
