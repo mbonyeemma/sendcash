@@ -1,73 +1,95 @@
-# Welcome to your Lovable project
+# SendiCash Web
 
-## Project info
+This is the **frontend** of SendiCash — a live web application for fast, simple, and secure digital payments across East Africa. Send money, swap crypto, cash in/out with mobile money, and manage your finances — all in one place.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+Built with **React**, **TypeScript**, and **Vite**, using **Tailwind CSS** and **shadcn/ui** for the UI.
 
-## How can I edit this code?
+## Live
 
-There are several ways of editing your application.
+The app is live and deployed in production.
 
-**Use Lovable**
+## Features
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- **RLUSD (Ripple USD)** — Full support for RLUSD, a stablecoin on the XRP Ledger. Hold, send, receive, and swap RLUSD.
+- **XRP/RLUSD Swap** — Swap between XRP and RLUSD directly on the XRPL DEX with real-time quotes and configurable slippage.
+- **Mobile Money Cash-In / Cash-Out** — Deposit and withdraw via MTN, Airtel, and other East African mobile networks.
+- **Multi-Currency Support** — Manage XRP, RLUSD, USDC, USDT, UGX, KES, TZS, RWF, SSD, and more.
+- **Send & Receive** — Send crypto or fiat to anyone instantly.
+- **Transaction History** — Full statement and balance views.
+- **KYC & Settings** — Identity verification and account management.
+- **Notifications** — Real-time in-app notifications.
 
-Changes made via Lovable will be committed automatically to this repo.
+## GemWallet Requirement
 
-**Use your preferred IDE**
+SendiCash uses **GemWallet** as the primary XRPL wallet provider to sign transactions (swaps, sends, trustline setup, etc.).
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+To use wallet features you must:
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. Install the [GemWallet browser extension](https://gemwallet.app/).
+2. Create or import an XRPL wallet inside GemWallet.
+3. Make sure GemWallet is set to **Mainnet**.
+4. Click **Connect Wallet** in the SendiCash dashboard to link your address.
 
-Follow these steps:
+> Xaman and OsmWallet are also supported as alternative wallet providers.
+
+## How to Swap XRP ↔ RLUSD
+
+1. Log in and connect your GemWallet.
+2. Click the **Swap** button on the dashboard.
+3. Choose the **From** asset (XRP or RLUSD) and the **To** asset.
+4. Enter the amount — a live quote from the XRPL DEX order book will appear.
+5. Adjust slippage tolerance if needed (0.5%, 1%, or 2%).
+6. Click **Swap** and approve the transaction in your GemWallet popup.
+7. If swapping XRP → RLUSD for the first time, a trustline will be set up automatically before the swap.
+
+## How to Run the Project
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (v18+) and npm
+- [GemWallet extension](https://gemwallet.app/) installed in your browser
+
+### Setup
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Navigate to the web directory
+cd sendcash/web
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The app will be available at `http://localhost:5173`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Other Commands
 
-**Use GitHub Codespaces**
+```sh
+# Build for production
+npm run build
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# Preview production build
+npm run preview
 
-## What technologies are used for this project?
+# Run tests
+npm test
 
-This project is built with:
+# Lint
+npm run lint
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Tech Stack
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- **React** + **TypeScript**
+- **Vite** — Build tool
+- **Tailwind CSS** + **shadcn/ui** — Styling and components
+- **xrpl.js** — XRPL interaction
+- **@gemwallet/api** — Wallet signing
+- **React Query** — Server state management
+- **Framer Motion** — Animations
+- **React Router** — Client-side routing
