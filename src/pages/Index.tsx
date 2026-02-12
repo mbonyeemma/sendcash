@@ -1,27 +1,15 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Header } from "@/components/landing/Header";
-import { HeroSection } from "@/components/landing/HeroSection";
-import { FeaturesSection } from "@/components/landing/FeaturesSection";
-import { Footer } from "@/components/landing/Footer";
 
 const Index = () => {
   const { isLoggedIn } = useAuth();
 
-  // Redirect to dashboard if already logged in
+  // Redirect to dashboard if already logged in, otherwise to login
   if (isLoggedIn) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Show landing page (optional marketing page; main entry is now / = Login)
-  return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <HeroSection />
-      <FeaturesSection />
-      <Footer />
-    </div>
-  );
+  return <Navigate to="/login" replace />;
 };
 
 export default Index;
