@@ -324,11 +324,15 @@ export const xrplService = {
         currency === "XRP"
           ? String(Math.round(parseFloat(amount || "0") * 1_000_000))
           : amount;
+      
+      // Convert non-standard currency codes (like RLUSD) to 40-char hex format
+      const currencyCode = currency === "XRP" ? currency : (currency.length === 3 ? currency : currencyToHex(currency));
+      
       const payment: Record<string, unknown> = {
         amount: currency === "XRP"
           ? amountForPayment
           : {
-              currency: currency,
+              currency: currencyCode,
               issuer: issuer || "",
               value: amount
             },
@@ -348,6 +352,17 @@ export const xrplService = {
           payment.memos = [{ Memo: { MemoData: memoHex } }];
         }
       }
+      
+      console.log("[xrplService] sendPayment payload:", {
+        destination,
+        currency,
+        currencyCode,
+        amount,
+        issuer,
+        memo,
+        payment: JSON.stringify(payment, null, 2)
+      });
+      
       // Returns { type: "response" | "reject", result?: { hash } } – check type for user cancel
       const result = await sendPayment(payment as any);
       return result;
