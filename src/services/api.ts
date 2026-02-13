@@ -432,6 +432,25 @@ export const profileApi = {
   },
 };
 
+// KYC API
+export interface KycStepStatus {
+  status: 'verified' | 'pending' | 'unverified';
+  value?: string | null;
+}
+
+export interface KycStatusResponse {
+  email: KycStepStatus;
+  phone: KycStepStatus;
+  id_document: KycStepStatus;
+  selfie: KycStepStatus;
+}
+
+export const kycApi = {
+  getKycStatus: async (): Promise<ApiResponse<KycStatusResponse>> => {
+    return api.get<KycStatusResponse>("/user/kyc-status");
+  },
+};
+
 // Notifications API
 export interface Notification {
   id: string;

@@ -1,6 +1,9 @@
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Shield, CheckCircle, Clock, AlertCircle, Upload, Camera, FileText } from "lucide-react";
+import { Shield, CheckCircle, Clock, AlertCircle, Upload, Camera, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { kycApi, type KycStatusResponse } from "@/services/api";
 
 type VerificationStatus = "pending" | "verified" | "unverified";
 
@@ -10,38 +13,8 @@ interface VerificationStep {
   description: string;
   status: VerificationStatus;
   icon: typeof FileText;
+  canUpload?: boolean;
 }
-
-const verificationSteps: VerificationStep[] = [
-  {
-    id: "email",
-    title: "Email Verification",
-    description: "Verify your email address",
-    status: "verified",
-    icon: CheckCircle,
-  },
-  {
-    id: "phone",
-    title: "Phone Verification",
-    description: "Verify your phone number",
-    status: "verified",
-    icon: CheckCircle,
-  },
-  {
-    id: "id",
-    title: "ID Document",
-    description: "Upload a valid government-issued ID",
-    status: "pending",
-    icon: FileText,
-  },
-  {
-    id: "selfie",
-    title: "Selfie Verification",
-    description: "Take a selfie for identity verification",
-    status: "unverified",
-    icon: Camera,
-  },
-];
 
 const statusIcons = {
   verified: CheckCircle,
@@ -55,9 +28,91 @@ const statusColors = {
   unverified: "text-muted-foreground bg-muted",
 };
 
+const statusLabels = {
+  verified: "Verified",
+  pending: "Under Review",
+  unverified: "Not Started",
+};
+
 export const KYCView = () => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [kycStatus, setKycStatus] = useState<KycStatusResponse | null>(null);
+  const selfieInputRef = useRef<HTMLInputElement>(null);
+  const idInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetchKycStatus();
+  }, []);
+
+  const fetchKycStatus = async () => {
+    try {
+      setIsLoading(true);
+      const response = await kycApi.getKycStatus();
+      if (response.data) {
+        setKycStatus(response.data);
+      }
+    } catch (error: any) {
+      console.error("Failed to fetch KYC status:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const buildSteps = (): VerificationStep[] => {
+    if (!kycStatus) {
+      return [
+        { id: "email", title: "Email Verification", description: "Verify your email address", status: "unverified", icon: CheckCircle },
+        { id: "phone", title: "Phone Verification", description: "Verify your phone number", status: "unverified", icon: CheckCircle },
+        { id: "id", title: "ID Document", description: "Upload a valid government-issued ID", status: "unverified", icon: FileText, canUpload: true },
+        { id: "selfie", title: "Selfie Verification", description: "Take a selfie for identity verification", status: "unverified", icon: Camera, canUpload: true },
+      ];
+    }
+    return [
+      { id: "email", title: "Email Verification", description: kycStatus.email.value ? `Verified: ${kycStatus.email.value}` : "Verify your email address", status: kycStatus.email.status, icon: CheckCircle },
+      { id: "phone", title: "Phone Verification", description: kycStatus.phone.value ? `Phone: ${kycStatus.phone.value}` : "Verify your phone number", status: kycStatus.phone.status, icon: CheckCircle },
+      { id: "id", title: "ID Document", description: "Upload a valid government-issued ID", status: kycStatus.id_document.status, icon: FileText, canUpload: true },
+      { id: "selfie", title: "Selfie Verification", description: "Take a selfie for identity verification", status: kycStatus.selfie.status, icon: Camera, canUpload: true },
+    ];
+  };
+
+  const verificationSteps = buildSteps();
   const completedSteps = verificationSteps.filter((s) => s.status === "verified").length;
   const progress = (completedSteps / verificationSteps.length) * 100;
+
+  const handleFileSelect = (stepId: string) => {
+    if (stepId === "selfie" && selfieInputRef.current) {
+      selfieInputRef.current.click();
+    } else if (stepId === "id" && idInputRef.current) {
+      idInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = (stepId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file (JPG, PNG)");
+      return;
+    }
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File is too large. Maximum size is 5MB.");
+      return;
+    }
+
+    // TODO: Upload to backend once file upload endpoint is available
+    toast.info(`${stepId === "selfie" ? "Selfie" : "ID document"} selected: ${file.name}. Upload endpoint coming soon.`);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -116,20 +171,25 @@ export const KYCView = () => {
                 </div>
                 <div>
                   {step.status === "verified" && (
-                    <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-sm font-medium">
-                      Verified
+                    <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 text-sm font-medium">
+                      {statusLabels.verified}
                     </span>
                   )}
                   {step.status === "pending" && (
-                    <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-sm font-medium">
-                      Under Review
+                    <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 text-sm font-medium">
+                      {statusLabels.pending}
                     </span>
                   )}
-                  {step.status === "unverified" && (
-                    <Button variant="outline" size="sm">
+                  {step.status === "unverified" && step.canUpload && (
+                    <Button variant="outline" size="sm" onClick={() => handleFileSelect(step.id)}>
                       <Upload className="w-4 h-4 mr-2" />
                       Upload
                     </Button>
+                  )}
+                  {step.status === "unverified" && !step.canUpload && (
+                    <span className="px-3 py-1 rounded-full bg-muted text-muted-foreground text-sm font-medium">
+                      {statusLabels.unverified}
+                    </span>
                   )}
                 </div>
               </div>
@@ -137,6 +197,23 @@ export const KYCView = () => {
           );
         })}
       </div>
+
+      {/* Hidden file inputs */}
+      <input
+        ref={selfieInputRef}
+        type="file"
+        accept="image/*"
+        capture="user"
+        className="hidden"
+        onChange={(e) => handleFileChange("selfie", e)}
+      />
+      <input
+        ref={idInputRef}
+        type="file"
+        accept="image/*,.pdf"
+        className="hidden"
+        onChange={(e) => handleFileChange("id", e)}
+      />
 
       {/* Benefits Card */}
       <motion.div

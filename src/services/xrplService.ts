@@ -170,12 +170,12 @@ export const xrplService = {
     }
 
     const issuer = xrplService.getRLUSDIssuer();
-    // book_offers: XRP = "XRP"; non-3-letter codes (e.g. RLUSD) must be 40-char hex
+    // book_offers: XRP = "XRP" (string); non-3-letter codes (e.g. RLUSD) must be 40-char hex (object with currency + issuer)
     const rlusdCurrency = currencyToHex("RLUSD");
     const taker_gets =
-      toAsset === "XRP" ? { currency: "XRP" } : { currency: rlusdCurrency, issuer };
+      toAsset === "XRP" ? "XRP" : { currency: rlusdCurrency, issuer };
     const taker_pays =
-      fromAsset === "XRP" ? { currency: "XRP" } : { currency: rlusdCurrency, issuer };
+      fromAsset === "XRP" ? "XRP" : { currency: rlusdCurrency, issuer };
 
     console.log("[xrplService] getDexQuote request", {
       fromAsset,

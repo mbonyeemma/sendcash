@@ -33,7 +33,16 @@ function getFriendlyMessage(serverMessage: string, status: number): string {
     return "An account with this email already exists. Sign in to continue or request a new verification code.";
   }
   if (lower.includes("account not found")) {
-    return "No account found with that information. Check your details or sign up.";
+    return "Account not found. Try disconnecting and reconnecting your wallet, or refresh the page. If the issue persists, your XRPL account may not be activated yet (it needs a minimum reserve).";
+  }
+  if (lower.includes("wallet") && lower.includes("not found")) {
+    return "Wallet not found. Please ensure your wallet is connected and your XRPL account is activated with the minimum reserve balance.";
+  }
+  if (lower.includes("insufficient") || lower.includes("balance")) {
+    return "Insufficient balance for this transaction. Please check your wallet balance and try again.";
+  }
+  if (lower.includes("network") || lower.includes("timeout")) {
+    return "Network issue detected. Please check your connection and try again.";
   }
   return serverMessage;
 }

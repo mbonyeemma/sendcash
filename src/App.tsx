@@ -34,6 +34,14 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/dashboard/:view"
+                element={
+                  <ProtectedRoute>
+                    <DashboardPage />
+                  </ProtectedRoute>
+                }
+              />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

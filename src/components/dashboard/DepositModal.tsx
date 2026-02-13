@@ -220,7 +220,10 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
         >
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-border">
-            <h2 className="text-xl font-bold text-foreground">Deposit - Get RLUSD</h2>
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Deposit Funds</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Pay with mobile money, receive RLUSD in your wallet</p>
+            </div>
             <button
               onClick={resetAndClose}
               className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted"
@@ -261,26 +264,20 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Wallet Required</p>
+                    <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">XRPL Wallet Required</p>
                     <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                      Connect your GemWallet to receive RLUSD
+                      You need an XRPL wallet to receive RLUSD. Use the <strong>Connect Wallet</strong> button in the top-right corner of the page.
                     </p>
-                    <Button
-                      onClick={async () => {
-                        try {
-                          await connectWallet();
-                          toast.success("Wallet connected!");
-                        } catch (error: any) {
-                          toast.error("Failed to connect wallet");
-                        }
-                      }}
-                      variant="outline"
-                      size="sm"
-                      className="mt-2 h-8 text-xs"
-                    >
-                      <Wallet className="w-3 h-3 mr-1" />
-                      Connect Wallet
-                    </Button>
+                    <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-2">
+                      Don't have a wallet? Install one first:
+                    </p>
+                    <div className="flex flex-wrap gap-2 mt-1.5">
+                      <a href="https://gemwallet.app/" target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline font-medium">GemWallet (Browser)</a>
+                      <span className="text-xs text-yellow-600 dark:text-yellow-400">&middot;</span>
+                      <a href="https://xaman.app/" target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline font-medium">Xaman (Mobile)</a>
+                      <span className="text-xs text-yellow-600 dark:text-yellow-400">&middot;</span>
+                      <a href="https://osmwallet.io/" target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline font-medium">OsmWallet (Chrome)</a>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -297,6 +294,15 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                 </div>
               </div>
             ) : null}
+
+            {/* Supported regions notice */}
+            {!payInInstructions && isConnected && (
+              <div className="p-3 mx-6 mt-3 bg-muted/50 border border-border rounded-lg">
+                <p className="text-xs text-muted-foreground">
+                  <strong>Supported regions:</strong> Mobile money deposits are currently available for Uganda (+256) phone numbers only. More regions coming soon.
+                </p>
+              </div>
+            )}
 
             {!payInInstructions && !showPreview ? (
               <div className="p-6 space-y-5">

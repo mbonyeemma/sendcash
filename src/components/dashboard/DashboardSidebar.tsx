@@ -9,12 +9,13 @@ import {
   LogOut,
   ArrowDownCircle,
   DollarSign,
-  Building2
+  Building2,
+  Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import sendicashLogo from "@/assets/sendicash-logo.png";
 
-type DashboardView = "balance" | "balances" | "deposit" | "statement" | "banks" | "settings";
+type DashboardView = "balance" | "balances" | "deposit" | "statement" | "banks" | "settings" | "kyc";
 
 interface DashboardSidebarProps {
   activeView: DashboardView;
@@ -27,7 +28,8 @@ const menuItems = [
   { id: "balances" as const, label: "Balance", icon: DollarSign },
   { id: "deposit" as const, label: "Deposit", icon: ArrowDownCircle },
   { id: "statement" as const, label: "Statement", icon: FileText },
-  { id: "banks" as const, label: "Banks", icon: Building2, comingSoon: true }, // view shows COMING SOON
+  { id: "kyc" as const, label: "Verification", icon: Shield },
+  { id: "banks" as const, label: "Banks", icon: Building2, comingSoon: true },
   { id: "settings" as const, label: "Settings", icon: Settings },
 ];
 
@@ -48,6 +50,9 @@ export const DashboardSidebar = ({ activeView, onViewChange, onLogout }: Dashboa
             alt="SendiCash" 
             className={cn("object-contain", collapsed ? "w-10 h-10" : "w-32 h-12")}
           />
+          {!collapsed && (
+            <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 px-1.5 py-0.5 rounded">Beta</span>
+          )}
         </div>
         <button
           onClick={() => setCollapsed(!collapsed)}

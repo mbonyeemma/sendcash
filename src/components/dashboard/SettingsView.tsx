@@ -1,14 +1,12 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { User, Lock, Shield, Bell, Camera, CheckCircle, Clock, AlertCircle, Upload, FileText, Loader2, Network, Wallet, CreditCard, Plus, Trash2, Smartphone, Building2 } from "lucide-react";
+import { User, Lock, Shield, Camera, CheckCircle, Clock, AlertCircle, Upload, FileText, Loader2, Network, Wallet, CreditCard, Plus, Trash2, Smartphone, Building2, ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { profileApi, walletApi, notificationApi, paymentMethodApi, Notification, PaymentMethod as ApiPaymentMethod } from "@/services/api";
-import { xrplService } from "@/services/xrplService";
+import { profileApi, walletApi, paymentMethodApi, kycApi, PaymentMethod as ApiPaymentMethod, type KycStatusResponse } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
 import { OfframpModal } from "@/components/dashboard/OfframpModal";
@@ -28,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { PhoneInput } from "@/components/ui/phone-input";
 
-type SettingsTab = "profile" | "security" | "notifications" | "offramp" | "kyc" | "network" | "payment-methods";
+type SettingsTab = "profile" | "security" | "offramp" | "kyc" | "network" | "payment-methods";
 
 export const SettingsView = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
@@ -40,8 +38,8 @@ export const SettingsView = () => {
     full_name: user?.full_name || "",
     email: user?.email || "",
     phone_number: user?.phone_number || "",
-    country: "",
-    avatar: "",
+    country: user?.country || "",
+    avatar: user?.avatar || "",
   });
 
   // Security form state
@@ -53,9 +51,6 @@ export const SettingsView = () => {
     confirmTransactionPin: "",
   });
 
-  // Notifications state
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
 
   // Payment methods state
   const [paymentMethods, setPaymentMethods] = useState<ApiPaymentMethod[]>([]);
@@ -73,11 +68,6 @@ export const SettingsView = () => {
     address: "",
   });
 
-  useEffect(() => {
-    if (activeTab === "notifications") {
-      fetchNotifications();
-    }
-  }, [activeTab]);
 
   useEffect(() => {
     if (activeTab === "payment-methods") {
@@ -158,19 +148,6 @@ export const SettingsView = () => {
     }
   };
 
-  const fetchNotifications = async () => {
-    try {
-      setIsLoadingNotifications(true);
-      const response = await notificationApi.getNotifications();
-      if (response.data) {
-        setNotifications(response.data);
-      }
-    } catch (error: any) {
-      console.error("Failed to fetch notifications:", error);
-    } finally {
-      setIsLoadingNotifications(false);
-    }
-  };
 
   const handleSaveProfile = async () => {
     try {
@@ -183,22 +160,20 @@ export const SettingsView = () => {
       });
 
       if (response.status === 200) {
-        // Update user in context
+        // Update user in context including country
         if (user) {
           refreshUser({
             ...user,
             full_name: profileData.full_name,
             phone_number: profileData.phone_number,
+            country: profileData.country,
+            avatar: profileData.avatar,
           });
         }
         toast.success("Your profile has been updated successfully.");
       }
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update profile",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to update profile");
     } finally {
       setIsLoading(false);
     }
@@ -309,13 +284,6 @@ export const SettingsView = () => {
             >
               <Network className="w-4 h-4" />
               <span className="font-medium">Network</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="notifications"
-              className="flex items-center gap-2 px-4 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="font-medium">Notifications</span>
             </TabsTrigger>
             <TabsTrigger 
               value="kyc"
@@ -508,47 +476,6 @@ export const SettingsView = () => {
 
           <TabsContent value="offramp" className="mt-0">
             <OfframpContent />
-          </TabsContent>
-
-          <TabsContent value="notifications" className="mt-0">
-            <div className="space-y-6">
-              <h2 className="text-lg font-semibold text-foreground">Notifications</h2>
-
-              {isLoadingNotifications ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                </div>
-              ) : notifications.length === 0 ? (
-                <div className="text-center py-8">
-                  <Bell className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground">No notifications</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {notifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={`p-4 rounded-xl border ${
-                        notification.read ? "bg-muted/50 border-border" : "bg-primary/5 border-primary/20"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="font-medium text-foreground">{notification.title}</p>
-                          <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
-                          <p className="text-xs text-muted-foreground mt-2">
-                            {new Date(notification.created_at).toLocaleString()}
-                          </p>
-                        </div>
-                        {!notification.read && (
-                          <span className="w-2 h-2 rounded-full bg-primary ml-2"></span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </TabsContent>
 
           <TabsContent value="kyc" className="mt-0">
@@ -831,47 +758,9 @@ const OfframpContent = () => {
   );
 };
 
-// KYC Content Component
+// KYC Content Component - Backend-driven
+
 type VerificationStatus = "pending" | "verified" | "unverified";
-
-interface VerificationStep {
-  id: string;
-  title: string;
-  description: string;
-  status: VerificationStatus;
-  icon: typeof FileText;
-}
-
-const verificationSteps: VerificationStep[] = [
-  {
-    id: "email",
-    title: "Email Verification",
-    description: "Verify your email address",
-    status: "verified",
-    icon: CheckCircle,
-  },
-  {
-    id: "phone",
-    title: "Phone Verification",
-    description: "Verify your phone number",
-    status: "verified",
-    icon: CheckCircle,
-  },
-  {
-    id: "id",
-    title: "ID Document",
-    description: "Upload a valid government-issued ID",
-    status: "pending",
-    icon: FileText,
-  },
-  {
-    id: "selfie",
-    title: "Selfie Verification",
-    description: "Take a selfie for identity verification",
-    status: "unverified",
-    icon: Camera,
-  },
-];
 
 const statusIcons = {
   verified: CheckCircle,
@@ -885,9 +774,62 @@ const statusColors = {
   unverified: "text-muted-foreground bg-muted",
 };
 
+const statusLabels = {
+  verified: "Verified",
+  pending: "Under Review",
+  unverified: "Not Started",
+};
+
 const KYCContent = () => {
+  const [isLoadingKyc, setIsLoadingKyc] = useState(false);
+  const [kycStatus, setKycStatus] = useState<KycStatusResponse | null>(null);
+
+  useEffect(() => {
+    fetchKycStatus();
+  }, []);
+
+  const fetchKycStatus = async () => {
+    try {
+      setIsLoadingKyc(true);
+      const response = await kycApi.getKycStatus();
+      if (response.data) {
+        setKycStatus(response.data);
+      }
+    } catch (error: any) {
+      console.error("Failed to fetch KYC status:", error);
+    } finally {
+      setIsLoadingKyc(false);
+    }
+  };
+
+  const buildSteps = () => {
+    if (!kycStatus) {
+      return [
+        { id: "email", title: "Email Verification", description: "Verify your email address", status: "unverified" as VerificationStatus, icon: CheckCircle },
+        { id: "phone", title: "Phone Verification", description: "Verify your phone number", status: "unverified" as VerificationStatus, icon: CheckCircle },
+        { id: "id", title: "ID Document", description: "Upload a valid government-issued ID", status: "unverified" as VerificationStatus, icon: FileText, canUpload: true },
+        { id: "selfie", title: "Selfie Verification", description: "Take a selfie for identity verification", status: "unverified" as VerificationStatus, icon: Camera, canUpload: true },
+      ];
+    }
+    return [
+      { id: "email", title: "Email Verification", description: kycStatus.email.value ? `Verified: ${kycStatus.email.value}` : "Verify your email address", status: kycStatus.email.status, icon: CheckCircle },
+      { id: "phone", title: "Phone Verification", description: kycStatus.phone.value ? `Phone: ${kycStatus.phone.value}` : "Verify your phone number", status: kycStatus.phone.status, icon: CheckCircle },
+      { id: "id", title: "ID Document", description: "Upload a valid government-issued ID", status: kycStatus.id_document.status, icon: FileText, canUpload: true },
+      { id: "selfie", title: "Selfie Verification", description: "Take a selfie for identity verification", status: kycStatus.selfie.status, icon: Camera, canUpload: true },
+    ];
+  };
+
+  const verificationSteps = buildSteps();
   const completedSteps = verificationSteps.filter((s) => s.status === "verified").length;
   const progress = (completedSteps / verificationSteps.length) * 100;
+
+  if (isLoadingKyc) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -943,20 +885,25 @@ const KYCContent = () => {
                 </div>
                 <div>
                   {step.status === "verified" && (
-                    <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-sm font-medium">
-                      Verified
+                    <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 text-sm font-medium">
+                      {statusLabels.verified}
                     </span>
                   )}
                   {step.status === "pending" && (
-                    <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-sm font-medium">
-                      Under Review
+                    <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 text-sm font-medium">
+                      {statusLabels.pending}
                     </span>
                   )}
-                  {step.status === "unverified" && (
-                    <Button variant="outline" size="sm">
+                  {step.status === "unverified" && "canUpload" in step && step.canUpload && (
+                    <Button variant="outline" size="sm" onClick={() => toast.info("Document upload coming soon.")}>
                       <Upload className="w-4 h-4 mr-2" />
                       Upload
                     </Button>
+                  )}
+                  {step.status === "unverified" && !("canUpload" in step && step.canUpload) && (
+                    <span className="px-3 py-1 rounded-full bg-muted text-muted-foreground text-sm font-medium">
+                      {statusLabels.unverified}
+                    </span>
                   )}
                 </div>
               </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Menu, X, User, LogOut, Bell, Wallet } from "lucide-react";
+import { Menu, X, User, LogOut, Wallet } from "lucide-react";
 import { DashboardSidebar, type DashboardView } from "@/components/dashboard/DashboardSidebar";
 import { BalanceOverview } from "@/components/dashboard/BalanceCard";
 import { DepositModal } from "@/components/dashboard/DepositModal";
@@ -10,6 +11,7 @@ import { ConnectXRPLWalletModal } from "@/components/dashboard/ConnectXRPLWallet
 import { StatementView } from "@/components/dashboard/StatementView";
 import { SettingsView } from "@/components/dashboard/SettingsView";
 import { BalanceView } from "@/components/dashboard/BalanceView";
+import { KYCView } from "@/components/dashboard/KYCView";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,57 +22,31 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { notificationApi, Notification } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
 import sendicashLogo from "@/assets/sendicash-logo.png";
 
 interface DashboardProps {
   onLogout: () => void;
+  initialView?: DashboardView;
 }
 
-export const Dashboard = ({ onLogout }: DashboardProps) => {
+export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps) => {
   const { user } = useAuth();
   const { isConnected, address } = useXRPLWallet();
-  const [activeView, setActiveView] = useState<DashboardView>("balance");
+  const navigate = useNavigate();
+  const [activeView, setActiveView] = useState<DashboardView>(initialView);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
   const [connectWalletOpen, setConnectWalletOpen] = useState(false);
   const [balanceRefreshTrigger, setBalanceRefreshTrigger] = useState(0);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
-  const [notificationOpen, setNotificationOpen] = useState(false);
 
-  // Fetch notifications
+  // Sync active view with URL param changes
   useEffect(() => {
-    fetchNotifications();
-    // Refresh notifications every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchNotifications = async () => {
-    try {
-      setIsLoadingNotifications(true);
-      const response = await notificationApi.getNotifications();
-      if (response.data) {
-        setNotifications(response.data);
-      }
-    } catch (error: any) {
-      console.error("Failed to fetch notifications:", error);
-    } finally {
-      setIsLoadingNotifications(false);
-    }
-  };
-
-  const unreadCount = notifications.filter(n => !n.read).length;
+    setActiveView(initialView);
+  }, [initialView]);
 
   // Get user initials for avatar
   const getUserInitials = () => {
@@ -88,14 +64,18 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   };
 
   const handleViewChange = (view: DashboardView) => {
-    setActiveView(view);
     setMobileMenuOpen(false);
     
     // Open modals for deposit
     if (view === "deposit") {
       setDepositOpen(true);
-      setActiveView("balance");
+      return;
     }
+
+    setActiveView(view);
+    // Update URL to reflect the current view
+    const urlPath = view === "balance" ? "/dashboard" : `/dashboard/${view}`;
+    navigate(urlPath, { replace: true });
   };
 
   const renderContent = () => {
@@ -125,6 +105,8 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
             <Badge variant="secondary" className="text-sm">COMING SOON</Badge>
           </div>
         );
+      case "kyc":
+        return <KYCView />;
       case "settings":
         return <SettingsView />;
       default:
@@ -157,7 +139,10 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b border-border">
           <div className="flex items-center justify-between p-4">
-          <img src={sendicashLogo} alt="SendiCash" className="h-10 object-contain" />
+          <div className="flex items-center gap-2">
+            <img src={sendicashLogo} alt="SendiCash" className="h-10 object-contain" />
+            <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 px-1.5 py-0.5 rounded">Beta</span>
+          </div>
           <div className="flex items-center gap-2">
             {/* Connect XRPL Wallet Button */}
             <Button
@@ -171,100 +156,6 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
                 {isConnected ? `${address?.slice(0, 4)}...${address?.slice(-4)}` : "Connect"}
               </span>
             </Button>
-
-            {/* Notifications */}
-            <Popover open={notificationOpen} onOpenChange={setNotificationOpen}>
-              <PopoverTrigger asChild>
-                <button type="button" className="relative p-2 rounded-lg hover:bg-muted transition-colors">
-                  <Bell className="w-5 h-5 text-foreground" />
-                  {unreadCount > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-destructive text-destructive-foreground">
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </Badge>
-                  )}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-80 p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
-                <div
-                  className="min-h-[200px]"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                <div className="p-4 border-b border-border">
-                  <h3 className="font-semibold text-foreground">Notifications</h3>
-                </div>
-                <div className="max-h-96 overflow-y-auto">
-                  {isLoadingNotifications ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                    </div>
-                  ) : notifications.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                      <p>No notifications</p>
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-border">
-                      {notifications.slice(0, 10).map((notification) => (
-                        <div
-                          key={String(notification.id)}
-                          role="button"
-                          tabIndex={0}
-                          className={`p-4 hover:bg-muted/50 transition-colors cursor-pointer ${
-                            !notification.read ? "bg-primary/5" : ""
-                          }`}
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (!notification.read) {
-                              try {
-                                await notificationApi.markAsRead([String(notification.id)]);
-                                setNotifications(prev =>
-                                  prev.map(n =>
-                                    n.id === notification.id ? { ...n, read: true } : n
-                                  )
-                                );
-                              } catch (error) {
-                                console.error("Failed to mark notification as read:", error);
-                              }
-                            }
-                          }}
-                        >
-                          <div className="flex items-start gap-3">
-                            {!notification.read && (
-                              <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm text-foreground">{notification.title}</p>
-                              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{notification.message}</p>
-                              <p className="text-xs text-muted-foreground mt-2">
-                                {new Date(notification.created_at).toLocaleString()}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                {notifications.length > 0 && (
-                  <div className="p-2 border-t border-border">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleViewChange("settings");
-                        setNotificationOpen(false);
-                      }}
-                      className="w-full text-sm text-primary hover:underline text-center py-2"
-                    >
-                      View all notifications
-                    </button>
-                  </div>
-                )}
-                </div>
-              </PopoverContent>
-            </Popover>
 
             {/* User Avatar (email shown below in dropdown) */}
             <DropdownMenu>
@@ -344,100 +235,6 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
                 {isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)}` : "Connect Wallet"}
               </span>
             </Button>
-
-            {/* Notifications */}
-            <Popover open={notificationOpen} onOpenChange={setNotificationOpen}>
-              <PopoverTrigger asChild>
-                <button type="button" className="relative p-2 rounded-lg hover:bg-muted transition-colors">
-                  <Bell className="w-5 h-5 text-foreground" />
-                  {unreadCount > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-destructive text-destructive-foreground">
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </Badge>
-                  )}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-80 p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
-                <div
-                  className="min-h-[200px]"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                <div className="p-4 border-b border-border">
-                  <h3 className="font-semibold text-foreground">Notifications</h3>
-                </div>
-                <div className="max-h-96 overflow-y-auto">
-                  {isLoadingNotifications ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                    </div>
-                  ) : notifications.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                      <p>No notifications</p>
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-border">
-                      {notifications.slice(0, 10).map((notification) => (
-                        <div
-                          key={String(notification.id)}
-                          role="button"
-                          tabIndex={0}
-                          className={`p-4 hover:bg-muted/50 transition-colors cursor-pointer ${
-                            !notification.read ? "bg-primary/5" : ""
-                          }`}
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (!notification.read) {
-                              try {
-                                await notificationApi.markAsRead([String(notification.id)]);
-                                setNotifications(prev =>
-                                  prev.map(n =>
-                                    n.id === notification.id ? { ...n, read: true } : n
-                                  )
-                                );
-                              } catch (error) {
-                                console.error("Failed to mark notification as read:", error);
-                              }
-                            }
-                          }}
-                        >
-                          <div className="flex items-start gap-3">
-                            {!notification.read && (
-                              <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm text-foreground">{notification.title}</p>
-                              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{notification.message}</p>
-                              <p className="text-xs text-muted-foreground mt-2">
-                                {new Date(notification.created_at).toLocaleString()}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                {notifications.length > 0 && (
-                  <div className="p-2 border-t border-border">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleViewChange("settings");
-                        setNotificationOpen(false);
-                      }}
-                      className="w-full text-sm text-primary hover:underline text-center py-2"
-                    >
-                      View all notifications
-                    </button>
-                  </div>
-                )}
-                </div>
-              </PopoverContent>
-            </Popover>
 
             {/* User Avatar (email shown below in dropdown) */}
             <DropdownMenu>
