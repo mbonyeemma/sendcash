@@ -25,7 +25,7 @@ export interface NetworkOption {
 
 export const CASH_NETWORKS: NetworkOption[] = [
   { id: "base", label: "Base" },
-  { id: "xrpl", label: "XRPL" },
+  { id: "xrpl", label: "XRP" },
 ];
 
 /** Allowed assets per network for mobile-money cash-in / cash-out */

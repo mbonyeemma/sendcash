@@ -20,15 +20,9 @@ import {
 } from "@/components/ui/select";
 import { AmountItem, ReceiveAmountDisplay } from "@/components/dashboard/AmountItem";
 import { AddPaymentMethodModal } from "@/components/dashboard/AddPaymentMethodModal";
-import { NetworkAssetSelect } from "@/components/dashboard/NetworkAssetSelect";
-import {
-  getSupportedAssetById,
-  detectCashNetwork,
-  getDefaultCashAssetForNetwork,
-  isWalletConnectedForNetwork,
-  getFiatRateForAsset,
-  type AssetChain,
-} from "@/data/supportedAssets";
+import { AssetSelect } from "@/components/dashboard/AssetSelect";
+import { getFiatRateForAsset } from "@/data/supportedAssets";
+import { useSelectedChain } from "@/contexts/SelectedChainContext";
 
 interface DepositModalProps {
   isOpen: boolean;
@@ -45,15 +39,8 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
   const [ratesLoading, setRatesLoading] = useState(false);
   const [ratesError, setRatesError] = useState<string | null>(null);
   const selectedCurrency = supportedCurrencies.find((c) => c.id === depositCurrencyId);
-  const [cashNetwork, setCashNetwork] = useState<AssetChain>(() =>
-    detectCashNetwork(evmConnected, isConnected)
-  );
-  const [receiveAssetId, setReceiveAssetId] = useState(
-    () => getDefaultCashAssetForNetwork(detectCashNetwork(evmConnected, isConnected)).id
-  );
-  const receiveAsset = getSupportedAssetById(receiveAssetId);
-  const walletConnected = isWalletConnectedForNetwork(cashNetwork, evmConnected, isConnected);
-  const walletAddress = cashNetwork === "base" ? evmAddress : address;
+  const { selectedChain, selectedAsset: receiveAsset, walletConnected, walletAddress } =
+    useSelectedChain();
   const rate = getFiatRateForAsset(receiveAsset, selectedCurrency);
   const feePercent = selectedCurrency?.fee_percent ?? 0.5;
   const [phone, setPhone] = useState("");
@@ -90,12 +77,6 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
       })
       .finally(() => setRatesLoading(false));
   }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const detected = detectCashNetwork(evmConnected, isConnected);
-    setCashNetwork(detected);
-  }, [isOpen, evmConnected, isConnected]);
 
   // Calculate crypto amount when fiat changes
   useEffect(() => {
@@ -165,12 +146,8 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
       return;
     }
     if (!walletConnected || !walletAddress) {
-      toast.error(
-        cashNetwork === "base"
-          ? "Please connect your Base wallet first"
-          : "Please connect your XRPL wallet first"
-      );
-      if (cashNetwork === "xrpl") {
+      toast.error("Please connect your wallet first");
+      if (selectedChain === "xrpl") {
         try {
           await connectWallet();
         } catch (error) {
@@ -205,9 +182,9 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
         account_number: phoneNumber,
         destination_address: walletAddress || "",
         amount_crypto: cryptoAmt,
-        amount_rlusd: cashNetwork === "xrpl" ? cryptoAmt : undefined,
+        amount_rlusd: selectedChain === "xrpl" ? cryptoAmt : undefined,
         asset: receiveAsset?.code,
-        chain: cashNetwork,
+        chain: selectedChain,
       });
 
       const data = response.data as DepositRequestResponse;
@@ -229,7 +206,6 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
     setPhone("");
     setFiatAmount("");
     setCryptoReceiveAmount("");
-    setReceiveAssetId(getDefaultCashAssetForNetwork(cashNetwork).id);
     setSelectedPaymentMethod("");
     setReceiverType("saved");
     setErrors({});
@@ -263,7 +239,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
             <div>
               <h2 className="text-xl font-bold text-foreground">Deposit Funds</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Pay with mobile money, receive crypto in your wallet (USDC on Base or RLUSD on XRPL)
+                Pay with mobile money — network is set in the header (Base or XRP)
               </p>
             </div>
             <button
@@ -308,27 +284,11 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                   <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                      {cashNetwork === "base" ? "Base Wallet Required" : "XRPL Wallet Required"}
+                      Connect wallet
                     </p>
                     <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                      {cashNetwork === "base"
-                        ? "Connect your Base wallet using the Connect Wallet button (Base tab) to receive USDC or USDT."
-                        : "You need an XRPL wallet to receive RLUSD. Use the Connect Wallet button in the top-right corner of the page."}
+                      Use the Connect wallet button in the header.
                     </p>
-                    {cashNetwork === "xrpl" && (
-                      <>
-                    <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-2">
-                      Don't have a wallet? Install one first:
-                    </p>
-                    <div className="flex flex-wrap gap-2 mt-1.5">
-                      <a href="https://gemwallet.app/" target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline font-medium">GemWallet (Browser)</a>
-                      <span className="text-xs text-yellow-600 dark:text-yellow-400">&middot;</span>
-                      <a href="https://xaman.app/" target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline font-medium">Xaman (Mobile)</a>
-                      <span className="text-xs text-yellow-600 dark:text-yellow-400">&middot;</span>
-                      <a href="https://osmwallet.io/" target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline font-medium">OsmWallet (Chrome)</a>
-                    </div>
-                      </>
-                    )}
                   </div>
                 </div>
               </div>
@@ -339,7 +299,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                   <div className="flex-1">
                     <p className="text-sm font-medium text-green-800 dark:text-green-200">Wallet Connected</p>
                     <p className="text-xs text-green-700 dark:text-green-300 mt-1">
-                      {receiveAsset?.code} will be sent to: {walletAddress?.slice(0, 8)}...{walletAddress?.slice(-6)} ({cashNetwork === "base" ? "Base" : "XRPL"})
+                      {receiveAsset?.code} will be sent to: {walletAddress?.slice(0, 8)}...{walletAddress?.slice(-6)}
                     </p>
                   </div>
                 </div>
@@ -375,14 +335,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                     {ratesError}
                   </p>
                 )}
-                <NetworkAssetSelect
-                  network={cashNetwork}
-                  onNetworkChange={setCashNetwork}
-                  assetId={receiveAssetId}
-                  onAssetChange={setReceiveAssetId}
-                  networkLabel="Network"
-                  assetLabel="Receive as"
-                />
+                <AssetSelect label="Receive as" />
 
                 <ReceiveAmountDisplay
                   cryptoAmount={cryptoReceiveAmount}

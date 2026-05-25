@@ -6,6 +6,7 @@ import { ThirdwebProvider } from "thirdweb/react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { XRPLWalletProvider } from "@/contexts/XRPLWalletContext";
 import { EVMWalletProvider } from "@/contexts/EVMWalletContext";
+import { SelectedChainProvider } from "@/contexts/SelectedChainContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -23,6 +24,7 @@ const App = () => (
         <AuthProvider>
           <XRPLWalletProvider>
             <EVMWalletProvider>
+              <SelectedChainProvider>
               <Sonner />
               <BrowserRouter>
                 <Routes>
@@ -50,6 +52,7 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
+              </SelectedChainProvider>
             </EVMWalletProvider>
           </XRPLWalletProvider>
         </AuthProvider>
