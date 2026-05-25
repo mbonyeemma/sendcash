@@ -15,7 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cryptoCurrencies, fiatCurrencies, Currency, exchangeRates } from "@/data/currencies";
+import { fiatCurrencies, Currency, exchangeRates } from "@/data/currencies";
+import { SUPPORTED_ASSETS, getSupportedAssetById } from "@/data/supportedAssets";
 import { AmountWithCurrency } from "@/components/ui/amount-with-currency";
 
 interface OfframpModalProps {
@@ -45,10 +46,29 @@ export const OfframpModal = ({ isOpen, onClose, onSuccess }: OfframpModalProps) 
   // Connect wallet form
   const [walletAddress, setWalletAddress] = useState("");
   const [selectedChain, setSelectedChain] = useState("");
-  const [selectedAsset, setSelectedAsset] = useState<Currency>(cryptoCurrencies[0]);
 
-  // Create offramp form - Only RLUSD
-  const rlusdCurrency = cryptoCurrencies.find(c => c.symbol === "RLUSD") || cryptoCurrencies[0];
+  const offrampCryptoOptions: Currency[] = SUPPORTED_ASSETS.map((a) => ({
+    id: a.id,
+    name: a.name,
+    symbol: a.code,
+    type: "crypto",
+    logo: a.logo ?? "",
+    network: a.chain === "base" ? "Base" : "XRPL",
+  }));
+
+  const [selectedAsset, setSelectedAsset] = useState<Currency>(offrampCryptoOptions[0]);
+
+  const [offrampAssetId, setOfframpAssetId] = useState(SUPPORTED_ASSETS[0]?.id ?? "");
+  const selectedChainAsset = getSupportedAssetById(offrampAssetId) ?? SUPPORTED_ASSETS[0];
+
+  const fromAssetCurrency: Currency = {
+    id: selectedChainAsset.id,
+    name: selectedChainAsset.name,
+    symbol: selectedChainAsset.code,
+    type: "crypto",
+    logo: selectedChainAsset.logo ?? "",
+    network: selectedChainAsset.chain === "base" ? "Base" : "XRPL",
+  };
   const [toCurrency, setToCurrency] = useState<Currency>(fiatCurrencies.find(c => c.id === userCurrency.toLowerCase()) || fiatCurrencies[0]);
   const [amount, setAmount] = useState("");
   const [selectedWallet, setSelectedWallet] = useState<string>("");
@@ -144,7 +164,7 @@ export const OfframpModal = ({ isOpen, onClose, onSuccess }: OfframpModalProps) 
       toast.success("Wallet connected successfully");
       setWalletAddress("");
       setSelectedChain("");
-      setSelectedAsset(cryptoCurrencies[0]);
+      setSelectedAsset(offrampCryptoOptions[0]);
       setErrors({});
     } catch (error: any) {
       toast.error(error.message || "Failed to connect wallet");
@@ -183,7 +203,7 @@ export const OfframpModal = ({ isOpen, onClose, onSuccess }: OfframpModalProps) 
       const offrampData = {
         wallet_address: wallet.address,
         chain: wallet.chain,
-        asset: "RLUSD", // Only RLUSD for offramp
+        asset: selectedChainAsset.code,
         amount: parseFloat(amount),
         to_currency: toCurrency.symbol,
         pin: pin,
@@ -215,14 +235,15 @@ export const OfframpModal = ({ isOpen, onClose, onSuccess }: OfframpModalProps) 
   };
 
   const getRate = () => {
-    return exchangeRates[rlusdCurrency.id]?.[toCurrency.id] || 1;
+    return exchangeRates[selectedChainAsset.rateKey]?.[toCurrency.id] || 1;
   };
 
   const resetAndClose = () => {
     setStep("connect");
     setWalletAddress("");
     setSelectedChain("");
-    setSelectedAsset(cryptoCurrencies.find(c => c.symbol === "RLUSD") || cryptoCurrencies[0]);
+    setSelectedAsset(offrampCryptoOptions[0]);
+    setOfframpAssetId(SUPPORTED_ASSETS[0]?.id ?? "");
     setAmount("");
     setSelectedWallet("");
     setPin("");
@@ -365,7 +386,7 @@ export const OfframpModal = ({ isOpen, onClose, onSuccess }: OfframpModalProps) 
                     <Select
                       value={selectedAsset.id}
                       onValueChange={(v) => {
-                        const asset = cryptoCurrencies.find(c => c.id === v);
+                        const asset = offrampCryptoOptions.find((c) => c.id === v);
                         if (asset) setSelectedAsset(asset);
                       }}
                     >
@@ -378,7 +399,7 @@ export const OfframpModal = ({ isOpen, onClose, onSuccess }: OfframpModalProps) 
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        {cryptoCurrencies.map((asset) => (
+                        {offrampCryptoOptions.map((asset) => (
                           <SelectItem key={asset.id} value={asset.id}>
                             <div className="flex items-center gap-2">
                               <img src={asset.logo} alt={asset.symbol} className="w-5 h-5" />
@@ -480,13 +501,21 @@ export const OfframpModal = ({ isOpen, onClose, onSuccess }: OfframpModalProps) 
 
                   <div>
                     <Label className="text-sm font-medium mb-2 block">From Asset</Label>
-                    <div className="h-12 bg-muted rounded-md border border-border flex items-center gap-2 px-3">
-                      {rlusdCurrency.logo && (
-                        <img src={rlusdCurrency.logo} alt={rlusdCurrency.symbol} className="w-5 h-5" />
-                      )}
-                      <span className="font-medium">{rlusdCurrency.symbol}</span>
-                      <span className="text-xs text-muted-foreground ml-auto">RLUSD Only</span>
-                    </div>
+                    <Select
+                      value={offrampAssetId}
+                      onValueChange={setOfframpAssetId}
+                    >
+                      <SelectTrigger className="h-12">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SUPPORTED_ASSETS.map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.code} · {a.chain === "base" ? "Base" : "XRPL"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div>
@@ -525,12 +554,11 @@ export const OfframpModal = ({ isOpen, onClose, onSuccess }: OfframpModalProps) 
                       setAmount(value);
                       if (errors.amount) setErrors({ ...errors, amount: "" });
                     }}
-                    currency={rlusdCurrency}
-                    onCurrencyChange={() => {}} // Offramp is RLUSD only, not changeable
-                    currencies={[rlusdCurrency]}
+                    currency={fromAssetCurrency}
+                    onCurrencyChange={(id) => setOfframpAssetId(id)}
+                    currencies={offrampCryptoOptions}
                     error={errors.amount}
                     placeholder="0.00"
-                    disabled={true}
                   />
                   {amount && !isNaN(parseFloat(amount)) && (
                     <p className="text-xs text-muted-foreground mt-2">
@@ -538,7 +566,7 @@ export const OfframpModal = ({ isOpen, onClose, onSuccess }: OfframpModalProps) 
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground mt-1">
-                    Offramp is only available for RLUSD
+                    Select the crypto asset you are sending. Settlement options vary by asset and chain.
                   </p>
 
                   <div>

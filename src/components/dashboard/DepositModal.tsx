@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { AmountItem, ReceiveAmountDisplay } from "@/components/dashboard/AmountItem";
 import { AddPaymentMethodModal } from "@/components/dashboard/AddPaymentMethodModal";
+import { SUPPORTED_ASSETS, getSupportedAssetById } from "@/data/supportedAssets";
 
 interface DepositModalProps {
   isOpen: boolean;
@@ -39,7 +40,9 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
 
   const [phone, setPhone] = useState("");
   const [fiatAmount, setFiatAmount] = useState("");
-  const [rlusdAmount, setRlusdAmount] = useState("");
+  const [receiveAssetId, setReceiveAssetId] = useState("rlusd-xrpl");
+  const receiveAsset = getSupportedAssetById(receiveAssetId);
+  const [cryptoReceiveAmount, setCryptoReceiveAmount] = useState("");
   const [paymentMethods, setPaymentMethods] = useState<ApiPaymentMethod[]>([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
   const [receiverType, setReceiverType] = useState<"saved" | "onetime">("saved");
@@ -72,16 +75,16 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
       .finally(() => setRatesLoading(false));
   }, [isOpen]);
 
-  // Calculate RLUSD when fiat amount changes (rate = fiat per 1 RLUSD; fee from API)
+  // Calculate crypto amount when fiat changes (onramp currently settles as RLUSD on XRPL)
   useEffect(() => {
     if (fiatAmount && !isNaN(parseFloat(fiatAmount)) && rate > 0) {
       const fiatNum = parseFloat(fiatAmount);
       const fee = fiatNum * (feePercent / 100);
       const netFiat = fiatNum - fee;
-      const rlusdValue = (netFiat / rate).toFixed(6); // RLUSD = fiat / (fiat per 1 RLUSD)
-      setRlusdAmount(rlusdValue);
+      const cryptoVal = (netFiat / rate).toFixed(6);
+      setCryptoReceiveAmount(cryptoVal);
     } else {
-      setRlusdAmount("");
+      setCryptoReceiveAmount("");
     }
   }, [fiatAmount, rate, feePercent]);
 
@@ -135,6 +138,10 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
   };
 
   const handleDeposit = async () => {
+    if (receiveAssetId !== "rlusd-xrpl") {
+      toast.error("Onramp to this asset is not available yet. Select RLUSD (XRPL).");
+      return;
+    }
     if (!isConnected) {
       toast.error("Please connect your XRPL wallet first");
       try {
@@ -168,7 +175,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
         currency: selectedCurrency?.symbol ?? "",
         account_number: phoneNumber,
         destination_address: address || "",
-        amount_rlusd: parseFloat(rlusdAmount) || undefined,
+        amount_rlusd: parseFloat(cryptoReceiveAmount) || undefined,
       });
 
       const data = response.data as DepositRequestResponse;
@@ -189,7 +196,8 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
   const resetAndClose = () => {
     setPhone("");
     setFiatAmount("");
-    setRlusdAmount("");
+    setCryptoReceiveAmount("");
+    setReceiveAssetId("rlusd-xrpl");
     setSelectedPaymentMethod("");
     setReceiverType("saved");
     setErrors({});
@@ -222,7 +230,9 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
           <div className="flex items-center justify-between p-6 border-b border-border">
             <div>
               <h2 className="text-xl font-bold text-foreground">Deposit Funds</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">Pay with mobile money, receive RLUSD in your wallet</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Pay with mobile money, receive crypto in your wallet (RLUSD onramp live)
+              </p>
             </div>
             <button
               onClick={resetAndClose}
@@ -255,7 +265,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Once you approve, you will receive {payInInstructions.amount_rlusd} RLUSD at your connected wallet.
+                  Once you approve, you will receive {payInInstructions.amount_rlusd} RLUSD (XRPL) at your connected wallet.
                 </p>
               </div>
             ) : !isConnected ? (
@@ -324,8 +334,26 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                     {ratesError}
                   </p>
                 )}
+                <div>
+                  <Label className="text-sm font-medium">Receive as</Label>
+                  <Select value={receiveAssetId} onValueChange={setReceiveAssetId}>
+                    <SelectTrigger className="mt-1.5 h-11 bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SUPPORTED_ASSETS.map((a) => (
+                        <SelectItem key={a.id} value={a.id} disabled={a.id !== "rlusd-xrpl"}>
+                          {a.code} · {a.chain === "base" ? "Base" : "XRPL"}
+                          {a.id !== "rlusd-xrpl" ? " (soon)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <ReceiveAmountDisplay
-                  rlusdAmount={rlusdAmount}
+                  cryptoAmount={cryptoReceiveAmount}
+                  assetCode={receiveAsset?.code ?? "RLUSD"}
                   fiatAmount={fiatAmount}
                   currencySymbol={selectedCurrency?.symbol ?? ""}
                   currencyLogo={selectedCurrency?.logo}
@@ -466,7 +494,9 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                   </div>
                   <div className="flex justify-between items-center py-2">
                     <span className="text-sm text-muted-foreground">You Receive</span>
-                    <span className="font-semibold text-lg text-primary">{rlusdAmount} RLUSD</span>
+                    <span className="font-semibold text-lg text-primary">
+                      {cryptoReceiveAmount} {receiveAsset?.code ?? "RLUSD"}
+                    </span>
                   </div>
                     <div className="border-t border-border pt-3">
                       <div className="flex justify-between items-center py-1.5">

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { getCurrencyById } from "@/data/currencies";
+import { SUPPORTED_ASSETS, getSupportedAssetById } from "@/data/supportedAssets";
 import {
   Select,
   SelectContent,
@@ -30,8 +31,12 @@ export const WithdrawModal = ({ isOpen, onClose }: WithdrawModalProps) => {
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-
-  const rlusdCurrency = getCurrencyById("rlusd");
+  const [withdrawAssetId, setWithdrawAssetId] = useState(SUPPORTED_ASSETS[0]?.id ?? "");
+  const withdrawAsset = getSupportedAssetById(withdrawAssetId);
+  const displayCurrency = withdrawAsset
+    ? getCurrencyById(withdrawAsset.chain === "base" ? (withdrawAsset.code === "USDC" ? "usdc-base" : "usdt-base") : withdrawAsset.code.toLowerCase()) ||
+      getCurrencyById("rlusd")
+    : getCurrencyById("rlusd");
   const fee = amount && !isNaN(parseFloat(amount))
     ? calculateFee(parseFloat(amount))
     : 0;
@@ -63,7 +68,7 @@ export const WithdrawModal = ({ isOpen, onClose }: WithdrawModalProps) => {
     setIsLoading(false);
     toast({
       title: "Withdrawal initiated!",
-      description: "Transaction submitted to the blockchain. You will receive RLUSD shortly.",
+      description: `Transaction submitted to the blockchain. You will receive ${withdrawAsset?.code ?? "crypto"} shortly.`,
     });
     resetAndClose();
   };
@@ -98,8 +103,8 @@ export const WithdrawModal = ({ isOpen, onClose }: WithdrawModalProps) => {
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-border">
             <div>
-              <h2 className="text-xl font-bold text-foreground">Withdraw RLUSD</h2>
-              <p className="text-sm text-muted-foreground">Withdraw your RLUSD to external wallet</p>
+              <h2 className="text-xl font-bold text-foreground">Withdraw crypto</h2>
+              <p className="text-sm text-muted-foreground">Withdraw to an external wallet</p>
             </div>
             <button
               onClick={resetAndClose}
@@ -111,23 +116,38 @@ export const WithdrawModal = ({ isOpen, onClose }: WithdrawModalProps) => {
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6 space-y-5">
-            {/* RLUSD Info */}
+            <div>
+              <Label className="text-sm font-medium">Asset</Label>
+              <Select value={withdrawAssetId} onValueChange={setWithdrawAssetId}>
+                <SelectTrigger className="mt-1.5 h-11 bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SUPPORTED_ASSETS.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.code} · {a.chain === "base" ? "Base" : "XRPL"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
               <div className="flex items-center gap-3 mb-3">
-                {rlusdCurrency && (
+                {displayCurrency && (
                   <img
-                    src={rlusdCurrency.logo}
-                    alt="RLUSD"
+                    src={displayCurrency.logo}
+                    alt={withdrawAsset?.code}
                     className="w-10 h-10 rounded-full object-contain"
                   />
                 )}
                 <div>
-                  <p className="font-semibold text-foreground">RLUSD (Ripple USD)</p>
-                  <p className="text-xs text-muted-foreground">{rlusdCurrency?.network}</p>
+                  <p className="font-semibold text-foreground">{withdrawAsset?.name}</p>
+                  <p className="text-xs text-muted-foreground">{displayCurrency?.network}</p>
                 </div>
               </div>
               <p className="text-sm text-muted-foreground">
-                Withdraw your RLUSD balance to an external XRPL wallet address.
+                Withdraw your balance to an external {withdrawAsset?.chain === "base" ? "Base (EVM)" : "XRPL"} address.
               </p>
             </div>
 
@@ -137,7 +157,7 @@ export const WithdrawModal = ({ isOpen, onClose }: WithdrawModalProps) => {
                 <Input
                   value={walletAddress}
                   onChange={(e) => setWalletAddress(e.target.value)}
-                  placeholder="Enter XRPL wallet address"
+                  placeholder={withdrawAsset?.chain === "base" ? "0x… Base address" : "r… XRPL address"}
                   className="h-12 pr-10"
                 />
                 {walletAddress && (
@@ -154,7 +174,7 @@ export const WithdrawModal = ({ isOpen, onClose }: WithdrawModalProps) => {
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Make sure this is a valid XRPL wallet address
+                Use a valid {withdrawAsset?.chain === "base" ? "Base (EVM)" : "XRPL"} address.
               </p>
             </div>
 
@@ -169,7 +189,7 @@ export const WithdrawModal = ({ isOpen, onClose }: WithdrawModalProps) => {
                   className="h-12 flex-1"
                 />
                 <div className="h-12 w-24 bg-muted rounded-md border border-border flex items-center justify-center">
-                  <span className="font-medium text-foreground">RLUSD</span>
+                  <span className="font-medium text-foreground">{withdrawAsset?.code ?? "—"}</span>
                 </div>
               </div>
             </div>
@@ -178,18 +198,24 @@ export const WithdrawModal = ({ isOpen, onClose }: WithdrawModalProps) => {
               <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Withdrawal Fee</span>
-                  <span className="font-medium text-foreground">{fee.toFixed(6)} RLUSD (0.2%)</span>
+                  <span className="font-medium text-foreground">
+                    {fee.toFixed(6)} {withdrawAsset?.code} (0.2%)
+                  </span>
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t border-primary/20">
                   <span className="text-muted-foreground">Total Deducted</span>
-                  <span className="font-semibold text-foreground">{totalAmount.toFixed(6)} RLUSD</span>
+                  <span className="font-semibold text-foreground">
+                    {totalAmount.toFixed(6)} {withdrawAsset?.code}
+                  </span>
                 </div>
                 <div className="flex items-start gap-2 pt-2 border-t border-primary/20">
                   <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                   <div className="text-xs text-muted-foreground space-y-1">
-                    <p>• Minimum withdrawal: 10 RLUSD</p>
+                    <p>• Minimum withdrawal: 10 {withdrawAsset?.code}</p>
                     <p>• Processing time: 1-3 blockchain confirmations (usually 5-15 minutes)</p>
-                    <p>• Ensure wallet address is correct for XRPL network</p>
+                    <p>
+                      • Ensure the address matches {withdrawAsset?.chain === "base" ? "Base" : "XRPL"}
+                    </p>
                     <p>• Double-check the address before confirming</p>
                   </div>
                 </div>

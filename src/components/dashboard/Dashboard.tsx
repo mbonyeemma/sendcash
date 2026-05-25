@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
 import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
+import { useEVMWallet } from "@/contexts/EVMWalletContext";
 import sendicashLogo from "@/assets/sendicash-logo.png";
 
 interface DashboardProps {
@@ -34,6 +35,7 @@ interface DashboardProps {
 export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps) => {
   const { user } = useAuth();
   const { isConnected, address } = useXRPLWallet();
+  const { isConnected: evmConnected, address: evmAddress } = useEVMWallet();
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState<DashboardView>(initialView);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -101,7 +103,7 @@ export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps)
         return (
           <div className="rounded-2xl border border-border bg-card p-8 text-center max-w-md mx-auto">
             <h2 className="text-xl font-semibold text-foreground mb-2">Banks</h2>
-            <p className="text-muted-foreground mb-4">Send XRP or RLUSD to supported banks.</p>
+            <p className="text-muted-foreground mb-4">Send supported crypto to banks.</p>
             <Badge variant="secondary" className="text-sm">COMING SOON</Badge>
           </div>
         );
@@ -144,20 +146,21 @@ export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps)
             <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 px-1.5 py-0.5 rounded">Beta</span>
           </div>
           <div className="flex items-center gap-2">
-            {/* Connect XRPL Wallet Button */}
+            {/* Connect Wallet Button */}
             <Button
               onClick={() => setConnectWalletOpen(true)}
-              variant={isConnected ? "default" : "outline"}
+              variant={isConnected || evmConnected ? "default" : "outline"}
               size="sm"
               className="gap-2"
             >
               <Wallet className="w-4 h-4" />
               <span className="hidden sm:inline">
-                {isConnected ? `${address?.slice(0, 4)}...${address?.slice(-4)}` : "Connect"}
+                {isConnected || evmConnected
+                  ? `${(isConnected ? address : evmAddress)?.slice(0, 4)}...${(isConnected ? address : evmAddress)?.slice(-4)}`
+                  : "Connect"}
               </span>
             </Button>
 
-            {/* User Avatar (email shown below in dropdown) */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 p-1 rounded-lg hover:bg-muted transition-colors">
@@ -223,20 +226,25 @@ export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps)
         {/* Desktop Header */}
         <div className="hidden lg:block border-b border-border bg-card">
           <div className="flex items-center justify-end p-4 pr-8 gap-3">
-            {/* Connect XRPL Wallet Button */}
+            {/* Connect Wallet Button */}
             <Button
               onClick={() => setConnectWalletOpen(true)}
-              variant={isConnected ? "default" : "outline"}
+              variant={isConnected || evmConnected ? "default" : "outline"}
               size="sm"
               className="gap-2"
             >
               <Wallet className="w-4 h-4" />
               <span>
-                {isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)}` : "Connect Wallet"}
+                {isConnected && evmConnected
+                  ? "2 Wallets"
+                  : isConnected
+                    ? `XRPL: ${address?.slice(0, 6)}...${address?.slice(-4)}`
+                    : evmConnected
+                      ? `Base: ${evmAddress?.slice(0, 6)}...${evmAddress?.slice(-4)}`
+                      : "Connect Wallet"}
               </span>
             </Button>
 
-            {/* User Avatar (email shown below in dropdown) */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors">

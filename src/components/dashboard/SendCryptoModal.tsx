@@ -7,7 +7,14 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { xrplService } from "@/services/xrplService";
 import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
-import { getCurrencyById } from "@/data/currencies";
+import { XRPL_SEND_ASSETS, getSupportedAssetById } from "@/data/supportedAssets";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const XRPL_FAVORITES_KEY = "sendcash_xrpl_favorites";
 
@@ -38,11 +45,11 @@ interface SendCryptoModalProps {
   onSuccess?: () => void;
 }
 
-type Asset = "XRP" | "RLUSD";
-
 export const SendCryptoModal = ({ isOpen, onClose, onSuccess }: SendCryptoModalProps) => {
   const { isConnected, address, connectWallet, network: xrplNetwork } = useXRPLWallet();
-  const [asset, setAsset] = useState<Asset>("RLUSD");
+  const defaultAsset = XRPL_SEND_ASSETS.find((a) => a.code === "RLUSD") ?? XRPL_SEND_ASSETS[0];
+  const [assetId, setAssetId] = useState(defaultAsset.id);
+  const assetMeta = getSupportedAssetById(assetId) ?? defaultAsset;
   const [amount, setAmount] = useState("");
   const [favorites, setFavorites] = useState<XrplFavorite[]>([]);
   const [selectedFavoriteId, setSelectedFavoriteId] = useState<string>("");
@@ -66,7 +73,7 @@ export const SendCryptoModal = ({ isOpen, onClose, onSuccess }: SendCryptoModalP
     isConnected &&
     parseFloat(amount) > 0 &&
     destinationAddress.length >= 25 &&
-    (asset === "XRP" || asset === "RLUSD");
+    assetMeta.chain === "xrpl";
 
   const handleSend = async () => {
     if (!isConnected) {
@@ -90,13 +97,13 @@ export const SendCryptoModal = ({ isOpen, onClose, onSuccess }: SendCryptoModalP
     setIsLoading(true);
     try {
       const issuer =
-        asset === "RLUSD"
+        assetMeta.code === "RLUSD"
           ? xrplService.getRLUSDIssuer("Mainnet")
           : undefined;
       const result = (await xrplService.sendPayment(
         destinationAddress,
         amount,
-        asset,
+        assetMeta.code,
         issuer
       )) as { type?: string; result?: { hash?: string } };
       if (result?.type === "reject") {
@@ -104,7 +111,7 @@ export const SendCryptoModal = ({ isOpen, onClose, onSuccess }: SendCryptoModalP
         return;
       }
       if (result?.type === "response" && result?.result?.hash) {
-        toast.success(`Sent ${amount} ${asset}. Tx: ${result.result.hash.slice(0, 8)}...`);
+        toast.success(`Sent ${amount} ${assetMeta.code}. Tx: ${result.result.hash.slice(0, 8)}...`);
         setAmount("");
         setSelectedFavoriteId("");
         setCustomAddress("");
@@ -162,9 +169,6 @@ export const SendCryptoModal = ({ isOpen, onClose, onSuccess }: SendCryptoModalP
 
   if (!isOpen) return null;
 
-  const xrpInfo = getCurrencyById("rlusd");
-  const rlusdLogo = xrpInfo?.logo;
-
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex justify-end">
@@ -183,7 +187,7 @@ export const SendCryptoModal = ({ isOpen, onClose, onSuccess }: SendCryptoModalP
           className="relative bg-card h-full w-full max-w-md shadow-2xl border-l border-border flex flex-col"
         >
           <div className="p-6 border-b border-border flex items-center justify-between">
-            <h2 className="text-xl font-bold text-foreground">Send XRP / RLUSD</h2>
+            <h2 className="text-xl font-bold text-foreground">Send on XRPL</h2>
             <button
               onClick={resetAndClose}
               className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted"
@@ -222,39 +226,32 @@ export const SendCryptoModal = ({ isOpen, onClose, onSuccess }: SendCryptoModalP
               <>
                 <div>
                   <Label className="text-sm font-medium">Asset</Label>
-                  <div className="flex gap-2 mt-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setAsset("XRP")}
-                      className={`flex-1 py-3 px-4 rounded-xl border text-sm font-medium flex items-center justify-center gap-2 ${
-                        asset === "XRP"
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border bg-muted/50 text-muted-foreground hover:bg-muted"
-                      }`}
-                    >
-                      <span className="w-6 h-6 rounded-full bg-white text-black flex items-center justify-center text-xs font-bold">XRP</span>
-                      XRP
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAsset("RLUSD")}
-                      className={`flex-1 py-3 px-4 rounded-xl border text-sm font-medium flex items-center justify-center gap-2 ${
-                        asset === "RLUSD"
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border bg-muted/50 text-muted-foreground hover:bg-muted"
-                      }`}
-                    >
-                      {rlusdLogo && <img src={rlusdLogo} alt="RLUSD" className="w-6 h-5 object-contain rounded" />}
-                      RLUSD
-                    </button>
-                  </div>
+                  <Select value={assetId} onValueChange={setAssetId}>
+                    <SelectTrigger className="mt-1.5 h-12 bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {XRPL_SEND_ASSETS.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          <span className="flex items-center gap-2">
+                            {a.logo ? (
+                              <img src={a.logo} alt={a.code} className="w-5 h-4 object-contain rounded" />
+                            ) : (
+                              <span className="w-5 h-4 rounded bg-white text-black flex items-center justify-center text-[10px] font-bold">XRP</span>
+                            )}
+                            {a.code} · XRPL
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium">Amount ({asset})</Label>
+                  <Label className="text-sm font-medium">Amount ({assetMeta.code})</Label>
                   <Input
                     type="number"
-                    step={asset === "XRP" ? "0.000001" : "0.01"}
+                    step={assetMeta.code === "XRP" ? "0.000001" : "0.01"}
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="0.00"
@@ -347,7 +344,7 @@ export const SendCryptoModal = ({ isOpen, onClose, onSuccess }: SendCryptoModalP
                     <h3 className="font-semibold">Review</h3>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Amount</span>
-                      <span className="font-medium">{amount} {asset}</span>
+                      <span className="font-medium">{amount} {assetMeta.code}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">To</span>

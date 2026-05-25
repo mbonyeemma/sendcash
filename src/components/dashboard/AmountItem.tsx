@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getCurrencyById, SEND_RECEIVE_CURRENCIES, type Currency } from "@/data/currencies";
+import { XRPL_SEND_ASSETS } from "@/data/supportedAssets";
 import { AlertCircle } from "lucide-react";
 import type { SupportedCurrency } from "@/services/api";
 
@@ -89,22 +90,15 @@ export const AmountItem = ({
   );
 };
 
-/** Unified amount + asset selector (XRP/RLUSD) – same visual as AmountItem for consistency. */
-export type CryptoAssetId = "XRP" | "RLUSD";
-
+/** XRPL send: amount + asset (from `supportedAssets` XRPL entries). */
 interface AssetAmountItemProps {
-  assetId: CryptoAssetId;
-  onAssetChange: (value: CryptoAssetId) => void;
+  assetId: string;
+  onAssetChange: (value: string) => void;
   amount: string;
   onAmountChange: (value: string) => void;
   amountError?: string;
   onClearAmountError?: () => void;
 }
-
-const CRYPTO_ASSET_OPTIONS: { id: CryptoAssetId; symbol: string; logo?: string }[] = [
-  { id: "XRP", symbol: "XRP" },
-  { id: "RLUSD", symbol: "RLUSD", logo: "https://cryptologos.cc/logos/xrp-xrp-logo.png?v=040" },
-];
 
 export const AssetAmountItem = ({
   assetId,
@@ -114,13 +108,15 @@ export const AssetAmountItem = ({
   amountError,
   onClearAmountError,
 }: AssetAmountItemProps) => {
+  const selected = XRPL_SEND_ASSETS.find((a) => a.id === assetId) ?? XRPL_SEND_ASSETS[0];
+  const code = selected?.code ?? "XRP";
   return (
     <div className="space-y-1.5">
       <Label className="text-sm font-medium">Amount</Label>
       <div className="flex h-12 rounded-lg border border-input bg-background overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
         <Input
           type="number"
-          step={assetId === "XRP" ? "0.000001" : "0.01"}
+          step={code === "XRP" ? "0.000001" : "0.01"}
           value={amount}
           onChange={(e) => {
             onAmountChange(e.target.value);
@@ -129,21 +125,23 @@ export const AssetAmountItem = ({
           placeholder="0.00"
           className="h-full min-w-0 flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
         />
-        <div className="flex items-center border-l border-input bg-muted/50 px-2">
-          <Select value={assetId} onValueChange={(v) => onAssetChange(v as CryptoAssetId)}>
-            <SelectTrigger className="h-9 w-[100px] border-0 bg-transparent shadow-none focus:ring-0 gap-1.5 pr-1">
+        <div className="flex items-center border-l border-input bg-muted/50 px-2 min-w-0">
+          <Select value={selected.id} onValueChange={onAssetChange}>
+            <SelectTrigger className="h-9 min-w-[108px] max-w-[140px] border-0 bg-transparent shadow-none focus:ring-0 gap-1.5 pr-1">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {CRYPTO_ASSET_OPTIONS.map((c) => (
+              {XRPL_SEND_ASSETS.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
                   <span className="flex items-center gap-2">
                     {c.logo ? (
-                      <img src={c.logo} alt={c.symbol} className="w-5 h-4 object-contain rounded" />
+                      <img src={c.logo} alt={c.code} className="w-5 h-4 object-contain rounded" />
                     ) : (
-                      <span className="w-5 h-4 rounded bg-white text-black flex items-center justify-center text-[10px] font-bold">XRP</span>
+                      <span className="w-5 h-4 rounded bg-white text-black flex items-center justify-center text-[10px] font-bold">
+                        XRP
+                      </span>
                     )}
-                    {c.symbol}
+                    {c.code}
                   </span>
                 </SelectItem>
               ))}
@@ -161,22 +159,24 @@ export const AssetAmountItem = ({
   );
 };
 
-/** Compact read-only "You'll receive" / quote display. Always shows rate and fee when rate > 0; shows RLUSD amount when user entered fiat. */
+/** Compact read-only "You'll receive" / quote display for onramp (fiat → crypto). */
 interface ReceiveAmountDisplayProps {
-  rlusdAmount: string;
+  cryptoAmount: string;
+  /** Asset ticker for the amount you'll receive (e.g. RLUSD) */
+  assetCode: string;
   fiatAmount: string;
   currencySymbol: string;
   currencyLogo?: string;
-  /** Fiat per 1 RLUSD (from API) */
+  /** Fiat per 1 unit of crypto (from API) */
   rate: number;
   /** Fee percent (from API, e.g. 0.5) */
   feePercent: number;
-  /** When true, show loading placeholder instead of rate */
   isLoading?: boolean;
 }
 
 export const ReceiveAmountDisplay = ({
-  rlusdAmount,
+  cryptoAmount,
+  assetCode,
   fiatAmount,
   currencySymbol,
   currencyLogo,
@@ -198,9 +198,9 @@ export const ReceiveAmountDisplay = ({
           ) : (
             <>
               <span className="font-semibold text-foreground tabular-nums">
-                {hasAmount && rlusdAmount ? rlusdAmount : "—"}
+                {hasAmount && cryptoAmount ? cryptoAmount : "—"}
               </span>
-              <span className="text-muted-foreground text-sm">RLUSD</span>
+              <span className="text-muted-foreground text-sm">{assetCode}</span>
               <span className="flex-1" />
               {currencyLogo && <img src={currencyLogo} alt="" className="w-4 h-3 object-contain rounded" />}
               <span className="text-sm text-muted-foreground">
@@ -212,7 +212,7 @@ export const ReceiveAmountDisplay = ({
         {showQuote && (
           <div className="border-t border-border/50 px-3 py-1.5 text-xs text-muted-foreground">
             Fee {feePercent}%: {hasAmount ? `${fee.toFixed(2)} ${currencySymbol} · ` : ""}
-            1 {currencySymbol} = {(1 / rate).toFixed(6)} RLUSD
+            1 {currencySymbol} = {(1 / rate).toFixed(6)} {assetCode}
           </div>
         )}
       </div>

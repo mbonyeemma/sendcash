@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getCurrencyById, SEND_RECEIVE_CURRENCIES } from "@/data/currencies";
+import { SUPPORTED_ASSETS, getSupportedAssetById } from "@/data/supportedAssets";
 import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
 import {
   Dialog,
@@ -25,6 +26,8 @@ interface ReceiveModalProps {
 export const ReceiveModal = ({ isOpen, onClose }: ReceiveModalProps) => {
   const { isConnected, address } = useXRPLWallet();
   const [currencyId, setCurrencyId] = useState<string>("ugx");
+  const [receiveAssetId, setReceiveAssetId] = useState("rlusd-xrpl");
+  const receiveAsset = getSupportedAssetById(receiveAssetId);
   const currency = getCurrencyById(currencyId);
   const symbol = currency?.symbol ?? "UGX";
 
@@ -32,11 +35,26 @@ export const ReceiveModal = ({ isOpen, onClose }: ReceiveModalProps) => {
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Receive RLUSD</DialogTitle>
+          <DialogTitle>Receive crypto</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>
-            <Label className="text-sm font-medium">Receive to (cash out as)</Label>
+            <Label className="text-sm font-medium">Asset (XRPL)</Label>
+            <Select value={receiveAssetId} onValueChange={setReceiveAssetId}>
+              <SelectTrigger className="mt-1.5 h-11 bg-muted">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SUPPORTED_ASSETS.filter((a) => a.chain === "xrpl").map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.code} · XRPL
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-sm font-medium">Cash out to (fiat)</Label>
             <Select value={currencyId} onValueChange={setCurrencyId}>
               <SelectTrigger className="mt-1.5 h-11 bg-muted">
                 <SelectValue />
@@ -59,18 +77,18 @@ export const ReceiveModal = ({ isOpen, onClose }: ReceiveModalProps) => {
           </div>
           {!isConnected ? (
             <p className="text-muted-foreground text-sm">
-              Connect your XRPL wallet to see your receive address and get RLUSD.
+              Connect your XRPL wallet to see your receive address.
             </p>
           ) : address ? (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                Send RLUSD to this address. You can then cash out to {symbol} via Send.
+                Send {receiveAsset?.code ?? "crypto"} to this address. You can then cash out to {symbol} via Send.
               </p>
               <div className="rounded-lg bg-muted p-3 font-mono text-sm break-all select-all">
                 {address}
               </div>
               <p className="text-xs text-muted-foreground">
-                Use your GemWallet or any XRPL wallet to send RLUSD to this address.
+                Use your GemWallet or any XRPL wallet to send {receiveAsset?.code ?? "tokens"} to this address.
               </p>
             </div>
           ) : null}

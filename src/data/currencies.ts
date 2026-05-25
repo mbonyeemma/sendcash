@@ -26,6 +26,22 @@ export const currencies: Currency[] = [
     network: "Ethereum"
   },
   {
+    id: "usdc-base",
+    name: "USDC on Base",
+    symbol: "USDC",
+    type: "crypto",
+    logo: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=040",
+    network: "Base",
+  },
+  {
+    id: "usdt-base",
+    name: "USDT on Base",
+    symbol: "USDT",
+    type: "crypto",
+    logo: "https://cryptologos.cc/logos/tether-usdt-logo.png?v=040",
+    network: "Base",
+  },
+  {
     id: "usdt",
     name: "Tether",
     symbol: "USDT",
@@ -110,10 +126,22 @@ export const fiatToUsdRate: Record<string, number> = {
 // Exchange rates (mock)
 export const exchangeRates: Record<string, Record<string, number>> = {
   usdc: { ugx: 3720, usd: 1, kes: 129, tzs: 2550, eur: 0.92 },
+  "usdc-base": { ugx: 3720, usd: 1, kes: 129, tzs: 2550, eur: 0.92 },
   usdt: { ugx: 3720, usd: 1, kes: 129, tzs: 2550, eur: 0.92 },
+  "usdt-base": { ugx: 3720, usd: 1, kes: 129, tzs: 2550, eur: 0.92 },
   rlusd: { ugx: 3720, usd: 1, kes: 129, tzs: 2550, eur: 0.92 },
+  xrp: { ugx: 1850, usd: 0.5, kes: 64, tzs: 1275, eur: 0.46 },
   usd: { ugx: 3720, kes: 129, tzs: 2550, eur: 0.92 },
-  ugx: { usd: 0.00027, usdt: 0.00027, usdc: 0.00027, rlusd: 0.00027, kes: 0.035, tzs: 0.00069, eur: 0.00025 },
+  ugx: {
+    usd: 0.00027,
+    usdt: 0.00027,
+    usdc: 0.00027,
+    rlusd: 0.00027,
+    xrp: 0.00054,
+    kes: 0.035,
+    tzs: 0.00069,
+    eur: 0.00025,
+  },
   kes: { ugx: 28.8, usd: 0.0078, tzs: 19.8, eur: 0.0071 },
   tzs: { ugx: 1.46, usd: 0.00039, kes: 0.05, eur: 0.00036 },
   rwf: { usd: 0.00078 },

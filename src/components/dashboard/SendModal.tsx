@@ -8,9 +8,11 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import { toast } from "sonner";
 import { walletApi, paymentMethodApi, PaymentMethod as ApiPaymentMethod } from "@/services/api";
 import { xrplService } from "@/services/xrplService";
-import { cryptoCurrencies, fiatCurrencies, Currency, exchangeRates, getCurrencyById, SEND_RECEIVE_CURRENCIES } from "@/data/currencies";
+import { exchangeRates, getCurrencyById, SEND_RECEIVE_CURRENCIES } from "@/data/currencies";
+import { SUPPORTED_ASSETS, getSupportedAssetById } from "@/data/supportedAssets";
 import { useAuth } from "@/contexts/AuthContext";
 import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
+import { useEVMWallet } from "@/contexts/EVMWalletContext";
 import {
   Select,
   SelectContent,
@@ -41,17 +43,23 @@ interface SavedContact {
 }
 
 type SendMode = "" | "offramp" | "crypto";
-type CryptoAsset = "XRP" | "RLUSD";
 
 const calculateFee = (amount: number): number => {
-  return amount * 0.01; // 1% fee for all RLUSD offramp
+  return amount * 0.01; // 1% fee for fiat offramp
 };
+
+const defaultOfframpAsset =
+  SUPPORTED_ASSETS.find((a) => a.supportsFiatOfframp) ?? SUPPORTED_ASSETS[0];
+const defaultCryptoAsset =
+  SUPPORTED_ASSETS.find((a) => a.chain === "xrpl" && a.code === "RLUSD") ??
+  SUPPORTED_ASSETS.find((a) => a.chain === "xrpl")!;
 
 const PAYOUT_CURRENCY_MAP: Record<string, string> = { ugx: "UGX", kes: "KES", tzs: "TZS" };
 
 export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
   const { user } = useAuth();
   const { isConnected, address, connectWallet, network: xrplNetwork } = useXRPLWallet();
+  const { isConnected: evmConnected } = useEVMWallet();
   const userCurrency = user?.currency || "UGX";
 
   const [payoutCurrencyId, setPayoutCurrencyId] = useState<string>("ugx");
@@ -64,7 +72,9 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
   const [addPaymentMethodOpen, setAddPaymentMethodOpen] = useState(false);
   const [receiverType, setReceiverType] = useState<"saved" | "onetime">("saved");
   const [paymentMethods, setPaymentMethods] = useState<ApiPaymentMethod[]>([]);
-  const [rlusdAmount, setRlusdAmount] = useState("");
+  const [offrampAssetId, setOfframpAssetId] = useState<string>(defaultOfframpAsset.id);
+  const [offrampAmount, setOfframpAmount] = useState("");
+  const selectedOfframpAsset = getSupportedAssetById(offrampAssetId) ?? defaultOfframpAsset;
   const [fiatAmount, setFiatAmount] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -76,7 +86,9 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
   // Send mode: "" = choose offramp vs crypto, "offramp" = mobile/bank, "crypto" = XRP/RLUSD to address
   const [sendMode, setSendMode] = useState<SendMode>("");
   // Crypto send (XRP/RLUSD to XRPL address)
-  const [cryptoAsset, setCryptoAsset] = useState<CryptoAsset>("RLUSD");
+  const [cryptoAssetId, setCryptoAssetId] = useState<string>(defaultCryptoAsset.id);
+  const selectedCryptoAsset =
+    getSupportedAssetById(cryptoAssetId) ?? defaultCryptoAsset;
   const [cryptoAmount, setCryptoAmount] = useState("");
   const [favorites, setFavorites] = useState<XrplFavorite[]>([]);
   const [selectedFavoriteId, setSelectedFavoriteId] = useState<string>("");
@@ -87,20 +99,23 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
   const [saveAddressInitialAddress, setSaveAddressInitialAddress] = useState("");
 
   const payoutCurrencyKey = payoutCurrency.toLowerCase();
-  const rate = exchangeRates["rlusd"]?.[payoutCurrencyKey] ?? exchangeRates["rlusd"]?.["ugx"] ?? 3720;
+  const rate =
+    exchangeRates[selectedOfframpAsset.rateKey]?.[payoutCurrencyKey] ??
+    exchangeRates[selectedOfframpAsset.rateKey]?.["ugx"] ??
+    3720;
 
-  // Calculate fiat (UGX/KES/TZS) when RLUSD changes
+  // Calculate fiat (UGX/KES/TZS) when crypto amount changes
   useEffect(() => {
-    if (rlusdAmount && !isNaN(parseFloat(rlusdAmount)) && rate > 0) {
-      const rlusdNum = parseFloat(rlusdAmount);
-      const fee = rlusdNum * 0.01; // 1% fee
-      const netAmount = rlusdNum - fee;
+    if (offrampAmount && !isNaN(parseFloat(offrampAmount)) && rate > 0) {
+      const num = parseFloat(offrampAmount);
+      const fee = num * 0.01; // 1% fee
+      const netAmount = num - fee;
       const value = (netAmount * rate).toFixed(2);
       setFiatAmount(value);
     } else {
       setFiatAmount("");
     }
-  }, [rlusdAmount, rate]);
+  }, [offrampAmount, rate]);
 
   // Fetch payment methods when offramp is shown (mobile money only)
   useEffect(() => {
@@ -123,7 +138,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
     isConnected &&
     parseFloat(cryptoAmount) > 0 &&
     cryptoDestinationAddress.length >= 25 &&
-    (cryptoAsset === "XRP" || cryptoAsset === "RLUSD");
+    selectedCryptoAsset.chain === "xrpl";
 
   // Auto-populate recipient from selected payment method
   useEffect(() => {
@@ -163,8 +178,8 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!rlusdAmount || parseFloat(rlusdAmount) <= 0) {
-      newErrors.rlusdAmount = "Please enter a valid RLUSD amount";
+    if (!offrampAmount || parseFloat(offrampAmount) <= 0) {
+      newErrors.offrampAmount = "Please enter a valid amount";
     }
     if (receiverType === "saved" && !selectedPaymentMethod) {
       newErrors.recipient = "Please select a payment method";
@@ -176,14 +191,12 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
   };
 
   const handleSend = async () => {
-    // Check if wallet is connected
+    if (!selectedOfframpAsset.supportsFiatOfframp) {
+      toast.error("Mobile money offramp is not available for this asset yet.");
+      return;
+    }
     if (!isConnected) {
-      toast.error("Please connect your XRPL wallet first");
-      try {
-        await connectWallet();
-      } catch (error) {
-        console.error("Failed to connect wallet:", error);
-      }
+      toast.error("Connect your XRPL wallet to send RLUSD for offramp.");
       return;
     }
 
@@ -211,14 +224,14 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
 
       // 1) Create payout request – backend returns XRPL address + memo (numeric)
       const payoutPayload = {
-        amount: parseFloat(rlusdAmount),
+        amount: parseFloat(offrampAmount),
         fiat_amount: parseFloat(fiatAmount),
         payment_mode: "MOBILE",
         currency: payoutCurrency,
         account_number: accountNumber,
         network: autoNetwork || undefined,
         payment_method_id: selectedPaymentMethod || undefined,
-        narration: "RLUSD offramp",
+        narration: `${selectedOfframpAsset.code} offramp`,
       };
       const response = await walletApi.createPayoutRequest(payoutPayload);
       const data = response.data as { xrpl_destination: string; memo: string; amount: number };
@@ -236,7 +249,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
         xrplService.sendPayment(
           data.xrpl_destination,
           String(data.amount),
-          "RLUSD",
+          selectedOfframpAsset.code,
           issuer,
           data.memo
         ),
@@ -250,7 +263,9 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
         return;
       }
       if (sendResult?.type === "response" && sendResult?.result?.hash) {
-        toast.success(`Sent ${rlusdAmount} RLUSD. Once confirmed on XRPL, ${fiatAmount} ${payoutCurrency} will be sent to the recipient.`);
+        toast.success(
+          `Sent ${offrampAmount} ${selectedOfframpAsset.code}. Once confirmed on XRPL, ${fiatAmount} ${payoutCurrency} will be sent to the recipient.`
+        );
         resetAndClose();
         if (onSuccess) onSuccess();
       } else {
@@ -260,7 +275,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
       if (sendCancelledRef.current) return;
       console.error("Send error:", error);
       if (error?.message === "SEND_TIMEOUT") {
-        toast.error("Request timed out. If GemWallet showed an error, try again or refresh the extension. If you approved, check your transaction history.");
+        toast.error("Request timed out. If your wallet showed an error, try again. If you approved, check your transaction history.");
       } else {
         toast.error(error?.message || "Failed to complete transaction. Please try again.");
       }
@@ -272,12 +287,13 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
   const handleCancelSend = () => {
     sendCancelledRef.current = true;
     setIsLoading(false);
-    toast.info("Cancelled. If you already approved in GemWallet, the transaction may still go through.");
+    toast.info("Cancelled. If you already approved in your wallet, the transaction may still go through.");
   };
 
   const resetAndClose = () => {
     setSendMode("");
-    setRlusdAmount("");
+    setOfframpAmount("");
+    setOfframpAssetId(defaultOfframpAsset.id);
     setFiatAmount("");
     setRecipient("");
     setRecipientName("");
@@ -285,7 +301,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
     setReceiverType("saved");
     setErrors({});
     setShowPreview(false);
-    setCryptoAsset("RLUSD");
+    setCryptoAssetId(defaultCryptoAsset.id);
     setCryptoAmount("");
     setSelectedFavoriteId("");
     setCustomAddress("");
@@ -317,13 +333,13 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
     setIsLoading(true);
     try {
       const issuer =
-        cryptoAsset === "RLUSD"
+        selectedCryptoAsset.code === "RLUSD"
           ? xrplService.getRLUSDIssuer("Mainnet")
           : undefined;
       const result = (await xrplService.sendPayment(
         cryptoDestinationAddress,
         cryptoAmount,
-        cryptoAsset,
+        selectedCryptoAsset.code,
         issuer
       )) as { type?: string; result?: { hash?: string } };
       if (result?.type === "reject") {
@@ -331,7 +347,9 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
         return;
       }
       if (result?.type === "response" && result?.result?.hash) {
-        toast.success(`Sent ${cryptoAmount} ${cryptoAsset}. Tx: ${result.result.hash.slice(0, 8)}...`);
+        toast.success(
+          `Sent ${cryptoAmount} ${selectedCryptoAsset.code}. Tx: ${result.result.hash.slice(0, 8)}...`
+        );
         resetAndClose();
         onSuccess?.();
       } else {
@@ -392,7 +410,6 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                       setCustomAddress("");
                       setUseCustomAddress(false);
                       setCryptoShowPreview(false);
-                      setAddFavoriteLabel("");
                     } else {
                       setSendMode("");
                       setShowPreview(false);
@@ -430,7 +447,9 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                     </div>
                     <div>
                       <p className="font-semibold text-foreground">To mobile money</p>
-                      <p className="text-xs text-muted-foreground mt-1">Send RLUSD, recipient gets fiat (UGX, KES, TZS)</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Send crypto, recipient gets fiat (UGX, KES, TZS) — where supported
+                      </p>
                     </div>
                   </button>
                   <button
@@ -442,8 +461,10 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                       <Wallet className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">To XRPL address (XRP / RLUSD)</p>
-                      <p className="text-xs text-muted-foreground mt-1">Send XRP or RLUSD to a wallet address or favorite</p>
+                      <p className="font-semibold text-foreground">To XRPL address</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Send XRP, RLUSD, or other XRPL tokens to a saved address or favorite
+                      </p>
                     </div>
                   </button>
                   <div
@@ -458,7 +479,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                         To bank
                         <Badge variant="secondary" className="text-xs font-normal">Coming soon</Badge>
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">Send RLUSD to a bank account</p>
+                      <p className="text-xs text-muted-foreground mt-1">Send crypto to a bank account</p>
                     </div>
                   </div>
                 </div>
@@ -482,8 +503,8 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                 {isConnected && (
                   <>
                     <AssetAmountItem
-                      assetId={cryptoAsset}
-                      onAssetChange={setCryptoAsset}
+                      assetId={cryptoAssetId}
+                      onAssetChange={setCryptoAssetId}
                       amount={cryptoAmount}
                       onAmountChange={setCryptoAmount}
                     />
@@ -565,10 +586,10 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                           <div className="flex justify-between items-center gap-2">
                             <span className="text-sm text-muted-foreground">Amount</span>
                             <span className="font-semibold tabular-nums">
-                              {cryptoAsset === "XRP"
+                              {selectedCryptoAsset.code === "XRP"
                                 ? Number(cryptoAmount).toLocaleString(undefined, { maximumFractionDigits: 6 })
                                 : Number(cryptoAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}{" "}
-                              {cryptoAsset}
+                              {selectedCryptoAsset.code}
                             </span>
                           </div>
                           <div className="flex justify-between items-center gap-2">
@@ -588,47 +609,39 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
             {/* Offramp: mobile money only */}
             {sendMode === "offramp" && (
               <>
-            {!isConnected && (
+            {!isConnected && selectedOfframpAsset.supportsFiatOfframp && (
               <div className="p-4 mx-6 mt-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">XRPL Wallet Not Connected</p>
+                    <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">XRPL wallet required</p>
                     <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                      Connect your wallet to send RLUSD. Recipient receives fiat via mobile money.
+                      Connect an XRPL wallet (e.g. GemWallet) to send {selectedOfframpAsset.code} for mobile money offramp.
                     </p>
-                    <Button
-                      onClick={async () => {
-                        try {
-                          await connectWallet();
-                          toast.success("Wallet connected!");
-                        } catch (error: any) {
-                          toast.error("Failed to connect wallet");
-                        }
-                      }}
-                      variant="outline"
-                      size="sm"
-                      className="mt-2 h-8 text-xs"
-                    >
-                      <Wallet className="w-3 h-3 mr-1" />
-                      Connect Wallet
-                    </Button>
                   </div>
                 </div>
               </div>
             )}
-            
-            {isConnected && (
+
+            {isConnected && selectedOfframpAsset.supportsFiatOfframp && (
               <div className="p-4 mx-6 mt-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                 <div className="flex items-start gap-3">
                   <Wallet className="w-5 h-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-green-800 dark:text-green-200">Wallet Connected</p>
+                    <p className="text-sm font-medium text-green-800 dark:text-green-200">XRPL wallet connected</p>
                     <p className="text-xs text-green-700 dark:text-green-300 mt-1">
-                      {address?.slice(0, 8)}...{address?.slice(-6)} • RLUSD transactions will use your wallet
+                      {address?.slice(0, 8)}...{address?.slice(-6)} • XRPL
                     </p>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {evmConnected && !isConnected && (
+              <div className="p-4 mx-6 mt-6 bg-muted/50 border border-border rounded-lg">
+                <p className="text-xs text-muted-foreground">
+                  Base wallet detected. Fiat offramp from RLUSD uses an XRPL wallet — connect XRPL in the wallet menu.
+                </p>
               </div>
             )}
 
@@ -636,11 +649,47 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
             {/* Offramp form: mobile money only */}
             {sendMode === "offramp" && !showPreview && (
               <div className="space-y-5">
-                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                  <p className="text-sm font-medium">RLUSD Offramp</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Send RLUSD and recipient receives fiat via mobile money.
-                  </p>
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-3">
+                  <div>
+                    <p className="text-sm font-medium">Fiat offramp</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Choose asset and amount. Recipient receives fiat via mobile money where supported.
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">Asset</Label>
+                    <Select
+                      value={offrampAssetId}
+                      onValueChange={(id) => {
+                        setOfframpAssetId(id);
+                        setOfframpAmount("");
+                        setErrors((e) => ({ ...e, offrampAmount: "" }));
+                      }}
+                    >
+                      <SelectTrigger className="mt-1 h-11 bg-background">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SUPPORTED_ASSETS.map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            <span className="flex flex-col items-start text-left">
+                              <span>
+                                {a.code} · {a.chain === "base" ? "Base" : "XRPL"}
+                              </span>
+                              {!a.supportsFiatOfframp && (
+                                <span className="text-[10px] text-muted-foreground">Offramp coming soon</span>
+                              )}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {!selectedOfframpAsset.supportsFiatOfframp && (
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      Mobile money offramp is available for RLUSD on XRPL. Other assets are coming soon.
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -667,26 +716,26 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-sm font-medium">Amount (RLUSD)</Label>
+                  <Label className="text-sm font-medium">Amount ({selectedOfframpAsset.code})</Label>
                   <div className="flex h-12 rounded-lg border border-input bg-background overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
                     <Input
                       type="number"
-                      value={rlusdAmount}
+                      value={offrampAmount}
                       onChange={(e) => {
-                        setRlusdAmount(e.target.value);
-                        if (errors.rlusdAmount) setErrors({ ...errors, rlusdAmount: "" });
+                        setOfframpAmount(e.target.value);
+                        if (errors.offrampAmount) setErrors({ ...errors, offrampAmount: "" });
                       }}
                       placeholder="0.00"
                       className="h-full border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
                     />
                     <div className="flex items-center border-l border-input bg-muted/50 px-3">
-                      <span className="text-sm font-medium text-muted-foreground">RLUSD</span>
+                      <span className="text-sm font-medium text-muted-foreground">{selectedOfframpAsset.code}</span>
                     </div>
                   </div>
-                  {errors.rlusdAmount && (
+                  {errors.offrampAmount && (
                     <p className="text-sm text-destructive flex items-center gap-1">
                       <AlertCircle className="w-4 h-4 shrink-0" />
-                      {errors.rlusdAmount}
+                      {errors.offrampAmount}
                     </p>
                   )}
                 </div>
@@ -709,16 +758,20 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                     <div className="mt-3 pt-3 border-t border-primary/20 space-y-1">
                       <div className="flex justify-between text-xs">
                         <span className="text-muted-foreground">You send:</span>
-                        <span>{rlusdAmount} RLUSD</span>
+                        <span>
+                          {offrampAmount} {selectedOfframpAsset.code}
+                        </span>
                       </div>
                       <div className="flex justify-between text-xs">
                         <span className="text-muted-foreground">Fee (1%):</span>
-                        <span>{(parseFloat(rlusdAmount) * 0.01).toFixed(6)} RLUSD</span>
+                        <span>
+                          {(parseFloat(offrampAmount) * 0.01).toFixed(6)} {selectedOfframpAsset.code}
+                        </span>
                       </div>
                       <div className="flex justify-between text-xs">
                         <span className="text-muted-foreground">Rate:</span>
                         <span className="flex items-center gap-1">
-                          1 RLUSD = {rate.toFixed(2)}
+                          1 {selectedOfframpAsset.code} = {rate.toFixed(2)}
                           {payoutCurrencyInfo?.logo && <img src={payoutCurrencyInfo.logo} alt="" className="w-4 h-3 object-contain rounded inline" />}
                           {payoutCurrency}
                         </span>
@@ -793,7 +846,9 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center py-2">
                     <span className="text-sm text-muted-foreground">You Send</span>
-                    <span className="font-semibold text-lg">{rlusdAmount} RLUSD</span>
+                    <span className="font-semibold text-lg">
+                      {offrampAmount} {selectedOfframpAsset.code}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center py-2">
                     <span className="text-sm text-muted-foreground">They Receive</span>
@@ -807,7 +862,9 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                   <div className="border-t border-border pt-3">
                     <div className="flex justify-between items-center py-1.5">
                       <span className="text-sm text-muted-foreground">Fee (1%)</span>
-                      <span className="text-sm font-medium">{(parseFloat(rlusdAmount) * 0.01).toFixed(6)} RLUSD</span>
+                      <span className="text-sm font-medium">
+                        {(parseFloat(offrampAmount) * 0.01).toFixed(6)} {selectedOfframpAsset.code}
+                      </span>
                     </div>
                   </div>
                   <div className="border-t border-border pt-3 space-y-2">
@@ -877,7 +934,8 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                 className="w-full h-12 bg-primary hover:bg-primary/90"
                 disabled={
                   isLoading ||
-                  !rlusdAmount ||
+                  !offrampAmount ||
+                  !selectedOfframpAsset.supportsFiatOfframp ||
                   !isConnected
                 }
               >
@@ -926,7 +984,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
             )}
             {showPreview && isLoading && (
               <p className="text-xs text-muted-foreground text-center mt-3">
-                Check the GemWallet popup and approve, or click Cancel to stop.
+                Check your wallet popup and approve, or click Cancel to stop.
               </p>
             )}
               </>
