@@ -1,6 +1,6 @@
 /**
  * Hard-coded supported crypto assets (name, code, contract/issuer, chain).
- * Use these for dropdowns and labels instead of hardcoding a single currency.
+ * Cash-In / Cash-Out: pick network first, then asset from that network's allow-list.
  */
 
 export type AssetChain = "base" | "xrpl";
@@ -8,27 +8,37 @@ export type AssetChain = "base" | "xrpl";
 export interface SupportedAsset {
   id: string;
   name: string;
-  /** Ticker shown in UI (e.g. USDC, RLUSD, XRP) */
   code: string;
-  /** EVM token contract on Base, or XRPL issuer for issued tokens; null for native XRP */
   contractAddress: string | null;
   chain: AssetChain;
   decimals: number;
-  /** Key into `exchangeRates` in currencies.ts */
   rateKey: string;
   logo?: string;
-  /** Mobile-money offramp is implemented for RLUSD on XRPL only (backend rlusdPayoutRequest). */
   supportsFiatOfframp: boolean;
+  supportsFiatOnramp: boolean;
 }
+
+export interface NetworkOption {
+  id: AssetChain;
+  label: string;
+}
+
+export const CASH_NETWORKS: NetworkOption[] = [
+  { id: "base", label: "Base" },
+  { id: "xrpl", label: "XRPL" },
+];
+
+/** Allowed assets per network for mobile-money cash-in / cash-out */
+export const CASH_ASSETS_BY_NETWORK: Record<AssetChain, string[]> = {
+  base: ["usdc-base", "usdt-base"],
+  xrpl: ["rlusd-xrpl"],
+};
 
 const RLUSD_ISSUER = import.meta.env.VITE_RLUSD_ISSUER || "rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De";
 
-/** Canonical USDC on Base mainnet */
 export const BASE_USDC_CONTRACT = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
-/** USDT on Base mainnet (bridged) */
 export const BASE_USDT_CONTRACT = "0xfde4C96c8593536E31F229EA8f37b2AD310E2B67";
 
-/** Order: USDC Base, RLUSD, XRP, USDT Base */
 export const SUPPORTED_ASSETS: SupportedAsset[] = [
   {
     id: "usdc-base",
@@ -39,7 +49,20 @@ export const SUPPORTED_ASSETS: SupportedAsset[] = [
     decimals: 6,
     rateKey: "usdc-base",
     logo: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=040",
-    supportsFiatOfframp: false,
+    supportsFiatOfframp: true,
+    supportsFiatOnramp: true,
+  },
+  {
+    id: "usdt-base",
+    name: "Tether USD",
+    code: "USDT",
+    contractAddress: BASE_USDT_CONTRACT,
+    chain: "base",
+    decimals: 6,
+    rateKey: "usdt-base",
+    logo: "https://cryptologos.cc/logos/tether-usdt-logo.png?v=040",
+    supportsFiatOfframp: true,
+    supportsFiatOnramp: true,
   },
   {
     id: "rlusd-xrpl",
@@ -51,6 +74,7 @@ export const SUPPORTED_ASSETS: SupportedAsset[] = [
     rateKey: "rlusd",
     logo: "https://cryptologos.cc/logos/xrp-xrp-logo.png?v=040",
     supportsFiatOfframp: true,
+    supportsFiatOnramp: true,
   },
   {
     id: "xrp-xrpl",
@@ -62,17 +86,7 @@ export const SUPPORTED_ASSETS: SupportedAsset[] = [
     rateKey: "xrp",
     logo: "https://cryptologos.cc/logos/xrp-xrp-logo.png?v=040",
     supportsFiatOfframp: false,
-  },
-  {
-    id: "usdt-base",
-    name: "Tether USD",
-    code: "USDT",
-    contractAddress: BASE_USDT_CONTRACT,
-    chain: "base",
-    decimals: 6,
-    rateKey: "usdt-base",
-    logo: "https://cryptologos.cc/logos/tether-usdt-logo.png?v=040",
-    supportsFiatOfframp: false,
+    supportsFiatOnramp: false,
   },
 ];
 
@@ -80,9 +94,50 @@ export function getSupportedAssetById(id: string): SupportedAsset | undefined {
   return SUPPORTED_ASSETS.find((a) => a.id === id);
 }
 
+/** Assets allowed for cash-in / cash-out on a given network */
+export function getCashAssetsForNetwork(chain: AssetChain): SupportedAsset[] {
+  return CASH_ASSETS_BY_NETWORK[chain]
+    .map((id) => getSupportedAssetById(id))
+    .filter((a): a is SupportedAsset => !!a);
+}
+
+export function getDefaultCashAssetForNetwork(chain: AssetChain): SupportedAsset {
+  return getCashAssetsForNetwork(chain)[0] ?? SUPPORTED_ASSETS[0];
+}
+
+/** Prefer connected wallet network; default Base when both or neither connected */
+export function detectCashNetwork(
+  evmConnected: boolean,
+  xrplConnected: boolean
+): AssetChain {
+  if (evmConnected && !xrplConnected) return "base";
+  if (xrplConnected && !evmConnected) return "xrpl";
+  return "base";
+}
+
+export function isWalletConnectedForNetwork(
+  chain: AssetChain,
+  evmConnected: boolean,
+  xrplConnected: boolean
+): boolean {
+  return chain === "base" ? evmConnected : xrplConnected;
+}
+
+/** Fiat per 1 unit of stablecoin from API supported-currencies row */
+export function getFiatRateForAsset(
+  asset: SupportedAsset | undefined,
+  currency: { rlusd_rate?: number; usdc_rate?: number; usdt_rate?: number } | undefined
+): number {
+  if (!asset || !currency) return 0;
+  if (asset.code === "USDT") {
+    return currency.usdt_rate ?? currency.usdc_rate ?? currency.rlusd_rate ?? 0;
+  }
+  if (asset.code === "USDC") {
+    return currency.usdc_rate ?? currency.rlusd_rate ?? 0;
+  }
+  return currency.rlusd_rate ?? 0;
+}
+
 export const XRPL_SEND_ASSETS = SUPPORTED_ASSETS.filter((a) => a.chain === "xrpl");
-
 export const BASE_EVM_ASSETS = SUPPORTED_ASSETS.filter((a) => a.chain === "base");
-
-/** Assets that can be used for fiat offramp (mobile money) with current backend */
 export const FIAT_OFFRAMP_ASSETS = SUPPORTED_ASSETS.filter((a) => a.supportsFiatOfframp);

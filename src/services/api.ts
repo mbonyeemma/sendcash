@@ -74,6 +74,8 @@ export interface SupportedCurrency {
   name: string;
   logo: string;
   rlusd_rate: number;
+  usdc_rate?: number;
+  usdt_rate?: number;
   fee_percent: number;
 }
 
@@ -119,18 +121,24 @@ export interface DepositRequest {
   amount: string;
   currency: string;
   account_number: string;
-  /** XRPL address to receive RLUSD (Buy RLUSD flow) */
+  /** Wallet address to receive crypto (XRPL r… or Base 0x…) */
   destination_address?: string;
-  /** RLUSD amount to receive (optional, for display) */
+  /** Crypto amount to receive (optional, for display) */
   amount_rlusd?: number;
+  amount_crypto?: number;
+  asset?: string;
+  chain?: "xrpl" | "base";
 }
 
-/** Response when deposit request sends mobile money popup to user's phone */
 export interface DepositRequestResponse {
   phone: string;
   reference: string;
   amount_ugx: number;
-  amount_rlusd: number;
+  amount_rlusd?: number;
+  amount_usdc?: number;
+  amount_crypto?: number;
+  asset?: string;
+  chain?: "xrpl" | "base";
 }
 
 export interface AddPaymentMethodRequest {
@@ -317,11 +325,19 @@ export interface RlusdPayoutRequest {
   network?: string;
   payment_method_id?: string;
   narration?: string;
+  /** xrpl (default) or base */
+  chain?: "xrpl" | "base";
+  /** User's Base wallet that will send USDC/USDT (required for base offramp) */
+  sender_address?: string;
+  /** USDC, USDT, or RLUSD */
+  asset?: string;
 }
 
 export interface RlusdPayoutResponse {
-  xrpl_destination: string;
-  memo: string;
+  chain?: "xrpl" | "base";
+  xrpl_destination?: string;
+  memo?: string;
+  base_custody_address?: string;
   amount: number;
   trans_id: string;
   expires_in_seconds: number;

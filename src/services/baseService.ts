@@ -116,6 +116,15 @@ export const baseService = {
     destination: string,
     amountUsdc: string
   ): Promise<{ hash?: string; error?: string }> => {
+    return baseService.sendErc20(BASE_USDC_ADDRESS, destination, amountUsdc, USDC_DECIMALS);
+  },
+
+  sendErc20: async (
+    tokenAddress: string,
+    destination: string,
+    amount: string,
+    decimals: number = USDC_DECIMALS
+  ): Promise<{ hash?: string; error?: string }> => {
     const browserProvider = getBrowserProvider();
     if (!browserProvider) return { error: "No wallet detected" };
 
@@ -124,18 +133,18 @@ export const baseService = {
       if (!switched) return { error: "Please switch to Base network in your wallet" };
 
       const signer = browserProvider.getSigner();
-      const usdc = new ethers.Contract(BASE_USDC_ADDRESS, ERC20_ABI, signer);
-      const amount = ethers.utils.parseUnits(amountUsdc, USDC_DECIMALS);
+      const token = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
+      const parsed = ethers.utils.parseUnits(amount, decimals);
 
-      const tx = await usdc.transfer(destination, amount);
+      const tx = await token.transfer(destination, parsed);
       const receipt = await tx.wait();
       return { hash: receipt.transactionHash };
     } catch (e: any) {
       if (e?.code === 4001 || e?.code === "ACTION_REJECTED") {
         return { error: "Transaction cancelled" };
       }
-      console.error("[baseService] sendUsdc error:", e);
-      return { error: e?.message || "Failed to send USDC" };
+      console.error("[baseService] sendErc20 error:", e);
+      return { error: e?.message || "Failed to send token" };
     }
   },
 

@@ -2,15 +2,15 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff, ArrowDownCircle, Send, ArrowLeftRight, Loader2, RefreshCw } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { getCurrencyById } from "@/data/currencies";
-import { SUPPORTED_ASSETS, getSupportedAssetById } from "@/data/supportedAssets";
+import {
+  getSupportedAssetById,
+  detectCashNetwork,
+  getDefaultCashAssetForNetwork,
+  isWalletConnectedForNetwork,
+  type AssetChain,
+} from "@/data/supportedAssets";
+import { NetworkAssetSelect } from "@/components/dashboard/NetworkAssetSelect";
 import { xrplService } from "@/services/xrplService";
 import { baseService } from "@/services/baseService";
 import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
@@ -39,8 +39,13 @@ export const BalanceOverview = ({ onDeposit, onSend, onSwap, onBalanceUpdate, re
   const [isLoading, setIsLoading] = useState(true);
   const { isConnected, address, network } = useXRPLWallet();
   const { isConnected: evmConnected, address: evmAddress } = useEVMWallet();
-  const [overviewAssetId, setOverviewAssetId] = useState(SUPPORTED_ASSETS[0]?.id ?? "rlusd-xrpl");
-  const selected = getSupportedAssetById(overviewAssetId) ?? SUPPORTED_ASSETS[0];
+  const [cashNetwork, setCashNetwork] = useState<AssetChain>(() =>
+    detectCashNetwork(evmConnected, isConnected)
+  );
+  const [overviewAssetId, setOverviewAssetId] = useState(
+    () => getDefaultCashAssetForNetwork(detectCashNetwork(evmConnected, isConnected)).id
+  );
+  const selected = getSupportedAssetById(overviewAssetId) ?? getDefaultCashAssetForNetwork(cashNetwork);
   const currency = selected.code;
   const currencyInfo =
     getCurrencyById(currencyLookupId(selected)) || getCurrencyById(selected.code.toLowerCase());
@@ -121,8 +126,17 @@ export const BalanceOverview = ({ onDeposit, onSend, onSwap, onBalanceUpdate, re
     return numVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 6 });
   };
 
-  const walletOk =
-    selected.chain === "xrpl" ? isConnected : selected.chain === "base" ? evmConnected : false;
+  useEffect(() => {
+    const detected = detectCashNetwork(evmConnected, isConnected);
+    setCashNetwork(detected);
+    setOverviewAssetId((id) => {
+      const asset = getSupportedAssetById(id);
+      if (asset && asset.chain === detected) return id;
+      return getDefaultCashAssetForNetwork(detected).id;
+    });
+  }, [evmConnected, isConnected]);
+
+  const walletOk = isWalletConnectedForNetwork(selected.chain, evmConnected, isConnected);
   const addrShort =
     selected.chain === "xrpl" && address
       ? `${address.slice(0, 8)}...${address.slice(-6)} · XRPL`
@@ -139,19 +153,16 @@ export const BalanceOverview = ({ onDeposit, onSend, onSwap, onBalanceUpdate, re
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1 min-w-0">
           <p className="text-primary-foreground/70 text-sm font-medium mb-2">Cash-Out & Cash-In</p>
-          <Select value={overviewAssetId} onValueChange={setOverviewAssetId}>
-            <SelectTrigger className="w-full max-w-[220px] h-9 bg-primary-foreground/15 border-primary-foreground/25 text-primary-foreground text-sm mb-3">
-              <SelectValue placeholder="Asset" />
-            </SelectTrigger>
-            <SelectContent>
-              {SUPPORTED_ASSETS.map((a) => (
-                <SelectItem key={a.id} value={a.id}>
-                  {a.code} · {a.chain === "base" ? "Base" : "XRPL"}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
+          <NetworkAssetSelect
+            variant="card"
+            network={cashNetwork}
+            onNetworkChange={setCashNetwork}
+            assetId={overviewAssetId}
+            onAssetChange={setOverviewAssetId}
+            networkLabel="Network"
+            assetLabel="Asset"
+          />
+          <div className="mt-3">
           {!walletOk ? (
             <div className="space-y-2">
               <p className="text-primary-foreground/90 text-sm">Wallet not connected</p>
@@ -183,6 +194,7 @@ export const BalanceOverview = ({ onDeposit, onSend, onSwap, onBalanceUpdate, re
           {addrShort && (
             <p className="text-xs text-primary-foreground/60 mt-2">{addrShort}</p>
           )}
+          </div>
         </div>
         <div className="flex gap-2 shrink-0">
           <button

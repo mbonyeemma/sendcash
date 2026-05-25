@@ -10,6 +10,7 @@ import { walletApi, paymentMethodApi, PaymentMethod as ApiPaymentMethod, type Su
 import type { DepositRequestResponse } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
+import { useEVMWallet } from "@/contexts/EVMWalletContext";
 import {
   Select,
   SelectContent,
@@ -19,7 +20,15 @@ import {
 } from "@/components/ui/select";
 import { AmountItem, ReceiveAmountDisplay } from "@/components/dashboard/AmountItem";
 import { AddPaymentMethodModal } from "@/components/dashboard/AddPaymentMethodModal";
-import { SUPPORTED_ASSETS, getSupportedAssetById } from "@/data/supportedAssets";
+import { NetworkAssetSelect } from "@/components/dashboard/NetworkAssetSelect";
+import {
+  getSupportedAssetById,
+  detectCashNetwork,
+  getDefaultCashAssetForNetwork,
+  isWalletConnectedForNetwork,
+  getFiatRateForAsset,
+  type AssetChain,
+} from "@/data/supportedAssets";
 
 interface DepositModalProps {
   isOpen: boolean;
@@ -30,18 +39,25 @@ interface DepositModalProps {
 export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) => {
   const { user } = useAuth();
   const { isConnected, address, connectWallet } = useXRPLWallet();
+  const { isConnected: evmConnected, address: evmAddress } = useEVMWallet();
   const [supportedCurrencies, setSupportedCurrencies] = useState<SupportedCurrency[]>([]);
   const [depositCurrencyId, setDepositCurrencyId] = useState<string>("");
   const [ratesLoading, setRatesLoading] = useState(false);
   const [ratesError, setRatesError] = useState<string | null>(null);
   const selectedCurrency = supportedCurrencies.find((c) => c.id === depositCurrencyId);
-  const rate = selectedCurrency?.rlusd_rate ?? 0; // fiat per 1 RLUSD
+  const [cashNetwork, setCashNetwork] = useState<AssetChain>(() =>
+    detectCashNetwork(evmConnected, isConnected)
+  );
+  const [receiveAssetId, setReceiveAssetId] = useState(
+    () => getDefaultCashAssetForNetwork(detectCashNetwork(evmConnected, isConnected)).id
+  );
+  const receiveAsset = getSupportedAssetById(receiveAssetId);
+  const walletConnected = isWalletConnectedForNetwork(cashNetwork, evmConnected, isConnected);
+  const walletAddress = cashNetwork === "base" ? evmAddress : address;
+  const rate = getFiatRateForAsset(receiveAsset, selectedCurrency);
   const feePercent = selectedCurrency?.fee_percent ?? 0.5;
-
   const [phone, setPhone] = useState("");
   const [fiatAmount, setFiatAmount] = useState("");
-  const [receiveAssetId, setReceiveAssetId] = useState("rlusd-xrpl");
-  const receiveAsset = getSupportedAssetById(receiveAssetId);
   const [cryptoReceiveAmount, setCryptoReceiveAmount] = useState("");
   const [paymentMethods, setPaymentMethods] = useState<ApiPaymentMethod[]>([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
@@ -75,7 +91,13 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
       .finally(() => setRatesLoading(false));
   }, [isOpen]);
 
-  // Calculate crypto amount when fiat changes (onramp currently settles as RLUSD on XRPL)
+  useEffect(() => {
+    if (!isOpen) return;
+    const detected = detectCashNetwork(evmConnected, isConnected);
+    setCashNetwork(detected);
+  }, [isOpen, evmConnected, isConnected]);
+
+  // Calculate crypto amount when fiat changes
   useEffect(() => {
     if (fiatAmount && !isNaN(parseFloat(fiatAmount)) && rate > 0) {
       const fiatNum = parseFloat(fiatAmount);
@@ -138,16 +160,22 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
   };
 
   const handleDeposit = async () => {
-    if (receiveAssetId !== "rlusd-xrpl") {
-      toast.error("Onramp to this asset is not available yet. Select RLUSD (XRPL).");
+    if (!receiveAsset?.supportsFiatOnramp) {
+      toast.error("Onramp to this asset is not available yet.");
       return;
     }
-    if (!isConnected) {
-      toast.error("Please connect your XRPL wallet first");
-      try {
-        await connectWallet();
-      } catch (error) {
-        console.error("Failed to connect wallet:", error);
+    if (!walletConnected || !walletAddress) {
+      toast.error(
+        cashNetwork === "base"
+          ? "Please connect your Base wallet first"
+          : "Please connect your XRPL wallet first"
+      );
+      if (cashNetwork === "xrpl") {
+        try {
+          await connectWallet();
+        } catch (error) {
+          console.error("Failed to connect wallet:", error);
+        }
       }
       return;
     }
@@ -170,12 +198,16 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
         ? paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.phone_number || phone
         : phone.replace(/\s/g, "").replace(/\D/g, "");
 
+      const cryptoAmt = parseFloat(cryptoReceiveAmount) || undefined;
       const response = await walletApi.depositRequest({
         amount: fiatAmount,
         currency: selectedCurrency?.symbol ?? "",
         account_number: phoneNumber,
-        destination_address: address || "",
-        amount_rlusd: parseFloat(cryptoReceiveAmount) || undefined,
+        destination_address: walletAddress || "",
+        amount_crypto: cryptoAmt,
+        amount_rlusd: cashNetwork === "xrpl" ? cryptoAmt : undefined,
+        asset: receiveAsset?.code,
+        chain: cashNetwork,
       });
 
       const data = response.data as DepositRequestResponse;
@@ -197,7 +229,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
     setPhone("");
     setFiatAmount("");
     setCryptoReceiveAmount("");
-    setReceiveAssetId("rlusd-xrpl");
+    setReceiveAssetId(getDefaultCashAssetForNetwork(cashNetwork).id);
     setSelectedPaymentMethod("");
     setReceiverType("saved");
     setErrors({});
@@ -231,7 +263,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
             <div>
               <h2 className="text-xl font-bold text-foreground">Deposit Funds</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Pay with mobile money, receive crypto in your wallet (RLUSD onramp live)
+                Pay with mobile money, receive crypto in your wallet (USDC on Base or RLUSD on XRPL)
               </p>
             </div>
             <button
@@ -265,19 +297,26 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Once you approve, you will receive {payInInstructions.amount_rlusd} RLUSD (XRPL) at your connected wallet.
+                  Once you approve, you will receive {payInInstructions.amount_crypto ?? payInInstructions.amount_usdc ?? payInInstructions.amount_rlusd}{" "}
+                  {payInInstructions.asset ?? receiveAsset?.code ?? "crypto"} at your connected wallet.
                 </p>
               </div>
-            ) : !isConnected ? (
+            ) : !walletConnected ? (
             /* Wallet Connection Alert */
               <div className="p-4 mx-6 mt-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">XRPL Wallet Required</p>
-                    <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                      You need an XRPL wallet to receive RLUSD. Use the <strong>Connect Wallet</strong> button in the top-right corner of the page.
+                    <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                      {cashNetwork === "base" ? "Base Wallet Required" : "XRPL Wallet Required"}
                     </p>
+                    <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                      {cashNetwork === "base"
+                        ? "Connect your Base wallet using the Connect Wallet button (Base tab) to receive USDC or USDT."
+                        : "You need an XRPL wallet to receive RLUSD. Use the Connect Wallet button in the top-right corner of the page."}
+                    </p>
+                    {cashNetwork === "xrpl" && (
+                      <>
                     <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-2">
                       Don't have a wallet? Install one first:
                     </p>
@@ -288,6 +327,8 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                       <span className="text-xs text-yellow-600 dark:text-yellow-400">&middot;</span>
                       <a href="https://osmwallet.io/" target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline font-medium">OsmWallet (Chrome)</a>
                     </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -298,7 +339,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                   <div className="flex-1">
                     <p className="text-sm font-medium text-green-800 dark:text-green-200">Wallet Connected</p>
                     <p className="text-xs text-green-700 dark:text-green-300 mt-1">
-                      RLUSD will be sent to: {address?.slice(0, 8)}...{address?.slice(-6)}
+                      {receiveAsset?.code} will be sent to: {walletAddress?.slice(0, 8)}...{walletAddress?.slice(-6)} ({cashNetwork === "base" ? "Base" : "XRPL"})
                     </p>
                   </div>
                 </div>
@@ -306,7 +347,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
             ) : null}
 
             {/* Supported regions notice */}
-            {!payInInstructions && isConnected && (
+            {!payInInstructions && walletConnected && (
               <div className="p-3 mx-6 mt-3 bg-muted/50 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground">
                   <strong>Supported regions:</strong> Mobile money deposits are currently available for Uganda (+256) phone numbers only. More regions coming soon.
@@ -334,22 +375,14 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                     {ratesError}
                   </p>
                 )}
-                <div>
-                  <Label className="text-sm font-medium">Receive as</Label>
-                  <Select value={receiveAssetId} onValueChange={setReceiveAssetId}>
-                    <SelectTrigger className="mt-1.5 h-11 bg-background">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SUPPORTED_ASSETS.map((a) => (
-                        <SelectItem key={a.id} value={a.id} disabled={a.id !== "rlusd-xrpl"}>
-                          {a.code} · {a.chain === "base" ? "Base" : "XRPL"}
-                          {a.id !== "rlusd-xrpl" ? " (soon)" : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <NetworkAssetSelect
+                  network={cashNetwork}
+                  onNetworkChange={setCashNetwork}
+                  assetId={receiveAssetId}
+                  onAssetChange={setReceiveAssetId}
+                  networkLabel="Network"
+                  assetLabel="Receive as"
+                />
 
                 <ReceiveAmountDisplay
                   cryptoAmount={cryptoReceiveAmount}
@@ -514,7 +547,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Receive At</span>
-                      <span className="text-xs font-mono">{address?.slice(0, 10)}...{address?.slice(-8)}</span>
+                      <span className="text-xs font-mono">{walletAddress?.slice(0, 10)}...{walletAddress?.slice(-8)}</span>
                     </div>
                   </div>
                 </div>
@@ -531,7 +564,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
             ) : !showPreview ? (
               <Button
                 onClick={handleDeposit}
-                disabled={isLoading || !isConnected}
+                disabled={isLoading || !walletConnected}
                 className="w-full h-12 bg-primary hover:bg-primary/90"
               >
                 {isLoading ? (
