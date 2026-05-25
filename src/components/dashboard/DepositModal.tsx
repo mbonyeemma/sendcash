@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { AmountItem, ReceiveAmountDisplay } from "@/components/dashboard/AmountItem";
 import { AddPaymentMethodModal } from "@/components/dashboard/AddPaymentMethodModal";
-import { AssetSelect } from "@/components/dashboard/AssetSelect";
+import { ChainAssetPicker } from "@/components/dashboard/ChainAssetPicker";
 import { getFiatRateForAsset } from "@/data/supportedAssets";
 import { useSelectedChain } from "@/contexts/SelectedChainContext";
 
@@ -239,7 +239,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
             <div>
               <h2 className="text-xl font-bold text-foreground">Deposit Funds</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Pay with mobile money — network is set in the header (Base or XRP)
+                Pay with mobile money, receive crypto at your connected wallet
               </p>
             </div>
             <button
@@ -317,6 +317,11 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
 
             {!payInInstructions && !showPreview ? (
               <div className="p-6 space-y-5">
+                <div>
+                  <p className="text-sm font-medium mb-2">Receive on</p>
+                  <ChainAssetPicker />
+                </div>
+
                 <AmountItem
                   currencyId={depositCurrencyId}
                   onCurrencyChange={setDepositCurrencyId}
@@ -335,7 +340,6 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                     {ratesError}
                   </p>
                 )}
-                <AssetSelect label="Receive as" />
 
                 <ReceiveAmountDisplay
                   cryptoAmount={cryptoReceiveAmount}

@@ -19,8 +19,8 @@ import { xrplService } from "@/services/xrplService";
 import { baseService } from "@/services/baseService";
 import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
 import { useEVMWallet } from "@/contexts/EVMWalletContext";
-import { useSelectedChain } from "@/contexts/SelectedChainContext";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface BalanceOverviewProps {
   onDeposit: () => void;
@@ -30,6 +30,8 @@ interface BalanceOverviewProps {
   refreshTrigger?: number;
 }
 
+type BalanceRow = { asset: SupportedAsset; balance: string; loading: boolean };
+
 function currencyLookupId(asset: SupportedAsset) {
   if (asset.chain === "base") {
     return asset.code === "USDC" ? "usdc-base" : "usdt-base";
@@ -37,7 +39,77 @@ function currencyLookupId(asset: SupportedAsset) {
   return asset.code.toLowerCase();
 }
 
-type BalanceRow = { asset: SupportedAsset; balance: string; loading: boolean };
+function AssetCard({
+  asset,
+  balance,
+  loading,
+  hidden,
+  address,
+  networkLabel,
+  networkColor,
+}: {
+  asset: SupportedAsset;
+  balance: string;
+  loading: boolean;
+  hidden: boolean;
+  address?: string;
+  networkLabel: string;
+  networkColor: "blue" | "green";
+}) {
+  const logo = getCurrencyById(currencyLookupId(asset))?.logo ?? asset.logo;
+  const formatted = hidden
+    ? "••••"
+    : parseFloat(balance).toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 6,
+      });
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {logo && (
+            <img
+              src={logo}
+              alt={asset.code}
+              className="w-7 h-7 object-contain rounded-full shrink-0"
+            />
+          )}
+          <span className="font-semibold text-sm text-foreground">{asset.code}</span>
+        </div>
+        <span
+          className={cn(
+            "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded",
+            networkColor === "blue"
+              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+              : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+          )}
+        >
+          {networkLabel}
+        </span>
+      </div>
+
+      <div className="flex items-end justify-between gap-1">
+        {loading ? (
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+        ) : (
+          <span className="text-2xl font-bold tabular-nums text-foreground leading-none">
+            {formatted}
+          </span>
+        )}
+        {!hidden && (
+          <span className="text-xs text-muted-foreground mb-0.5">USD</span>
+        )}
+      </div>
+
+      {address && (
+        <p className="text-[10px] font-mono text-muted-foreground truncate">
+          {address.slice(0, 6)}...{address.slice(-4)}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export const BalanceOverview = ({
   onDeposit,
@@ -47,60 +119,27 @@ export const BalanceOverview = ({
   refreshTrigger,
 }: BalanceOverviewProps) => {
   const [hidden, setHidden] = useState(false);
-  const [rows, setRows] = useState<BalanceRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const { isConnected, address, network } = useXRPLWallet();
+  const [baseRows, setBaseRows] = useState<BalanceRow[]>([]);
+  const [xrplRows, setXrplRows] = useState<BalanceRow[]>([]);
+  const [isLoadingBase, setIsLoadingBase] = useState(false);
+  const [isLoadingXrpl, setIsLoadingXrpl] = useState(false);
+
+  const { isConnected: xrplConnected, address: xrplAddress, network } = useXRPLWallet();
   const { isConnected: evmConnected, address: evmAddress } = useEVMWallet();
-  const { selectedChain, walletConnected, walletAddress } = useSelectedChain();
 
-  const chainLabel = selectedChain === "base" ? "Base" : "XRP";
-  const assets = getCashAssetsForNetwork(selectedChain);
+  const baseAssets = getCashAssetsForNetwork("base");
+  const xrplAssets = getCashAssetsForNetwork("xrpl");
 
-  const fetchBalances = useCallback(async () => {
-    setIsLoading(true);
-    const next: BalanceRow[] = assets.map((asset) => ({
-      asset,
-      balance: "0",
-      loading: true,
-    }));
-    setRows(next);
-
+  const fetchBaseBalances = useCallback(async () => {
+    if (!evmConnected || !evmAddress) {
+      setBaseRows(baseAssets.map((a) => ({ asset: a, balance: "0", loading: false })));
+      return;
+    }
+    setIsLoadingBase(true);
     try {
-      if (selectedChain === "xrpl") {
-        if (!isConnected || !address) {
-          setRows(assets.map((a) => ({ asset: a, balance: "0", loading: false })));
-          return;
-        }
-        const xrplBalances = await xrplService.getAccountBalances(
-          address,
-          network || "Mainnet"
-        );
-        setRows(
-          assets.map((asset) => {
-            if (asset.code === "RLUSD") {
-              const t = xrplBalances.find(
-                (b) =>
-                  xrplService.formatCurrency(b.currency) === "RLUSD" ||
-                  b.currency === "RLUSD"
-              );
-              return { asset, balance: t?.value ?? "0", loading: false };
-            }
-            return { asset, balance: "0", loading: false };
-          })
-        );
-        return;
-      }
-
-      if (!evmConnected || !evmAddress) {
-        setRows(assets.map((a) => ({ asset: a, balance: "0", loading: false })));
-        return;
-      }
-
-      const settled = await Promise.all(
-        assets.map(async (asset) => {
-          if (!asset.contractAddress) {
-            return { asset, balance: "0", loading: false };
-          }
+      const results = await Promise.all(
+        baseAssets.map(async (asset) => {
+          if (!asset.contractAddress) return { asset, balance: "0", loading: false };
           const bal = await baseService.getErc20Balance(
             evmAddress,
             asset.contractAddress,
@@ -109,146 +148,208 @@ export const BalanceOverview = ({
           return { asset, balance: bal, loading: false };
         })
       );
-      setRows(settled);
-    } catch (error: unknown) {
-      console.error("Balance fetch error:", error);
-      const msg = error instanceof Error ? error.message : "Failed to fetch balances";
-      toast.error(msg);
-      setRows(assets.map((a) => ({ asset: a, balance: "0", loading: false })));
+      setBaseRows(results);
+    } catch {
+      toast.error("Failed to fetch Base balances");
+      setBaseRows(baseAssets.map((a) => ({ asset: a, balance: "0", loading: false })));
     } finally {
-      setIsLoading(false);
+      setIsLoadingBase(false);
     }
-  }, [selectedChain, assets, isConnected, address, network, evmConnected, evmAddress]);
+  }, [evmConnected, evmAddress]);
+
+  const fetchXrplBalances = useCallback(async () => {
+    if (!xrplConnected || !xrplAddress) {
+      setXrplRows(xrplAssets.map((a) => ({ asset: a, balance: "0", loading: false })));
+      return;
+    }
+    setIsLoadingXrpl(true);
+    try {
+      const balances = await xrplService.getAccountBalances(
+        xrplAddress,
+        network || "Mainnet"
+      );
+      setXrplRows(
+        xrplAssets.map((asset) => {
+          if (asset.code === "RLUSD") {
+            const t = balances.find(
+              (b) =>
+                xrplService.formatCurrency(b.currency) === "RLUSD" ||
+                b.currency === "RLUSD"
+            );
+            return { asset, balance: t?.value ?? "0", loading: false };
+          }
+          return { asset, balance: "0", loading: false };
+        })
+      );
+    } catch {
+      setXrplRows(xrplAssets.map((a) => ({ asset: a, balance: "0", loading: false })));
+    } finally {
+      setIsLoadingXrpl(false);
+    }
+  }, [xrplConnected, xrplAddress, network]);
 
   useEffect(() => {
-    fetchBalances();
-  }, [fetchBalances]);
+    fetchBaseBalances();
+  }, [fetchBaseBalances]);
+
+  useEffect(() => {
+    fetchXrplBalances();
+  }, [fetchXrplBalances]);
 
   useEffect(() => {
     if (refreshTrigger != null && refreshTrigger > 0) {
-      fetchBalances();
+      fetchBaseBalances();
+      fetchXrplBalances();
     }
-  }, [refreshTrigger, fetchBalances]);
+  }, [refreshTrigger, fetchBaseBalances, fetchXrplBalances]);
 
   useEffect(() => {
     if (!onBalanceUpdate) return;
-    const interval = setInterval(fetchBalances, 30000);
+    const interval = setInterval(() => {
+      fetchBaseBalances();
+      fetchXrplBalances();
+    }, 30000);
     return () => clearInterval(interval);
-  }, [onBalanceUpdate, fetchBalances]);
+  }, [onBalanceUpdate, fetchBaseBalances, fetchXrplBalances]);
 
-  const formatAmount = (val: string) => {
-    if (hidden) return "••••••";
-    const num = parseFloat(val);
-    if (isNaN(num)) return "0.00";
-    return num.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 6,
-    });
+  const isLoading = isLoadingBase || isLoadingXrpl;
+  const neitherConnected = !evmConnected && !xrplConnected;
+
+  const totalBalance = (() => {
+    const sumRows = (rows: BalanceRow[]) =>
+      rows.reduce((acc, r) => acc + (parseFloat(r.balance) || 0), 0);
+    return sumRows(baseRows) + sumRows(xrplRows);
+  })();
+
+  const totalFormatted = totalBalance.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  const handleRefresh = () => {
+    fetchBaseBalances();
+    fetchXrplBalances();
   };
 
-  const addrShort =
-    walletConnected && walletAddress
-      ? `${walletAddress.slice(0, 8)}...${walletAddress.slice(-6)} · ${chainLabel}`
-      : null;
+  const allRows: (BalanceRow & { address?: string; networkLabel: string; networkColor: "blue" | "green" })[] = [
+    ...(evmConnected
+      ? (baseRows.length > 0 ? baseRows : baseAssets.map((a) => ({ asset: a, balance: "0", loading: isLoadingBase }))).map((r) => ({
+          ...r,
+          address: evmAddress ?? undefined,
+          networkLabel: "Base",
+          networkColor: "blue" as const,
+        }))
+      : []),
+    ...(xrplConnected
+      ? (xrplRows.length > 0 ? xrplRows : xrplAssets.map((a) => ({ asset: a, balance: "0", loading: isLoadingXrpl }))).map((r) => ({
+          ...r,
+          address: xrplAddress ?? undefined,
+          networkLabel: "XRPL",
+          networkColor: "green" as const,
+        }))
+      : []),
+  ];
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-br from-primary to-primary/80 rounded-2xl p-6 md:p-8 text-primary-foreground shadow-xl"
-    >
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1 min-w-0">
-          <p className="text-primary-foreground/70 text-sm font-medium mb-1">
-            Cash-Out & Cash-In
-          </p>
-          <p className="text-xs text-primary-foreground/50 mb-4">{chainLabel} network</p>
-
-          {!walletConnected ? (
-            <p className="text-sm text-primary-foreground/80">
-              Connect wallet to view balances
+    <>
+      {/* Gradient banner */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-gradient-to-br from-primary to-primary/80 rounded-2xl p-6 md:p-8 text-primary-foreground shadow-xl"
+      >
+           <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="text-primary-foreground/70 text-sm font-medium mb-1">
+              Total Portfolio
             </p>
-          ) : (
-            <div className="space-y-3">
-              {(rows.length ? rows : assets.map((a) => ({ asset: a, balance: "0", loading: isLoading }))).map(
-                ({ asset, balance, loading }) => {
-                  const logo =
-                    getCurrencyById(currencyLookupId(asset))?.logo ?? asset.logo;
-                  return (
-                    <div
-                      key={asset.id}
-                      className="flex items-center justify-between gap-3"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        {logo ? (
-                          <img
-                            src={logo}
-                            alt={asset.code}
-                            className="w-7 h-7 object-contain rounded-full shrink-0"
-                          />
-                        ) : null}
-                        <span className="font-semibold text-lg">{asset.code}</span>
-                      </div>
-                      <div className="flex items-baseline gap-2 shrink-0">
-                        {loading || isLoading ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <span className="text-2xl md:text-3xl font-bold tabular-nums">
-                            {formatAmount(balance)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                }
-              )}
-            </div>
-          )}
-          {addrShort && (
-            <p className="text-xs text-primary-foreground/60 mt-3">{addrShort}</p>
-          )}
-        </div>
-        <div className="flex gap-2 shrink-0">
-          <button
-            onClick={fetchBalances}
-            disabled={isLoading || !walletConnected}
-            className="p-2 rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 transition-colors disabled:opacity-50"
-            title="Refresh balances"
-          >
-            <RefreshCw className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`} />
-          </button>
-          <button
-            onClick={() => setHidden(!hidden)}
-            className="p-2 rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 transition-colors"
-          >
-            {hidden ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-          </button>
-        </div>
-      </div>
+            {neitherConnected ? (
+              <p className="text-sm text-primary-foreground/80">
+                Connect a wallet to view balances
+              </p>
+            ) : isLoading && totalBalance === 0 ? (
+              <Loader2 className="w-6 h-6 animate-spin mt-1" />
+            ) : (
+              <p className="text-4xl font-bold tabular-nums leading-none">
+                {hidden ? "$ ••••••" : `$${totalFormatted}`}
+              </p>
+            )}
+          </div>
 
-      <div className="flex gap-2 flex-wrap">
-        <Button
-          onClick={onDeposit}
-          className="flex-1 min-w-[100px] bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground border-0 h-11"
+          
+
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={handleRefresh}
+              disabled={isLoading || neitherConnected}
+              className="p-2 rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 transition-colors disabled:opacity-50"
+              title="Refresh balances"
+            >
+              <RefreshCw className={cn("w-5 h-5", isLoading && "animate-spin")} />
+            </button>
+            <button
+              onClick={() => setHidden(!hidden)}
+              className="p-2 rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 transition-colors"
+            >
+              {hidden ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
+          </div>
+        </div>
+        <br/>
+
+        {/* Action buttons — top row */}
+        <div className="flex gap-2 flex-wrap mb-6">
+          <Button
+            onClick={onDeposit}
+            className="flex-1 min-w-[100px] bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground border-0 h-11"
+          >
+            <ArrowDownCircle className="w-4 h-4 mr-2" />
+            Cash-In
+          </Button>
+          <Button
+            onClick={onSwap}
+            className="flex-1 min-w-[100px] bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground border-0 h-11"
+          >
+            <ArrowLeftRight className="w-4 h-4 mr-2" />
+            Swap
+          </Button>
+          <Button
+            onClick={onSend}
+            className="flex-1 min-w-[100px] bg-accent hover:bg-accent/90 text-accent-foreground border-0 h-11 font-semibold"
+          >
+            <Send className="w-4 h-4 mr-2" />
+            Send
+          </Button>
+        </div>
+
+        {/* Total balance */}
+     
+      </motion.div>
+
+      {/* Individual asset balance cards */}
+      {!neitherConnected && allRows.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
         >
-          <ArrowDownCircle className="w-4 h-4 mr-2" />
-          Cash-In
-        </Button>
-        <Button
-          onClick={onSwap}
-          className="flex-1 min-w-[100px] bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground border-0 h-11"
-        >
-          <ArrowLeftRight className="w-4 h-4 mr-2" />
-          Swap
-        </Button>
-        <Button
-          onClick={onSend}
-          className="flex-1 min-w-[100px] bg-accent hover:bg-accent/90 text-accent-foreground border-0 h-11 font-semibold"
-        >
-          <Send className="w-4 h-4 mr-2" />
-          Send
-        </Button>
-      </div>
-    </motion.div>
+          <p className="text-sm font-medium text-muted-foreground mb-3">Your Balances</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {allRows.map((r) => (
+              <AssetCard
+                key={r.asset.id}
+                asset={r.asset}
+                balance={r.balance}
+                loading={r.loading || (r.networkColor === "blue" ? isLoadingBase : isLoadingXrpl)}
+                hidden={hidden}
+                address={r.address}
+                networkLabel={r.networkLabel}
+                networkColor={r.networkColor}
+              />
+            ))}
+          </div>
+        </motion.div>
+      )}
+    </>
   );
 };

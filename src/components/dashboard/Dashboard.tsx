@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Menu, X, User, LogOut, Wallet } from "lucide-react";
+import { Menu, X, User, LogOut } from "lucide-react";
 import { DashboardSidebar, type DashboardView } from "@/components/dashboard/DashboardSidebar";
 import { BalanceOverview } from "@/components/dashboard/BalanceCard";
 import { DepositModal } from "@/components/dashboard/DepositModal";
@@ -25,8 +25,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
 import { useEVMWallet } from "@/contexts/EVMWalletContext";
-import { useSelectedChain } from "@/contexts/SelectedChainContext";
-import { ChainToggle } from "@/components/dashboard/ChainToggle";
+import { cn } from "@/lib/utils";
 import sendicashLogo from "@/assets/sendicash-logo.png";
 
 interface DashboardProps {
@@ -36,9 +35,8 @@ interface DashboardProps {
 
 export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps) => {
   const { user } = useAuth();
-  const { isConnected, address } = useXRPLWallet();
+  const { isConnected: xrplConnected, address: xrplAddress } = useXRPLWallet();
   const { isConnected: evmConnected, address: evmAddress } = useEVMWallet();
-  const { selectedChain, walletConnected, walletAddress } = useSelectedChain();
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState<DashboardView>(initialView);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -46,7 +44,13 @@ export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps)
   const [sendOpen, setSendOpen] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
   const [connectWalletOpen, setConnectWalletOpen] = useState(false);
+  const [connectWalletTab, setConnectWalletTab] = useState<"evm" | "xrp">("evm");
   const [balanceRefreshTrigger, setBalanceRefreshTrigger] = useState(0);
+
+  const openWalletModal = (tab: "evm" | "xrp") => {
+    setConnectWalletTab(tab);
+    setConnectWalletOpen(true);
+  };
 
   // Sync active view with URL param changes
   useEffect(() => {
@@ -149,20 +153,39 @@ export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps)
             <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 px-1.5 py-0.5 rounded">Beta</span>
           </div>
           <div className="flex items-center gap-2">
-            <ChainToggle size="sm" />
-            <Button
-              onClick={() => setConnectWalletOpen(true)}
-              variant={walletConnected ? "default" : "outline"}
-              size="sm"
-              className="gap-2"
-            >
-              <Wallet className="w-4 h-4" />
-              <span className="hidden sm:inline">
-                {walletConnected && walletAddress
-                  ? `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`
-                  : "Connect wallet"}
-              </span>
-            </Button>
+            {/* Dual wallet pills */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => openWalletModal("evm")}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium transition-all border",
+                  evmConnected
+                    ? "border-blue-400/50 bg-blue-500/10 text-blue-700 dark:text-blue-300"
+                    : "border-border text-muted-foreground hover:border-blue-400/50 hover:text-foreground"
+                )}
+              >
+                <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", evmConnected ? "bg-blue-500" : "bg-muted-foreground/40")} />
+                <span>Base</span>
+                {evmConnected && evmAddress && (
+                  <span className="font-mono hidden sm:inline">{evmAddress.slice(0, 4)}...{evmAddress.slice(-3)}</span>
+                )}
+              </button>
+              <button
+                onClick={() => openWalletModal("xrp")}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium transition-all border",
+                  xrplConnected
+                    ? "border-green-400/50 bg-green-500/10 text-green-700 dark:text-green-300"
+                    : "border-border text-muted-foreground hover:border-green-400/50 hover:text-foreground"
+                )}
+              >
+                <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", xrplConnected ? "bg-green-500" : "bg-muted-foreground/40")} />
+                <span>XRPL</span>
+                {xrplConnected && xrplAddress && (
+                  <span className="font-mono hidden sm:inline">{xrplAddress.slice(0, 4)}...{xrplAddress.slice(-3)}</span>
+                )}
+              </button>
+            </div>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -229,20 +252,39 @@ export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps)
         {/* Desktop Header */}
         <div className="hidden lg:block border-b border-border bg-card">
           <div className="flex items-center justify-end p-4 pr-8 gap-3">
-            <ChainToggle />
-            <Button
-              onClick={() => setConnectWalletOpen(true)}
-              variant={walletConnected ? "default" : "outline"}
-              size="sm"
-              className="gap-2"
-            >
-              <Wallet className="w-4 h-4" />
-              <span>
-                {walletConnected && walletAddress
-                  ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
-                  : "Connect wallet"}
-              </span>
-            </Button>
+            {/* Dual wallet pills — desktop */}
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => openWalletModal("evm")}
+                className={cn(
+                  "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all border",
+                  evmConnected
+                    ? "border-blue-400/50 bg-blue-500/10 text-blue-700 dark:text-blue-300"
+                    : "border-border text-muted-foreground hover:border-blue-400/50 hover:text-foreground"
+                )}
+              >
+                <span className={cn("w-2 h-2 rounded-full shrink-0", evmConnected ? "bg-blue-500" : "bg-muted-foreground/40")} />
+                <span>Base</span>
+                {evmConnected && evmAddress && (
+                  <span className="font-mono">{evmAddress.slice(0, 6)}...{evmAddress.slice(-4)}</span>
+                )}
+              </button>
+              <button
+                onClick={() => openWalletModal("xrp")}
+                className={cn(
+                  "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all border",
+                  xrplConnected
+                    ? "border-green-400/50 bg-green-500/10 text-green-700 dark:text-green-300"
+                    : "border-border text-muted-foreground hover:border-green-400/50 hover:text-foreground"
+                )}
+              >
+                <span className={cn("w-2 h-2 rounded-full shrink-0", xrplConnected ? "bg-green-500" : "bg-muted-foreground/40")} />
+                <span>XRPL</span>
+                {xrplConnected && xrplAddress && (
+                  <span className="font-mono">{xrplAddress.slice(0, 6)}...{xrplAddress.slice(-4)}</span>
+                )}
+              </button>
+            </div>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -319,6 +361,7 @@ export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps)
       <ConnectXRPLWalletModal
         isOpen={connectWalletOpen}
         onClose={() => setConnectWalletOpen(false)}
+        defaultTab={connectWalletTab}
       />
     </div>
   );

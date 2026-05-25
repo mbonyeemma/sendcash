@@ -73,6 +73,15 @@ export const SelectedChainProvider = ({ children }: { children: ReactNode }) => 
     }
   }, [selectedChain, selectedAssetId]);
 
+  // Auto-switch to whichever chain has a connected wallet (when exactly one is connected)
+  useEffect(() => {
+    if (evmConnected && !xrplConnected) {
+      setSelectedChain("base");
+    } else if (xrplConnected && !evmConnected) {
+      setSelectedChain("xrpl");
+    }
+  }, [evmConnected, xrplConnected, setSelectedChain]);
+
   const cashAssets = getCashAssetsForNetwork(selectedChain);
   const selectedAsset =
     getSupportedAssetById(selectedAssetId) ??

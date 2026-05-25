@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,8 @@ function useAppDarkMode() {
 interface ConnectXRPLWalletModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Open the modal on a specific tab ("evm" | "xrp") */
+  defaultTab?: ChainTab;
 }
 
 type ChainTab = "evm" | "xrp";
@@ -37,8 +39,12 @@ type ChainTab = "evm" | "xrp";
 /**
  * Connect wallet modal: Base (EVM) via thirdweb, or XRPL via GemWallet / Xaman / OsmWallet.
  */
-export const ConnectXRPLWalletModal = ({ isOpen, onClose }: ConnectXRPLWalletModalProps) => {
-  const [tab, setTab] = useState<ChainTab>("evm");
+export const ConnectXRPLWalletModal = ({ isOpen, onClose, defaultTab }: ConnectXRPLWalletModalProps) => {
+  const [tab, setTab] = useState<ChainTab>(defaultTab ?? "evm");
+
+  useEffect(() => {
+    if (isOpen && defaultTab) setTab(defaultTab);
+  }, [isOpen, defaultTab]);
   const isDark = useAppDarkMode();
   const {
     isConnected: evmConnected,

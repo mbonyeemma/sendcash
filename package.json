@@ -9,8 +9,8 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "~/.nvm/versions/node/v20.19.5/bin/node node_modules/.bin/vitest run",
+    "test:watch": "~/.nvm/versions/node/v20.19.5/bin/node node_modules/.bin/vitest"
   },
   "dependencies": {
     "@gemwallet/api": "^3.8.0",

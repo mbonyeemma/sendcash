@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2, AlertCircle, Smartphone, Wallet, ChevronLeft, Plus, ArrowRight, Send, Landmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,9 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import { toast } from "sonner";
 import { walletApi, paymentMethodApi, PaymentMethod as ApiPaymentMethod } from "@/services/api";
 import { xrplService } from "@/services/xrplService";
-import { baseService, BASE_USDC_ADDRESS } from "@/services/baseService";
+import { baseService } from "@/services/baseService";
 import { exchangeRates, getCurrencyById, SEND_RECEIVE_CURRENCIES } from "@/data/currencies";
-import { AssetSelect } from "@/components/dashboard/AssetSelect";
+import { ChainAssetPicker } from "@/components/dashboard/ChainAssetPicker";
 import {
   SUPPORTED_ASSETS,
   getSupportedAssetById,
@@ -56,7 +56,7 @@ const calculateFee = (amount: number): number => {
   return amount * 0.01; // 1% fee for fiat offramp
 };
 
-const defaultCryptoAsset =
+const xrplDefaultAsset =
   SUPPORTED_ASSETS.find((a) => a.chain === "xrpl" && a.code === "RLUSD") ??
   SUPPORTED_ASSETS.find((a) => a.chain === "xrpl")!;
 
@@ -93,9 +93,21 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
   const sendCancelledRef = useRef(false);
   const SEND_TIMEOUT_MS = 90000; // 90s – user may need time to approve in GemWallet
 
-  // Send mode: "" = choose offramp vs crypto, "offramp" = mobile/bank, "crypto" = XRP/RLUSD to address
+  // Send mode: "" = choose offramp vs crypto, "offramp" = mobile/bank, "crypto" = send to address
   const [sendMode, setSendMode] = useState<SendMode>("");
-  // Crypto send (XRP/RLUSD to XRPL address)
+  // Crypto send: assets filtered to only those with a connected wallet
+  const cryptoSendAssets = useMemo(
+    () =>
+      SUPPORTED_ASSETS.filter(
+        (a) =>
+          (a.chain === "xrpl" && isConnected) ||
+          (a.chain === "base" && evmConnected)
+      ),
+    [isConnected, evmConnected]
+  );
+  const defaultCryptoAsset =
+    cryptoSendAssets[0] ?? xrplDefaultAsset;
+
   const [cryptoAssetId, setCryptoAssetId] = useState<string>(defaultCryptoAsset.id);
   const selectedCryptoAsset =
     getSupportedAssetById(cryptoAssetId) ?? defaultCryptoAsset;
@@ -141,14 +153,19 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
     }
   }, [isOpen, sendMode]);
 
-  const cryptoDestinationAddress = useCustomAddress
+  const isBaseCrypto = selectedCryptoAsset.chain === "base";
+  // For Base: always use the typed address. For XRPL: use favorites or custom.
+  const cryptoDestinationAddress = isBaseCrypto
     ? customAddress.trim()
-    : favorites.find((f) => f.id === selectedFavoriteId)?.address?.trim() || "";
+    : useCustomAddress
+      ? customAddress.trim()
+      : favorites.find((f) => f.id === selectedFavoriteId)?.address?.trim() || "";
+  const cryptoWalletOk = isBaseCrypto ? evmConnected : isConnected;
+  const cryptoAddrMinLen = isBaseCrypto ? 42 : 25;
   const cryptoCanPreview =
-    isConnected &&
+    cryptoWalletOk &&
     parseFloat(cryptoAmount) > 0 &&
-    cryptoDestinationAddress.length >= 25 &&
-    selectedCryptoAsset.chain === "xrpl";
+    cryptoDestinationAddress.length >= cryptoAddrMinLen;
 
   // Auto-populate recipient from selected payment method
   useEffect(() => {
@@ -260,7 +277,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
           setTimeout(() => reject(new Error("SEND_TIMEOUT")), SEND_TIMEOUT_MS);
         });
         const tokenAddress =
-          selectedOfframpAsset.code === "USDT" ? BASE_USDT_CONTRACT : BASE_USDC_ADDRESS;
+          selectedOfframpAsset.code === "USDT" ? BASE_USDT_CONTRACT : BASE_USDC_CONTRACT;
         const sendResult = await Promise.race([
           baseService.sendErc20(tokenAddress, data.base_custody_address, String(data.amount), selectedOfframpAsset.decimals),
           timeoutPromise,
@@ -361,15 +378,6 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
   };
 
   const handleCryptoSend = async () => {
-    if (!isConnected) {
-      toast.error("Connect your XRPL wallet first");
-      try {
-        await connectWallet();
-      } catch (e) {
-        console.error(e);
-      }
-      return;
-    }
     if (!cryptoCanPreview) {
       toast.error("Enter amount and choose a destination address");
       return;
@@ -380,28 +388,61 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
     }
     setIsLoading(true);
     try {
-      const issuer =
-        selectedCryptoAsset.code === "RLUSD"
-          ? xrplService.getRLUSDIssuer("Mainnet")
-          : undefined;
-      const result = (await xrplService.sendPayment(
-        cryptoDestinationAddress,
-        cryptoAmount,
-        selectedCryptoAsset.code,
-        issuer
-      )) as { type?: string; result?: { hash?: string } };
-      if (result?.type === "reject") {
-        toast.error("Transaction cancelled in wallet");
-        return;
-      }
-      if (result?.type === "response" && result?.result?.hash) {
-        toast.success(
-          `Sent ${cryptoAmount} ${selectedCryptoAsset.code}. Tx: ${result.result.hash.slice(0, 8)}...`
+      if (isBaseCrypto) {
+        if (!evmConnected) {
+          toast.error("Connect your Base wallet first");
+          return;
+        }
+        const tokenAddress =
+          selectedCryptoAsset.code === "USDT" ? BASE_USDT_CONTRACT : BASE_USDC_CONTRACT;
+        const result = await baseService.sendErc20(
+          tokenAddress,
+          cryptoDestinationAddress,
+          cryptoAmount,
+          selectedCryptoAsset.decimals
         );
-        resetAndClose();
-        onSuccess?.();
+        if (result.error) {
+          toast.error(result.error);
+          return;
+        }
+        if (result.hash) {
+          toast.success(
+            `Sent ${cryptoAmount} ${selectedCryptoAsset.code}. Tx: ${result.hash.slice(0, 8)}...`
+          );
+          resetAndClose();
+          onSuccess?.();
+        } else {
+          toast.error("Unexpected response from wallet");
+        }
       } else {
-        toast.error("Unexpected response from wallet");
+        if (!isConnected) {
+          toast.error("Connect your XRPL wallet first");
+          try { await connectWallet(); } catch {}
+          return;
+        }
+        const issuer =
+          selectedCryptoAsset.code === "RLUSD"
+            ? xrplService.getRLUSDIssuer("Mainnet")
+            : undefined;
+        const result = (await xrplService.sendPayment(
+          cryptoDestinationAddress,
+          cryptoAmount,
+          selectedCryptoAsset.code,
+          issuer
+        )) as { type?: string; result?: { hash?: string } };
+        if (result?.type === "reject") {
+          toast.error("Transaction cancelled in wallet");
+          return;
+        }
+        if (result?.type === "response" && result?.result?.hash) {
+          toast.success(
+            `Sent ${cryptoAmount} ${selectedCryptoAsset.code}. Tx: ${result.result.hash.slice(0, 8)}...`
+          );
+          resetAndClose();
+          onSuccess?.();
+        } else {
+          toast.error("Unexpected response from wallet");
+        }
       }
     } catch (e: any) {
       toast.error(e?.message || "Failed to send");
@@ -509,9 +550,9 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                       <Wallet className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">To XRPL address</p>
+                      <p className="font-semibold text-foreground">To wallet address</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Send XRP, RLUSD, or other XRPL tokens to a saved address or favorite
+                        Send USDC / USDT (Base) or RLUSD / XRP (XRPL) directly to a wallet address
                       </p>
                     </div>
                   </button>
@@ -534,35 +575,54 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
               </div>
             )}
 
-            {/* Crypto send (XRP/RLUSD to address) */}
+            {/* Crypto send (USDC/USDT on Base or RLUSD/XRP on XRPL) */}
             {sendMode === "crypto" && (
               <div className="p-6 space-y-5">
-                {!isConnected && (
+                {/* Wallet not connected for the selected asset's chain */}
+                {!cryptoWalletOk && cryptoSendAssets.length === 0 && (
                   <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg flex items-start gap-3">
                     <AlertCircle className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Wallet not connected</p>
-                      <Button size="sm" variant="outline" className="mt-2" onClick={async () => { try { await connectWallet(); toast.success("Wallet connected"); } catch { toast.error("Failed to connect"); } }}>
-                        <Wallet className="w-4 h-4 mr-1" /> Connect Wallet
-                      </Button>
-                    </div>
+                    <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                      Connect a wallet first to send crypto
+                    </p>
                   </div>
                 )}
-                {isConnected && (
+                {!cryptoWalletOk && cryptoSendAssets.length > 0 && (
+                  <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" />
+                    <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                      Connect your {isBaseCrypto ? "Base" : "XRPL"} wallet to send{" "}
+                      {selectedCryptoAsset.code}
+                    </p>
+                  </div>
+                )}
+
+                <AssetAmountItem
+                  assetId={cryptoAssetId}
+                  onAssetChange={setCryptoAssetId}
+                  amount={cryptoAmount}
+                  onAmountChange={setCryptoAmount}
+                  assets={cryptoSendAssets.length > 0 ? cryptoSendAssets : undefined}
+                />
+
+                {/* XRPL: favorites + custom address toggle */}
+                {!isBaseCrypto && (
                   <>
-                    <AssetAmountItem
-                      assetId={cryptoAssetId}
-                      onAssetChange={setCryptoAssetId}
-                      amount={cryptoAmount}
-                      onAmountChange={setCryptoAmount}
-                    />
                     <div>
                       <Label className="text-sm font-medium mb-2">Send to</Label>
                       <div className="flex gap-2">
-                        <button type="button" onClick={() => setUseCustomAddress(false)} className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${!useCustomAddress ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
+                        <button
+                          type="button"
+                          onClick={() => setUseCustomAddress(false)}
+                          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${!useCustomAddress ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                        >
                           Favorites
                         </button>
-                        <button type="button" onClick={() => setUseCustomAddress(true)} className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${useCustomAddress ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
+                        <button
+                          type="button"
+                          onClick={() => setUseCustomAddress(true)}
+                          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${useCustomAddress ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                        >
                           New address
                         </button>
                       </div>
@@ -589,6 +649,16 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                             )}
                           </SelectContent>
                         </Select>
+                        <button
+                          type="button"
+                          className="text-sm text-primary hover:underline mt-2 block"
+                          onClick={() => {
+                            setSaveAddressInitialAddress("");
+                            setSaveAddressModalOpen(true);
+                          }}
+                        >
+                          Add new address
+                        </button>
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -615,41 +685,53 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                         </Button>
                       </div>
                     )}
-                    {!useCustomAddress && (
-                      <button
-                        type="button"
-                        className="text-sm text-primary hover:underline"
-                        onClick={() => {
-                          setSaveAddressInitialAddress("");
-                          setSaveAddressModalOpen(true);
-                        }}
-                      >
-                        Add new address
-                      </button>
-                    )}
-                    {cryptoShowPreview && (
-                      <div className="rounded-lg border border-border p-4 space-y-3 bg-muted/30">
-                        <h3 className="text-base font-semibold text-foreground">Review</h3>
-                        <div className="space-y-2.5">
-                          <div className="flex justify-between items-center gap-2">
-                            <span className="text-sm text-muted-foreground">Amount</span>
-                            <span className="font-semibold tabular-nums">
-                              {selectedCryptoAsset.code === "XRP"
-                                ? Number(cryptoAmount).toLocaleString(undefined, { maximumFractionDigits: 6 })
-                                : Number(cryptoAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}{" "}
-                              {selectedCryptoAsset.code}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center gap-2">
-                            <span className="text-sm text-muted-foreground shrink-0">To</span>
-                            <span className="font-mono text-sm truncate max-w-[220px] text-right" title={cryptoDestinationAddress}>
-                              {cryptoDestinationAddress}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </>
+                )}
+
+                {/* Base: plain address input */}
+                {isBaseCrypto && (
+                  <div>
+                    <Label className="text-sm font-medium">Destination address (Base)</Label>
+                    <Input
+                      value={customAddress}
+                      onChange={(e) => setCustomAddress(e.target.value)}
+                      placeholder="0x0000000000000000000000000000000000000000"
+                      className="mt-1.5 h-12 font-mono text-sm rounded-lg border border-input"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      Must be a valid Base (EVM) address starting with 0x
+                    </p>
+                  </div>
+                )}
+
+                {cryptoShowPreview && (
+                  <div className="rounded-lg border border-border p-4 space-y-3 bg-muted/30">
+                    <h3 className="text-base font-semibold text-foreground">Review</h3>
+                    <div className="space-y-2.5">
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Amount</span>
+                        <span className="font-semibold tabular-nums">
+                          {Number(cryptoAmount).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 6,
+                          })}{" "}
+                          {selectedCryptoAsset.code}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Network</span>
+                        <span className="text-sm font-medium">
+                          {isBaseCrypto ? "Base" : "XRPL"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-sm text-muted-foreground shrink-0">To</span>
+                        <span className="font-mono text-sm truncate max-w-[220px] text-right" title={cryptoDestinationAddress}>
+                          {cryptoDestinationAddress}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
@@ -693,14 +775,9 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
             {/* Offramp form: mobile money only */}
             {sendMode === "offramp" && !showPreview && (
               <div className="space-y-5">
-                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-3">
-                  <div>
-                    <p className="text-sm font-medium">Fiat offramp</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Choose asset and amount. Recipient receives fiat via mobile money where supported.
-                    </p>
-                  </div>
-                  <AssetSelect label="Send" />
+                <div>
+                  <p className="text-sm font-medium mb-2">Send from</p>
+                  <ChainAssetPicker />
                 </div>
 
                 <div>

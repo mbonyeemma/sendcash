@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getCurrencyById, SEND_RECEIVE_CURRENCIES, type Currency } from "@/data/currencies";
-import { XRPL_SEND_ASSETS } from "@/data/supportedAssets";
+import { XRPL_SEND_ASSETS, type SupportedAsset } from "@/data/supportedAssets";
 import { AlertCircle } from "lucide-react";
 import type { SupportedCurrency } from "@/services/api";
 
@@ -90,12 +90,14 @@ export const AmountItem = ({
   );
 };
 
-/** XRPL send: amount + asset (from `supportedAssets` XRPL entries). */
+/** Multi-chain send: amount + asset picker. Defaults to XRPL assets; pass `assets` to override. */
 interface AssetAmountItemProps {
   assetId: string;
   onAssetChange: (value: string) => void;
   amount: string;
   onAmountChange: (value: string) => void;
+  /** Asset list to display. Defaults to XRPL_SEND_ASSETS when not provided. */
+  assets?: SupportedAsset[];
   amountError?: string;
   onClearAmountError?: () => void;
 }
@@ -105,10 +107,12 @@ export const AssetAmountItem = ({
   onAssetChange,
   amount,
   onAmountChange,
+  assets,
   amountError,
   onClearAmountError,
 }: AssetAmountItemProps) => {
-  const selected = XRPL_SEND_ASSETS.find((a) => a.id === assetId) ?? XRPL_SEND_ASSETS[0];
+  const assetList = assets && assets.length > 0 ? assets : XRPL_SEND_ASSETS;
+  const selected = assetList.find((a) => a.id === assetId) ?? assetList[0];
   const code = selected?.code ?? "XRP";
   return (
     <div className="space-y-1.5">
@@ -131,17 +135,20 @@ export const AssetAmountItem = ({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {XRPL_SEND_ASSETS.map((c) => (
+              {assetList.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
                   <span className="flex items-center gap-2">
                     {c.logo ? (
                       <img src={c.logo} alt={c.code} className="w-5 h-4 object-contain rounded" />
                     ) : (
-                      <span className="w-5 h-4 rounded bg-white text-black flex items-center justify-center text-[10px] font-bold">
-                        XRP
+                      <span className="w-5 h-4 rounded bg-muted text-foreground flex items-center justify-center text-[10px] font-bold">
+                        {c.code.slice(0, 3)}
                       </span>
                     )}
-                    {c.code}
+                    <span>{c.code}</span>
+                    <span className="text-[10px] text-muted-foreground uppercase">
+                      {c.chain === "base" ? "Base" : "XRPL"}
+                    </span>
                   </span>
                 </SelectItem>
               ))}
