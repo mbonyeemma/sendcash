@@ -3,8 +3,14 @@ import { isInstalled, getAddress, getNetwork } from "@gemwallet/api";
 
 export type XRPLWalletProviderType = "gemwallet" | "xaman" | "osmwallet";
 
+const XRPL_ADDRESS_KEY = "xrpl_wallet_address";
+const XRPL_NETWORK_KEY = "xrpl_wallet_network";
+const XRPL_PROVIDER_KEY = "xrpl_wallet_provider";
+
 interface XRPLWalletContextType {
   isConnected: boolean;
+  /** True while restoring a saved XRPL session after page reload */
+  isRestoring: boolean;
   address: string | null;
   network: string | null;
   isGemWalletInstalled: boolean;
@@ -35,6 +41,29 @@ export const XRPLWalletProvider = ({ children }: XRPLWalletProviderProps) => {
   const [network, setNetwork] = useState<string | null>("Mainnet");
   const [isGemWalletInstalled, setIsGemWalletInstalled] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const persistSession = (
+    walletAddress: string,
+    walletNetwork: string,
+    provider: XRPLWalletProviderType
+  ) => {
+    setAddress(walletAddress);
+    setNetwork(walletNetwork);
+    setIsConnected(true);
+    localStorage.setItem(XRPL_ADDRESS_KEY, walletAddress);
+    localStorage.setItem(XRPL_NETWORK_KEY, walletNetwork);
+    localStorage.setItem(XRPL_PROVIDER_KEY, provider);
+  };
+
+  const clearSession = () => {
+    setAddress(null);
+    setNetwork("Mainnet");
+    setIsConnected(false);
+    localStorage.removeItem(XRPL_ADDRESS_KEY);
+    localStorage.removeItem(XRPL_NETWORK_KEY);
+    localStorage.removeItem(XRPL_PROVIDER_KEY);
+  };
 
   // Check if GemWallet is installed
   useEffect(() => {
@@ -81,17 +110,43 @@ export const XRPLWalletProvider = ({ children }: XRPLWalletProviderProps) => {
     };
   }, []);
 
-  // Check if wallet was previously connected (from localStorage)
+  // Restore saved XRPL session on reload; re-verify with the wallet extension when possible
   useEffect(() => {
-    const savedAddress = localStorage.getItem("xrpl_wallet_address");
-    const savedNetwork = localStorage.getItem("xrpl_wallet_network");
-    
-    if (savedAddress) {
-      setAddress(savedAddress);
-      // Force Mainnet even if something stored Testnet before
-      setNetwork("Mainnet");
-      setIsConnected(true);
-    }
+    const savedAddress = localStorage.getItem(XRPL_ADDRESS_KEY);
+    const savedProvider = localStorage.getItem(XRPL_PROVIDER_KEY) as XRPLWalletProviderType | null;
+    if (!savedAddress) return;
+
+    setAddress(savedAddress);
+    setNetwork("Mainnet");
+    setIsConnected(true);
+
+    if (savedProvider !== "gemwallet") return;
+
+    let cancelled = false;
+    setIsRestoring(true);
+
+    (async () => {
+      try {
+        const addressResponse = await getAddress();
+        if (cancelled) return;
+
+        const liveAddress = addressResponse?.result?.address;
+        if (addressResponse?.type !== "reject" && liveAddress) {
+          setAddress(liveAddress);
+          setIsConnected(true);
+          setIsGemWalletInstalled(true);
+          localStorage.setItem(XRPL_ADDRESS_KEY, liveAddress);
+        }
+      } catch {
+        // Keep the saved session — user may reconnect manually if signing fails
+      } finally {
+        if (!cancelled) setIsRestoring(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const CONNECT_TIMEOUT_MS = 45000; // 45s – user may need time to approve in extension popup
@@ -108,11 +163,7 @@ export const XRPLWalletProvider = ({ children }: XRPLWalletProviderProps) => {
             new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Connection timed out.")), CONNECT_TIMEOUT_MS)),
           ]);
           if (addr) {
-            setAddress(addr);
-            setNetwork("Mainnet");
-            setIsConnected(true);
-            localStorage.setItem("xrpl_wallet_address", addr);
-            localStorage.setItem("xrpl_wallet_network", "Mainnet");
+            persistSession(addr, "Mainnet", "xaman");
             return;
           }
         }
@@ -139,11 +190,7 @@ export const XRPLWalletProvider = ({ children }: XRPLWalletProviderProps) => {
           ]);
           const resolvedAddr = typeof addr === "string" ? addr : (addr as any)?.address ?? (addr as any)?.result?.address;
           if (resolvedAddr) {
-            setAddress(resolvedAddr);
-            setNetwork("Mainnet");
-            setIsConnected(true);
-            localStorage.setItem("xrpl_wallet_address", resolvedAddr);
-            localStorage.setItem("xrpl_wallet_network", "Mainnet");
+            persistSession(resolvedAddr, "Mainnet", "osmwallet");
             return;
           }
         }
@@ -180,13 +227,8 @@ export const XRPLWalletProvider = ({ children }: XRPLWalletProviderProps) => {
       const walletNetwork = "Mainnet";
 
       console.log("✅ Successfully connected to GemWallet");
-      setAddress(walletAddress);
-      setNetwork(walletNetwork);
-      setIsConnected(true);
+      persistSession(walletAddress, walletNetwork, "gemwallet");
       setIsGemWalletInstalled(true);
-
-      localStorage.setItem("xrpl_wallet_address", walletAddress);
-      localStorage.setItem("xrpl_wallet_network", walletNetwork);
     } catch (error: any) {
       console.error("❌ Failed to connect wallet:", error);
 
@@ -208,17 +250,14 @@ export const XRPLWalletProvider = ({ children }: XRPLWalletProviderProps) => {
   };
 
   const disconnectWallet = () => {
-    setAddress(null);
-    setNetwork("Mainnet");
-    setIsConnected(false);
-    localStorage.removeItem("xrpl_wallet_address");
-    localStorage.removeItem("xrpl_wallet_network");
+    clearSession();
   };
 
   return (
     <XRPLWalletContext.Provider
       value={{
         isConnected,
+        isRestoring,
         address,
         network,
         isGemWalletInstalled,

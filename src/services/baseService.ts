@@ -4,22 +4,28 @@
  * a public RPC for read-only queries.
  */
 import { ethers } from "ethers";
+import {
+  BASE_CHAIN_ID,
+  BASE_CHAIN_ID_HEX,
+  BASE_CHAIN_PARAMS,
+  BASE_EXPLORER,
+  BASE_RPC_URL,
+  BASE_USDC_CONTRACT,
+  BASE_USDT_CONTRACT,
+  USDC_DECIMALS,
+  USDT_DECIMALS,
+} from "@/config/base";
 
-export const BASE_CHAIN_ID = 8453;
-export const BASE_CHAIN_ID_HEX = "0x2105";
-export const BASE_RPC_URL = "https://mainnet.base.org";
-export const BASE_USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
-export const BASE_USDT_ADDRESS = "0xfde4c96c8593536e31F229Ea8F37b2aD310E2b67";
-export const USDC_DECIMALS = 6;
-export const USDT_DECIMALS = 6;
-export const BASE_EXPLORER = "https://basescan.org";
-
-export const BASE_CHAIN_PARAMS = {
-  chainId: BASE_CHAIN_ID_HEX,
-  chainName: "Base",
-  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-  rpcUrls: [BASE_RPC_URL],
-  blockExplorerUrls: [BASE_EXPLORER],
+export {
+  BASE_CHAIN_ID,
+  BASE_CHAIN_ID_HEX,
+  BASE_CHAIN_PARAMS,
+  BASE_EXPLORER,
+  BASE_RPC_URL,
+  BASE_USDC_CONTRACT as BASE_USDC_ADDRESS,
+  BASE_USDT_CONTRACT as BASE_USDT_ADDRESS,
+  USDC_DECIMALS,
+  USDT_DECIMALS,
 };
 
 const ERC20_ABI = [
@@ -62,11 +68,11 @@ export const baseService = {
   },
 
   getUsdcBalance: async (address: string): Promise<string> => {
-    return baseService.getErc20Balance(address, BASE_USDC_ADDRESS, USDC_DECIMALS);
+    return baseService.getErc20Balance(address, BASE_USDC_CONTRACT, USDC_DECIMALS);
   },
 
   getUsdtBalance: async (address: string): Promise<string> => {
-    return baseService.getErc20Balance(address, BASE_USDT_ADDRESS, USDT_DECIMALS);
+    return baseService.getErc20Balance(address, BASE_USDT_CONTRACT, USDT_DECIMALS);
   },
 
   getEthBalance: async (address: string): Promise<string> => {
@@ -116,7 +122,7 @@ export const baseService = {
     destination: string,
     amountUsdc: string
   ): Promise<{ hash?: string; error?: string }> => {
-    return baseService.sendErc20(BASE_USDC_ADDRESS, destination, amountUsdc, USDC_DECIMALS);
+    return baseService.sendErc20(BASE_USDC_CONTRACT, destination, amountUsdc, USDC_DECIMALS);
   },
 
   sendErc20: async (

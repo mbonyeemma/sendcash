@@ -1,8 +1,19 @@
 import { createContext, useContext, ReactNode } from "react";
-import { useActiveAccount, useActiveWalletChain, useDisconnect, useActiveWallet } from "thirdweb/react";
+import {
+  useActiveAccount,
+  useActiveWalletChain,
+  useDisconnect,
+  useActiveWallet,
+  AutoConnect,
+  useIsAutoConnecting,
+} from "thirdweb/react";
+import { thirdwebClient } from "@/lib/thirdweb";
+import { evmConnectWallets } from "@/lib/walletConfig";
 
 interface EVMWalletContextType {
   isConnected: boolean;
+  /** True while thirdweb is reconnecting the last wallet after a page reload */
+  isRestoring: boolean;
   address: string | null;
   chainId: number | null;
   isOnBase: boolean;
@@ -30,6 +41,7 @@ export const EVMWalletProvider = ({ children }: EVMWalletProviderProps) => {
   const chain = useActiveWalletChain();
   const activeWallet = useActiveWallet();
   const { disconnect } = useDisconnect();
+  const isRestoring = useIsAutoConnecting();
 
   const isConnected = !!account?.address;
   const address = account?.address ?? null;
@@ -46,12 +58,14 @@ export const EVMWalletProvider = ({ children }: EVMWalletProviderProps) => {
     <EVMWalletContext.Provider
       value={{
         isConnected,
+        isRestoring,
         address,
         chainId,
         isOnBase,
         disconnectWallet,
       }}
     >
+      <AutoConnect client={thirdwebClient} wallets={evmConnectWallets} />
       {children}
     </EVMWalletContext.Provider>
   );
