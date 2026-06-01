@@ -37,7 +37,7 @@ export const CASH_ASSETS_BY_NETWORK: Record<AssetChain, string[]> = {
 const RLUSD_ISSUER = import.meta.env.VITE_RLUSD_ISSUER || "rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De";
 
 export const BASE_USDC_CONTRACT = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
-export const BASE_USDT_CONTRACT = "0xfde4c96c8593536e31F229Ea8F37b2aD310E2b67";
+export const BASE_USDT_CONTRACT = "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2";
 
 export const SUPPORTED_ASSETS: SupportedAsset[] = [
   {
