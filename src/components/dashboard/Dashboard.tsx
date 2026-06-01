@@ -47,6 +47,10 @@ export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps)
   const [connectWalletTab, setConnectWalletTab] = useState<"evm" | "xrp">("evm");
   const [balanceRefreshTrigger, setBalanceRefreshTrigger] = useState(0);
 
+  const refreshDashboardData = () => {
+    setBalanceRefreshTrigger((t) => t + 1);
+  };
+
   const openWalletModal = (tab: "evm" | "xrp") => {
     setConnectWalletTab(tab);
     setConnectWalletOpen(true);
@@ -99,13 +103,13 @@ export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps)
               onBalanceUpdate={() => {}}
               refreshTrigger={balanceRefreshTrigger}
             />
-            <StatementView />
+            <StatementView refreshTrigger={balanceRefreshTrigger} />
           </div>
         );
       case "balances":
         return <BalanceView />;
       case "statement":
-        return <StatementView />;
+        return <StatementView refreshTrigger={balanceRefreshTrigger} />;
       case "banks":
         return (
           <div className="rounded-2xl border border-border bg-card p-8 text-center max-w-md mx-auto">
@@ -128,7 +132,7 @@ export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps)
               onBalanceUpdate={() => {}}
               refreshTrigger={balanceRefreshTrigger}
             />
-            <StatementView />
+            <StatementView refreshTrigger={balanceRefreshTrigger} />
           </div>
         );
     }
@@ -341,17 +345,12 @@ export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps)
       <DepositModal
         isOpen={depositOpen}
         onClose={() => setDepositOpen(false)}
-        onSuccess={() => {
-          // Trigger balance refresh - you might want to add a refresh callback
-          window.location.reload(); // Simple refresh for now
-        }}
+        onSuccess={refreshDashboardData}
       />
       <SendModal
         isOpen={sendOpen}
         onClose={() => setSendOpen(false)}
-        onSuccess={() => {
-          window.location.reload();
-        }}
+        onSuccess={refreshDashboardData}
       />
       <SwapModal
         isOpen={swapOpen}

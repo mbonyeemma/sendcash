@@ -267,7 +267,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
       const response = await walletApi.createPayoutRequest(payoutPayload);
 
       if (isBaseOfframp) {
-        const data = response.data as { base_custody_address?: string; amount: number };
+        const data = response.data as { base_custody_address?: string; amount: number; trans_id?: string };
         if (!data?.base_custody_address) {
           toast.error(response.message || "Invalid Base payout response");
           return;
@@ -290,6 +290,16 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
           return;
         }
         if (sendResult.hash) {
+          if (data.trans_id) {
+            try {
+              await walletApi.confirmBaseOfframp({ trans_id: data.trans_id, tx_hash: sendResult.hash });
+            } catch (confirmErr: unknown) {
+              console.warn("[SendModal] confirmBaseOfframp:", confirmErr);
+              toast.message(
+                "Transfer sent on Base. Mobile payout will complete once the transaction is confirmed."
+              );
+            }
+          }
           toast.success(
             `Sent ${offrampAmount} ${selectedOfframpAsset.code}. Once confirmed on Base, ${fiatAmount} ${payoutCurrency} will be sent to the recipient.`
           );

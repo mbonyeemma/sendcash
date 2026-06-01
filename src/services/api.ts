@@ -300,6 +300,11 @@ export const walletApi = {
     );
   },
 
+  /** Verify Base offramp on-chain transfer and trigger mobile-money payout */
+  confirmBaseOfframp: async (data: { trans_id: string; tx_hash: string }): Promise<ApiResponse> => {
+    return api.post(data, "/wallet/base/confirmOfframp");
+  },
+
   /** Record a DEX swap in the database (after successful on-chain swap). */
   recordSwap: async (params: {
     fromAsset: string;

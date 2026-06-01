@@ -1,9 +1,10 @@
-import { useState, useMemo, useEffect } from "react";
-import { ArrowDownCircle, ArrowUpCircle, Send, Filter, Search, Loader2, X, ExternalLink } from "lucide-react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { ArrowDownCircle, ArrowUpCircle, Send, Filter, Search, Loader2, X, ExternalLink, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { walletApi } from "@/services/api";
 import { toast } from "sonner";
-import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -59,7 +60,13 @@ const mapApiTransactionToUI = (apiTx: any): Transaction => {
   const apiStatus = (apiTx.status || "").toUpperCase();
   const status =
     apiStatus === "SUCCESS" || apiStatus === "COMPLETED" ? "completed" :
-    apiStatus === "PENDING" || apiStatus === "PENDING_RLUSD" || apiStatus === "PENDING_ONRAMP" || apiStatus === "INPROGRESS" ? "pending" :
+    apiStatus === "PENDING" ||
+    apiStatus === "PENDING_RLUSD" ||
+    apiStatus === "PENDING_BASE_USDC" ||
+    apiStatus === "PENDING_ONRAMP" ||
+    apiStatus === "INPROGRESS" ||
+    apiStatus === "RECEIVED" ||
+    apiStatus === "SENT" ? "pending" :
     "failed";
 
   const description = apiTx.narration || apiTx.description || apiTx.remarks || apiTx.trans_type || "Transaction";
@@ -125,7 +132,21 @@ const formatDescription = (description: string | undefined, transType: string | 
 
 const ITEMS_PER_PAGE = 10;
 
-export const StatementView = () => {
+function formatReceiverPhone(accountNumber: string | undefined | null): string {
+  if (!accountNumber) return "—";
+  const digits = accountNumber.replace(/\D/g, "");
+  if (digits.startsWith("256") && digits.length >= 12) {
+    return `+${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+  }
+  if (accountNumber.startsWith("+")) return accountNumber;
+  return accountNumber;
+}
+
+interface StatementViewProps {
+  refreshTrigger?: number;
+}
+
+export const StatementView = ({ refreshTrigger = 0 }: StatementViewProps) => {
   const [filter, setFilter] = useState<TransactionType>("all");
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -135,37 +156,29 @@ export const StatementView = () => {
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [selectedRaw, setSelectedRaw] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchStatement();
-  }, []);
-
-  const fetchStatement = async () => {
+  const fetchStatement = useCallback(async (silent = false) => {
     try {
-      setIsLoading(true);
+      if (silent) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
       const response = await walletApi.getStatement();
-      console.log("Statement API Response:", response); // Debug log
-      
-      // API returns: { status: 200, message: "...", data: [...] }
-      // The data field is directly an array of transactions
+
       let transactionsArray: any[] = [];
-      
+
       if (response.data) {
         if (Array.isArray(response.data)) {
-          // Data is directly an array (most common case)
           transactionsArray = response.data;
         } else if (response.data.data && Array.isArray(response.data.data)) {
-          // Nested: data.data
           transactionsArray = response.data.data;
         } else if (response.data.transactions && Array.isArray(response.data.transactions)) {
-          // Nested: data.transactions
           transactionsArray = response.data.transactions;
         }
       }
-      
-      console.log("Parsed transactions array:", transactionsArray); // Debug log
-      
+
       if (transactionsArray.length > 0) {
         const mappedTransactions = transactionsArray.map(mapApiTransactionToUI);
         setTransactions(mappedTransactions);
@@ -181,19 +194,34 @@ export const StatementView = () => {
       setRawTransactions([]);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchStatement();
+  }, [fetchStatement]);
+
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      fetchStatement(true);
+    }
+  }, [refreshTrigger, fetchStatement]);
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((tx) => {
+      const raw = rawTransactions.find((r) => String(r.id ?? r.trans_id) === tx.id);
+      const receiver = raw?.account_number || "";
       const matchesType = filter === "all" || tx.type === filter;
-      const matchesSearch = tx.description.toLowerCase().includes(search.toLowerCase()) ||
+      const matchesSearch =
+        tx.description.toLowerCase().includes(search.toLowerCase()) ||
         tx.currency.toLowerCase().includes(search.toLowerCase()) ||
-        tx.id.toLowerCase().includes(search.toLowerCase());
+        tx.id.toLowerCase().includes(search.toLowerCase()) ||
+        receiver.toLowerCase().includes(search.toLowerCase());
       const matchesStatus = statusFilter === "all" || tx.status === statusFilter;
       return matchesType && matchesSearch && matchesStatus;
     });
-  }, [transactions, filter, search, statusFilter]);
+  }, [transactions, rawTransactions, filter, search, statusFilter]);
 
   const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -221,9 +249,22 @@ export const StatementView = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Transaction History</h1>
-        <p className="text-muted-foreground">View all your wallet transactions</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Transaction History</h1>
+          <p className="text-muted-foreground">View all your wallet transactions</p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => fetchStatement(true)}
+          disabled={isRefreshing}
+          className="self-start sm:self-auto"
+        >
+          <RefreshCw className={cn("w-4 h-4 mr-2", isRefreshing && "animate-spin")} />
+          Refresh
+        </Button>
       </div>
 
       {/* Filters */}
@@ -293,6 +334,7 @@ export const StatementView = () => {
                   <TableHead className="w-[50px]">Type</TableHead>
                   <TableHead className="w-[100px]">Trans type</TableHead>
                   <TableHead>Description</TableHead>
+                  <TableHead>Receiver</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead className="text-center">Status</TableHead>
@@ -322,6 +364,11 @@ export const StatementView = () => {
                       </TableCell>
                       <TableCell>
                         <p className="font-medium text-foreground">{description}</p>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-foreground whitespace-nowrap">
+                          {formatReceiverPhone(raw?.account_number)}
+                        </span>
                       </TableCell>
                       <TableCell>
                         <span className="text-sm text-muted-foreground">{tx.date}</span>
@@ -465,8 +512,19 @@ export const StatementView = () => {
                 )}
                 {selectedRaw?.destination_address && (
                   <div className="col-span-2">
-                    <span className="text-muted-foreground block text-xs">Destination (XRPL)</span>
+                    <span className="text-muted-foreground block text-xs">
+                      {(selectedRaw?.trans_type || "").toLowerCase().includes("base")
+                        ? "Your wallet (Base)"
+                        : "Destination (XRPL)"}
+                    </span>
                     <p className="font-mono text-xs break-all">{selectedRaw.destination_address}</p>
+                  </div>
+                )}
+                {selectedRaw?.address_id &&
+                  (selectedRaw?.trans_type || "").toLowerCase().includes("base") && (
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground block text-xs">Escrow address (Base)</span>
+                    <p className="font-mono text-xs break-all">{selectedRaw.address_id}</p>
                   </div>
                 )}
                 <div className="col-span-2">
@@ -481,11 +539,19 @@ export const StatementView = () => {
                   <div className="col-span-2">
                     <span className="text-muted-foreground block text-xs mb-1">Hash</span>
                     <a
-                      href={`https://xrpscan.com/tx/${selectedRaw.hash}`}
+                      href={
+                        (selectedRaw?.trans_type || "").toLowerCase().includes("base")
+                          ? `https://basescan.org/tx/${selectedRaw.hash}`
+                          : `https://xrpscan.com/tx/${selectedRaw.hash}`
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
                       className="font-mono text-xs break-all text-primary hover:underline flex items-center gap-1.5 group"
-                      title="View on XRPScan Explorer"
+                      title={
+                        (selectedRaw?.trans_type || "").toLowerCase().includes("base")
+                          ? "View on BaseScan"
+                          : "View on XRPScan Explorer"
+                      }
                     >
                       <span className="break-all">{selectedRaw.hash}</span>
                       <ExternalLink className="w-3.5 h-3.5 flex-shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
