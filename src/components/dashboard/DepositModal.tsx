@@ -255,7 +255,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
           <div className="flex-1 overflow-y-auto">
             {/* After depositRequest: mobile money popup sent to user's phone */}
             {payInInstructions ? (
-              <div className="p-6 space-y-5">
+              <div className="p-4 space-y-4">
                 <h3 className="text-lg font-semibold">Approve on your phone</h3>
                 <p className="text-sm text-muted-foreground">
                   A payment request has been sent to your mobile money number. Please check your phone and approve the popup to complete the payment.
@@ -279,30 +279,25 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                 </p>
               </div>
             ) : walletConnected ? (
-              <div className="p-4 mx-6 mt-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <Wallet className="w-5 h-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-green-800 dark:text-green-200">Wallet Connected</p>
-                    <p className="text-xs text-green-700 dark:text-green-300 mt-1">
-                      {receiveAsset?.code} will be sent to: {walletAddress?.slice(0, 8)}...{walletAddress?.slice(-6)}
-                    </p>
-                  </div>
-                </div>
+              <div className="p-2.5 mx-4 mt-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-green-600 dark:text-green-400 shrink-0" />
+                <p className="text-xs font-medium text-green-800 dark:text-green-200">
+                  {receiveAsset?.code} → {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
+                </p>
               </div>
             ) : null}
 
             {/* Supported regions notice */}
             {!payInInstructions && (
-              <div className="p-3 mx-6 mt-3 bg-muted/50 border border-border rounded-lg">
+              <div className="px-4 pt-3">
                 <p className="text-xs text-muted-foreground">
-                  <strong>Supported regions:</strong> Mobile money deposits are currently available for Uganda (+256) phone numbers only. More regions coming soon.
+                  <strong>Supported regions:</strong> Uganda (+256) mobile money only for now. More coming soon.
                 </p>
               </div>
             )}
 
             {!payInInstructions && !showPreview ? (
-              <div className="p-6 space-y-5">
+              <div className="p-4 space-y-4">
                 <div>
                   <p className="text-sm font-medium mb-2">Receive on</p>
                   <ChainAssetPicker />
@@ -475,7 +470,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                 )}
               </div>
             ) : !payInInstructions ? (
-              <div className="p-6 space-y-5">
+              <div className="p-4 space-y-4">
                 <h3 className="text-lg font-semibold">Review Deposit</h3>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center py-2">

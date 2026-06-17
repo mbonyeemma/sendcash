@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Loader2, AlertCircle, Smartphone, Wallet, ChevronLeft, Plus, ArrowRight, Send, Landmark, Copy, Check, Clock } from "lucide-react";
+import { X, Loader2, AlertCircle, Smartphone, Wallet, ChevronLeft, Plus, ArrowRight, Send, Landmark, Copy, Check, Clock, QrCode } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -113,6 +113,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
   const [showPreview, setShowPreview] = useState(false);
   // XRPL offramp without a connected wallet: show deposit address + tag QR for manual send
   const [payoutQR, setPayoutQR] = useState<RlusdPayoutResponse | null>(null);
+  const [showTagQR, setShowTagQR] = useState(false);
   const sendCancelledRef = useRef(false);
   const SEND_TIMEOUT_MS = 90000; // 90s – user may need time to approve in GemWallet
 
@@ -409,6 +410,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
     setErrors({});
     setShowPreview(false);
     setPayoutQR(null);
+    setShowTagQR(false);
     setCryptoAssetId(defaultCryptoAsset.id);
     setCryptoAmount("");
     setSelectedFavoriteId("");
@@ -783,73 +785,73 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
             {sendMode === "offramp" && (
               <>
             {!payoutQR && walletConnectedForOfframp && selectedOfframpAsset.supportsFiatOfframp && (
-              <div className="p-4 mx-6 mt-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <Wallet className="w-5 h-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                      Wallet connected
-                    </p>
-                    <p className="text-xs text-green-700 dark:text-green-300 mt-1">
-                      {walletAddress?.slice(0, 8)}...{walletAddress?.slice(-6)}
-                    </p>
-                  </div>
-                </div>
+              <div className="p-2.5 mx-4 mt-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-green-600 dark:text-green-400 shrink-0" />
+                <p className="text-xs font-medium text-green-800 dark:text-green-200">
+                  Wallet connected · {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
+                </p>
               </div>
             )}
 
             {!payoutQR && !walletConnectedForOfframp && selectedChain !== "base" && selectedOfframpAsset.supportsFiatOfframp && (
-              <div className="p-4 mx-6 mt-6 bg-primary/5 border border-primary/20 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <Wallet className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">No wallet connected</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      That's fine — after you review, we'll show a deposit address and tag so you
-                      can send {selectedOfframpAsset.code} from any wallet.
-                    </p>
-                  </div>
-                </div>
+              <div className="p-2.5 mx-4 mt-4 bg-primary/5 border border-primary/20 rounded-lg flex items-start gap-2">
+                <Wallet className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground">
+                  No wallet connected — we'll show a deposit address + tag after you review.
+                </p>
               </div>
             )}
 
-            {/* XRPL deposit address + tag QR (no connected wallet) */}
+            {/* XRPL deposit address + tag (no connected wallet) — compact */}
             {payoutQR && (
-              <div className="p-6 space-y-5">
-                <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg flex items-start gap-2.5">
-                  <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
-                  <p className="text-xs text-yellow-800 dark:text-yellow-200">
-                    Send <strong>exactly {Number(payoutQR.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} {selectedOfframpAsset.code}</strong> on the{" "}
-                    <strong>XRP Ledger</strong>. You <strong>must</strong> include the destination
-                    tag below, or the payment can't be matched to your payout.
-                  </p>
-                </div>
+              <div className="p-4 space-y-3">
+                <p className="text-xs text-muted-foreground leading-snug">
+                  Send <strong className="text-foreground">{Number(payoutQR.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} {selectedOfframpAsset.code}</strong> on the{" "}
+                  <strong className="text-foreground">XRP Ledger</strong> to the address below — the
+                  destination tag is required.
+                </p>
 
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Deposit address (XRPL)</Label>
-                  <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-white p-4">
-                    <QRCodeSVG value={payoutQR.xrpl_destination!} size={160} level="M" includeMargin />
-                  </div>
-                  <div className="flex items-center gap-2 rounded-lg bg-muted p-3">
-                    <code className="text-xs font-mono break-all flex-1 select-all">
-                      {payoutQR.xrpl_destination}
-                    </code>
-                    <CopyButton value={payoutQR.xrpl_destination!} label="Address" />
+                {/* Deposit address: QR + value together */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">Deposit address (XRPL)</Label>
+                  <div className="flex flex-col items-center gap-2 rounded-lg border border-border bg-white p-3">
+                    <QRCodeSVG value={payoutQR.xrpl_destination!} size={132} level="M" />
+                    <div className="flex items-center gap-1 w-full">
+                      <code className="text-[11px] font-mono break-all flex-1 select-all text-black">
+                        {payoutQR.xrpl_destination}
+                      </code>
+                      <CopyButton value={payoutQR.xrpl_destination!} label="Address" />
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Destination tag (required)</Label>
-                  <div className="flex items-center gap-2 rounded-lg bg-muted p-3">
+                {/* Destination tag: value + QR toggle (closed by default) */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">Destination tag (required)</Label>
+                  <div className="flex items-center gap-1 rounded-lg bg-muted p-2.5">
                     <code className="text-base font-mono font-bold tracking-widest flex-1 select-all">
                       {payoutQR.memo}
                     </code>
+                    <button
+                      type="button"
+                      onClick={() => setShowTagQR((v) => !v)}
+                      className={`p-2 rounded-lg transition-colors ${showTagQR ? "bg-background text-foreground" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
+                      title={showTagQR ? "Hide QR" : "Show QR"}
+                    >
+                      <QrCode className="w-4 h-4" />
+                    </button>
                     <CopyButton value={payoutQR.memo!} label="Tag" />
                   </div>
+                  {showTagQR && (
+                    <div className="flex justify-center rounded-lg border border-border bg-white p-3">
+                      <QRCodeSVG value={payoutQR.memo!} size={104} level="M" />
+                    </div>
+                  )}
                 </div>
 
-                <div className="rounded-lg border border-border p-4 space-y-2">
-                  <div className="flex justify-between text-sm">
+                {/* Compact summary */}
+                <div className="rounded-lg border border-border p-3 space-y-1.5 text-sm">
+                  <div className="flex justify-between">
                     <span className="text-muted-foreground">Recipient gets</span>
                     <span className="font-semibold flex items-center gap-1.5">
                       {payoutCurrencyInfo?.logo && (
@@ -859,13 +861,13 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                     </span>
                   </div>
                   {recipient && (
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between">
                       <span className="text-muted-foreground">To</span>
                       <span className="font-medium">{recipient}</span>
                     </div>
                   )}
                   {payoutQR.expires_in_seconds ? (
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between">
                       <span className="text-muted-foreground flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5" /> Valid for
                       </span>
@@ -873,19 +875,14 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                     </div>
                   ) : null}
                 </div>
-
-                <p className="text-xs text-muted-foreground text-center">
-                  Once confirmed on the XRP Ledger, {fiatAmount} {payoutCurrency} is sent to the
-                  recipient automatically. You can close this window.
-                </p>
               </div>
             )}
 
             {!payoutQR && (
-            <div className="p-6 space-y-5">
+            <div className="p-4 space-y-4">
             {/* Offramp form: mobile money only */}
             {sendMode === "offramp" && !showPreview && (
-              <div className="space-y-5">
+              <div className="space-y-4">
                 <div>
                   <p className="text-sm font-medium mb-2">Send from</p>
                   <ChainAssetPicker />
