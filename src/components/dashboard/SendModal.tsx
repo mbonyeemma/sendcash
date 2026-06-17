@@ -343,7 +343,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
       }
 
       // No connected XRPL wallet → show a deposit address + tag QR so the user can
-      // send the crypto manually from their own wallet or an exchange.
+      // send the crypto manually from their own wallet.
       if (!isConnected) {
         setPayoutQR(response.data as RlusdPayoutResponse);
         return;
@@ -806,7 +806,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                     <p className="text-sm font-medium text-foreground">No wallet connected</p>
                     <p className="text-xs text-muted-foreground mt-1">
                       That's fine — after you review, we'll show a deposit address and tag so you
-                      can send {selectedOfframpAsset.code} from any wallet or exchange.
+                      can send {selectedOfframpAsset.code} from any wallet.
                     </p>
                   </div>
                 </div>
