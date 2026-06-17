@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Loader2, AlertCircle, Smartphone, Wallet, ChevronLeft, Plus, ArrowRight, Send, Landmark } from "lucide-react";
+import { X, Loader2, AlertCircle, Smartphone, Wallet, ChevronLeft, Plus, ArrowRight, Send, Landmark, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +41,8 @@ interface SendModalProps {
   onSuccess?: () => void;
   /** Payout currency from home dropdown: ugx, kes, tzs */
   initialPayoutCurrency?: string;
+  /** Open the no-wallet "cash out from an exchange" flow (deposit address + tag QR) */
+  onUseExchange?: () => void;
 }
 
 interface SavedContact {
@@ -62,7 +64,7 @@ const xrplDefaultAsset =
 
 const PAYOUT_CURRENCY_MAP: Record<string, string> = { ugx: "UGX", kes: "KES", tzs: "TZS" };
 
-export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
+export const SendModal = ({ isOpen, onClose, onSuccess, onUseExchange }: SendModalProps) => {
   const { user } = useAuth();
   const { isConnected, address, connectWallet, network: xrplNetwork } = useXRPLWallet();
   const { isConnected: evmConnected, address: evmAddress } = useEVMWallet();
@@ -566,6 +568,26 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                       </p>
                     </div>
                   </button>
+                  {onUseExchange && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onUseExchange();
+                      }}
+                      className="p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left flex items-start gap-3"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <Building2 className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground">From an exchange (no wallet)</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Have XRP/RLUSD on Binance? Cash out with a deposit address + tag — no wallet needed
+                        </p>
+                      </div>
+                    </button>
+                  )}
                   <div
                     className="p-4 rounded-xl border border-border bg-muted/30 text-left flex items-start gap-3 cursor-not-allowed opacity-90"
                     aria-disabled="true"
