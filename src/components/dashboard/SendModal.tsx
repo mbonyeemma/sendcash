@@ -840,9 +840,6 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
 
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Destination tag (required)</Label>
-                  <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-white p-4">
-                    <QRCodeSVG value={payoutQR.memo!} size={120} level="M" includeMargin />
-                  </div>
                   <div className="flex items-center gap-2 rounded-lg bg-muted p-3">
                     <code className="text-base font-mono font-bold tracking-widest flex-1 select-all">
                       {payoutQR.memo}
