@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Loader2, AlertCircle, Smartphone, Wallet, ChevronLeft, Plus, ArrowRight, Send, Landmark, Building2 } from "lucide-react";
+import { X, Loader2, AlertCircle, Smartphone, Wallet, ChevronLeft, Plus, ArrowRight, Send, Landmark, Copy, Check, Clock } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { toast } from "sonner";
-import { walletApi, paymentMethodApi, PaymentMethod as ApiPaymentMethod } from "@/services/api";
+import { walletApi, paymentMethodApi, PaymentMethod as ApiPaymentMethod, type RlusdPayoutResponse } from "@/services/api";
 import { xrplService } from "@/services/xrplService";
 import { baseService } from "@/services/baseService";
 import { exchangeRates, getCurrencyById, SEND_RECEIVE_CURRENCIES } from "@/data/currencies";
@@ -41,8 +42,6 @@ interface SendModalProps {
   onSuccess?: () => void;
   /** Payout currency from home dropdown: ugx, kes, tzs */
   initialPayoutCurrency?: string;
-  /** Open the no-wallet "cash out from an exchange" flow (deposit address + tag QR) */
-  onUseExchange?: () => void;
 }
 
 interface SavedContact {
@@ -64,7 +63,27 @@ const xrplDefaultAsset =
 
 const PAYOUT_CURRENCY_MAP: Record<string, string> = { ugx: "UGX", kes: "KES", tzs: "TZS" };
 
-export const SendModal = ({ isOpen, onClose, onSuccess, onUseExchange }: SendModalProps) => {
+/** Copy-to-clipboard button used for the offramp deposit address and destination tag. */
+function CopyButton({ value, label }: { value: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        navigator.clipboard.writeText(value);
+        setCopied(true);
+        toast.success(`${label} copied`);
+        setTimeout(() => setCopied(false), 2000);
+      }}
+      className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+      title={`Copy ${label}`}
+    >
+      {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+    </button>
+  );
+}
+
+export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
   const { user } = useAuth();
   const { isConnected, address, connectWallet, network: xrplNetwork } = useXRPLWallet();
   const { isConnected: evmConnected, address: evmAddress } = useEVMWallet();
@@ -92,6 +111,8 @@ export const SendModal = ({ isOpen, onClose, onSuccess, onUseExchange }: SendMod
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  // XRPL offramp without a connected wallet: show deposit address + tag QR for manual send
+  const [payoutQR, setPayoutQR] = useState<RlusdPayoutResponse | null>(null);
   const sendCancelledRef = useRef(false);
   const SEND_TIMEOUT_MS = 90000; // 90s – user may need time to approve in GemWallet
 
@@ -227,8 +248,10 @@ export const SendModal = ({ isOpen, onClose, onSuccess, onUseExchange }: SendMod
 
     const isBaseOfframp = selectedChain === "base";
 
-    if (!walletConnectedForOfframp) {
-      toast.error("Connect your wallet first");
+    // Base settles by pulling tokens from the sender's wallet, so it still needs a
+    // connected EVM wallet. XRPL can fall back to a manual deposit (address + tag QR).
+    if (isBaseOfframp && !evmConnected) {
+      toast.error("Connect your Base wallet to send USDC/USDT");
       return;
     }
 
@@ -319,6 +342,13 @@ export const SendModal = ({ isOpen, onClose, onSuccess, onUseExchange }: SendMod
         return;
       }
 
+      // No connected XRPL wallet → show a deposit address + tag QR so the user can
+      // send the crypto manually from their own wallet.
+      if (!isConnected) {
+        setPayoutQR(response.data as RlusdPayoutResponse);
+        return;
+      }
+
       const issuer = xrplService.getRLUSDIssuer("Mainnet");
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error("SEND_TIMEOUT")), SEND_TIMEOUT_MS);
@@ -378,6 +408,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess, onUseExchange }: SendMod
     setReceiverType("saved");
     setErrors({});
     setShowPreview(false);
+    setPayoutQR(null);
     setCryptoAssetId(defaultCryptoAsset.id);
     setCryptoAmount("");
     setSelectedFavoriteId("");
@@ -568,26 +599,6 @@ export const SendModal = ({ isOpen, onClose, onSuccess, onUseExchange }: SendMod
                       </p>
                     </div>
                   </button>
-                  {onUseExchange && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onClose();
-                        onUseExchange();
-                      }}
-                      className="p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left flex items-start gap-3"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                        <Building2 className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground">From an exchange (no wallet)</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Have XRP/RLUSD on Binance? Cash out with a deposit address + tag — no wallet needed
-                        </p>
-                      </div>
-                    </button>
-                  )}
                   <div
                     className="p-4 rounded-xl border border-border bg-muted/30 text-left flex items-start gap-3 cursor-not-allowed opacity-90"
                     aria-disabled="true"
@@ -771,23 +782,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess, onUseExchange }: SendMod
             {/* Offramp: mobile money only */}
             {sendMode === "offramp" && (
               <>
-            {!walletConnectedForOfframp && selectedOfframpAsset.supportsFiatOfframp && (
-              <div className="p-4 mx-6 mt-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                      Connect wallet
-                    </p>
-                    <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                      Use the Connect wallet button in the header.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {walletConnectedForOfframp && selectedOfframpAsset.supportsFiatOfframp && (
+            {!payoutQR && walletConnectedForOfframp && selectedOfframpAsset.supportsFiatOfframp && (
               <div className="p-4 mx-6 mt-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                 <div className="flex items-start gap-3">
                   <Wallet className="w-5 h-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
@@ -803,6 +798,93 @@ export const SendModal = ({ isOpen, onClose, onSuccess, onUseExchange }: SendMod
               </div>
             )}
 
+            {!payoutQR && !walletConnectedForOfframp && selectedChain !== "base" && selectedOfframpAsset.supportsFiatOfframp && (
+              <div className="p-4 mx-6 mt-6 bg-primary/5 border border-primary/20 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <Wallet className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-foreground">No wallet connected</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      That's fine — after you review, we'll show a deposit address and tag so you
+                      can send {selectedOfframpAsset.code} from any wallet.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* XRPL deposit address + tag QR (no connected wallet) */}
+            {payoutQR && (
+              <div className="p-6 space-y-5">
+                <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                    Send <strong>exactly {Number(payoutQR.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} {selectedOfframpAsset.code}</strong> on the{" "}
+                    <strong>XRP Ledger</strong>. You <strong>must</strong> include the destination
+                    tag below, or the payment can't be matched to your payout.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Deposit address (XRPL)</Label>
+                  <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-white p-4">
+                    <QRCodeSVG value={payoutQR.xrpl_destination!} size={160} level="M" includeMargin />
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg bg-muted p-3">
+                    <code className="text-xs font-mono break-all flex-1 select-all">
+                      {payoutQR.xrpl_destination}
+                    </code>
+                    <CopyButton value={payoutQR.xrpl_destination!} label="Address" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Destination tag (required)</Label>
+                  <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-white p-4">
+                    <QRCodeSVG value={payoutQR.memo!} size={120} level="M" includeMargin />
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg bg-muted p-3">
+                    <code className="text-base font-mono font-bold tracking-widest flex-1 select-all">
+                      {payoutQR.memo}
+                    </code>
+                    <CopyButton value={payoutQR.memo!} label="Tag" />
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-border p-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Recipient gets</span>
+                    <span className="font-semibold flex items-center gap-1.5">
+                      {payoutCurrencyInfo?.logo && (
+                        <img src={payoutCurrencyInfo.logo} alt={payoutCurrency} className="w-5 h-4 object-contain rounded" />
+                      )}
+                      {fiatAmount} {payoutCurrency}
+                    </span>
+                  </div>
+                  {recipient && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">To</span>
+                      <span className="font-medium">{recipient}</span>
+                    </div>
+                  )}
+                  {payoutQR.expires_in_seconds ? (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" /> Valid for
+                      </span>
+                      <span className="font-medium">{Math.round(payoutQR.expires_in_seconds / 60)} min</span>
+                    </div>
+                  ) : null}
+                </div>
+
+                <p className="text-xs text-muted-foreground text-center">
+                  Once confirmed on the XRP Ledger, {fiatAmount} {payoutCurrency} is sent to the
+                  recipient automatically. You can close this window.
+                </p>
+              </div>
+            )}
+
+            {!payoutQR && (
             <div className="p-6 space-y-5">
             {/* Offramp form: mobile money only */}
             {sendMode === "offramp" && !showPreview && (
@@ -1003,6 +1085,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess, onUseExchange }: SendMod
               </div>
             )}
             </div>
+            )}
             </>
             )}
 
@@ -1048,15 +1131,21 @@ export const SendModal = ({ isOpen, onClose, onSuccess, onUseExchange }: SendMod
             )}
             {sendMode === "offramp" && (
               <>
-            {!showPreview ? (
-              <Button 
-                onClick={handleSend} 
+            {payoutQR ? (
+              <Button
+                onClick={() => { onSuccess?.(); resetAndClose(); }}
+                className="w-full h-12 bg-primary hover:bg-primary/90"
+              >
+                Done
+              </Button>
+            ) : !showPreview ? (
+              <Button
+                onClick={handleSend}
                 className="w-full h-12 bg-primary hover:bg-primary/90"
                 disabled={
                   isLoading ||
                   !offrampAmount ||
-                  !selectedOfframpAsset.supportsFiatOfframp ||
-                  !walletConnectedForOfframp
+                  !selectedOfframpAsset.supportsFiatOfframp
                 }
               >
                 {isLoading ? (
@@ -1097,12 +1186,12 @@ export const SendModal = ({ isOpen, onClose, onSuccess, onUseExchange }: SendMod
                     onClick={handleSend}
                     className="flex-1 h-12 bg-primary hover:bg-primary/90"
                   >
-                    Confirm & Send
+                    {walletConnectedForOfframp ? "Confirm & Send" : "Get deposit address"}
                   </Button>
                 )}
               </div>
             )}
-            {showPreview && isLoading && (
+            {showPreview && isLoading && walletConnectedForOfframp && (
               <p className="text-xs text-muted-foreground text-center mt-3">
                 Check your wallet popup and approve, or click Cancel to stop.
               </p>
