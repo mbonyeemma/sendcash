@@ -55,6 +55,13 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
   const [showPreview, setShowPreview] = useState(false);
   const [payInInstructions, setPayInInstructions] = useState<DepositRequestResponse | null>(null);
   const [addPaymentMethodOpen, setAddPaymentMethodOpen] = useState(false);
+  // When no wallet is connected, the user types the address to receive the crypto at
+  const [manualAddress, setManualAddress] = useState("");
+
+  // Address the crypto will be delivered to: connected wallet, else manually entered
+  const effectiveAddress = (walletAddress || manualAddress).trim();
+  const addrMinLen = selectedChain === "base" ? 42 : 25;
+  const hasReceiveAddress = effectiveAddress.length >= addrMinLen;
 
   // Fetch supported currencies (rate/quote) when modal opens — public endpoint, no auth required
   useEffect(() => {
@@ -145,15 +152,8 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
       toast.error("Onramp to this asset is not available yet.");
       return;
     }
-    if (!walletConnected || !walletAddress) {
-      toast.error("Please connect your wallet first");
-      if (selectedChain === "xrpl") {
-        try {
-          await connectWallet();
-        } catch (error) {
-          console.error("Failed to connect wallet:", error);
-        }
-      }
+    if (!hasReceiveAddress) {
+      toast.error(`Enter a valid ${selectedChain === "base" ? "Base" : "XRPL"} address to receive ${receiveAsset?.code ?? "crypto"}`);
       return;
     }
 
@@ -180,7 +180,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
         amount: fiatAmount,
         currency: selectedCurrency?.symbol ?? "",
         account_number: phoneNumber,
-        destination_address: walletAddress || "",
+        destination_address: effectiveAddress,
         amount_crypto: cryptoAmt,
         amount_rlusd: selectedChain === "xrpl" ? cryptoAmt : undefined,
         asset: receiveAsset?.code,
@@ -211,6 +211,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
     setErrors({});
     setShowPreview(false);
     setPayInInstructions(null);
+    setManualAddress("");
     onClose();
   };
 
@@ -239,7 +240,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
             <div>
               <h2 className="text-xl font-bold text-foreground">Deposit Funds</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Pay with mobile money, receive crypto at your connected wallet
+                Pay with mobile money, receive crypto at your wallet address
               </p>
             </div>
             <button
@@ -274,25 +275,10 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Once you approve, you will receive {payInInstructions.amount_crypto ?? payInInstructions.amount_usdc ?? payInInstructions.amount_rlusd}{" "}
-                  {payInInstructions.asset ?? receiveAsset?.code ?? "crypto"} at your connected wallet.
+                  {payInInstructions.asset ?? receiveAsset?.code ?? "crypto"} at your wallet address.
                 </p>
               </div>
-            ) : !walletConnected ? (
-            /* Wallet Connection Alert */
-              <div className="p-4 mx-6 mt-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                      Connect wallet
-                    </p>
-                    <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                      Use the Connect wallet button in the header.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : !payInInstructions ? (
+            ) : walletConnected ? (
               <div className="p-4 mx-6 mt-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                 <div className="flex items-start gap-3">
                   <Wallet className="w-5 h-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
@@ -307,7 +293,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
             ) : null}
 
             {/* Supported regions notice */}
-            {!payInInstructions && walletConnected && (
+            {!payInInstructions && (
               <div className="p-3 mx-6 mt-3 bg-muted/50 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground">
                   <strong>Supported regions:</strong> Mobile money deposits are currently available for Uganda (+256) phone numbers only. More regions coming soon.
@@ -321,6 +307,23 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                   <p className="text-sm font-medium mb-2">Receive on</p>
                   <ChainAssetPicker />
                 </div>
+
+                {!walletConnected && (
+                  <div>
+                    <Label className="text-sm font-medium">
+                      {selectedChain === "base" ? "Base" : "XRPL"} address to receive {receiveAsset?.code ?? "crypto"}
+                    </Label>
+                    <Input
+                      value={manualAddress}
+                      onChange={(e) => setManualAddress(e.target.value)}
+                      placeholder={selectedChain === "base" ? "0x0000000000000000000000000000000000000000" : "rXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"}
+                      className="mt-1.5 h-12 font-mono text-sm rounded-lg border border-input"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      No wallet connected — enter the address where you want to receive {receiveAsset?.code ?? "crypto"}.
+                    </p>
+                  </div>
+                )}
 
                 <AmountItem
                   currencyId={depositCurrencyId}
@@ -504,7 +507,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Receive At</span>
-                      <span className="text-xs font-mono">{walletAddress?.slice(0, 10)}...{walletAddress?.slice(-8)}</span>
+                      <span className="text-xs font-mono">{effectiveAddress.slice(0, 10)}...{effectiveAddress.slice(-8)}</span>
                     </div>
                   </div>
                 </div>
@@ -521,7 +524,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
             ) : !showPreview ? (
               <Button
                 onClick={handleDeposit}
-                disabled={isLoading || !walletConnected}
+                disabled={isLoading}
                 className="w-full h-12 bg-primary hover:bg-primary/90"
               >
                 {isLoading ? (
