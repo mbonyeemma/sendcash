@@ -6,6 +6,7 @@ import { DashboardSidebar, type DashboardView } from "@/components/dashboard/Das
 import { BalanceOverview } from "@/components/dashboard/BalanceCard";
 import { DepositModal } from "@/components/dashboard/DepositModal";
 import { SendModal } from "@/components/dashboard/SendModal";
+import { ExchangeOfframpModal } from "@/components/dashboard/ExchangeOfframpModal";
 import { SwapModal } from "@/components/dashboard/SwapModal";
 import { ConnectXRPLWalletModal } from "@/components/dashboard/ConnectXRPLWalletModal";
 import { StatementView } from "@/components/dashboard/StatementView";
@@ -42,6 +43,7 @@ export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
+  const [exchangeOfframpOpen, setExchangeOfframpOpen] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
   const [connectWalletOpen, setConnectWalletOpen] = useState(false);
   const [connectWalletTab, setConnectWalletTab] = useState<"evm" | "xrp">("evm");
@@ -350,6 +352,12 @@ export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps)
       <SendModal
         isOpen={sendOpen}
         onClose={() => setSendOpen(false)}
+        onSuccess={refreshDashboardData}
+        onUseExchange={() => setExchangeOfframpOpen(true)}
+      />
+      <ExchangeOfframpModal
+        isOpen={exchangeOfframpOpen}
+        onClose={() => setExchangeOfframpOpen(false)}
         onSuccess={refreshDashboardData}
       />
       <SwapModal
