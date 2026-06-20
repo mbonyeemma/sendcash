@@ -112,6 +112,21 @@ const statusColors = {
   failed: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
 
+/** Infer blockchain network from stored chain or transaction metadata */
+function resolveTxChain(raw: any): "base" | "xrpl" {
+  const stored = String(raw?.chain || "").toLowerCase();
+  if (stored === "base" || stored === "xrpl") return stored;
+  const t = String(raw?.trans_type || "").toLowerCase();
+  if (t.includes("base") || t.includes("usdc_onramp")) return "base";
+  const dest = String(raw?.destination_address || "");
+  if (/^0x[a-fA-F0-9]{40}$/.test(dest)) return "base";
+  return "xrpl";
+}
+
+function chainLabel(chain: "base" | "xrpl"): string {
+  return chain === "base" ? "Base" : "XRPL";
+}
+
 /** Format API trans_type for table display */
 const formatTransType = (transType: string | undefined): string => {
   if (!transType) return "—";
@@ -333,6 +348,7 @@ export const StatementView = ({ refreshTrigger = 0 }: StatementViewProps) => {
                 <TableRow>
                   <TableHead className="w-[50px]">Type</TableHead>
                   <TableHead className="w-[100px]">Trans type</TableHead>
+                  <TableHead className="w-[72px]">Network</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Receiver</TableHead>
                   <TableHead>Date</TableHead>
@@ -347,6 +363,7 @@ export const StatementView = ({ refreshTrigger = 0 }: StatementViewProps) => {
                   const assetAmount = raw?.asset_amount != null ? parseFloat(String(raw.asset_amount)) : null;
                   const asset = raw?.asset || null;
                   const transType = raw?.trans_type;
+                  const txChain = resolveTxChain(raw);
                   const description = formatDescription(tx.description, transType);
                   return (
                     <TableRow
@@ -361,6 +378,18 @@ export const StatementView = ({ refreshTrigger = 0 }: StatementViewProps) => {
                       </TableCell>
                       <TableCell>
                         <span className="text-sm font-medium text-foreground">{formatTransType(transType)}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={cn(
+                            "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded",
+                            txChain === "base"
+                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                              : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                          )}
+                        >
+                          {chainLabel(txChain)}
+                        </span>
                       </TableCell>
                       <TableCell>
                         <p className="font-medium text-foreground">{description}</p>
@@ -460,6 +489,9 @@ export const StatementView = ({ refreshTrigger = 0 }: StatementViewProps) => {
           </DialogHeader>
           {selectedTx && (
             <div className="space-y-4 pt-2">
+              {(() => {
+                const txChain = resolveTxChain(selectedRaw);
+                return (
               <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 <div>
                   <span className="text-muted-foreground block text-xs">Type</span>
@@ -472,6 +504,10 @@ export const StatementView = ({ refreshTrigger = 0 }: StatementViewProps) => {
                       {selectedTx.status}
                     </span>
                   </p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs">Network</span>
+                  <p className="font-medium">{chainLabel(txChain)}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground block text-xs">Amount</span>
@@ -513,15 +549,12 @@ export const StatementView = ({ refreshTrigger = 0 }: StatementViewProps) => {
                 {selectedRaw?.destination_address && (
                   <div className="col-span-2">
                     <span className="text-muted-foreground block text-xs">
-                      {(selectedRaw?.trans_type || "").toLowerCase().includes("base")
-                        ? "Your wallet (Base)"
-                        : "Destination (XRPL)"}
+                      {txChain === "base" ? "Your wallet (Base)" : "Destination (XRPL)"}
                     </span>
                     <p className="font-mono text-xs break-all">{selectedRaw.destination_address}</p>
                   </div>
                 )}
-                {selectedRaw?.address_id &&
-                  (selectedRaw?.trans_type || "").toLowerCase().includes("base") && (
+                {selectedRaw?.address_id && txChain === "base" && (
                   <div className="col-span-2">
                     <span className="text-muted-foreground block text-xs">Escrow address (Base)</span>
                     <p className="font-mono text-xs break-all">{selectedRaw.address_id}</p>
@@ -540,18 +573,14 @@ export const StatementView = ({ refreshTrigger = 0 }: StatementViewProps) => {
                     <span className="text-muted-foreground block text-xs mb-1">Hash</span>
                     <a
                       href={
-                        (selectedRaw?.trans_type || "").toLowerCase().includes("base")
+                        txChain === "base"
                           ? `https://basescan.org/tx/${selectedRaw.hash}`
                           : `https://xrpscan.com/tx/${selectedRaw.hash}`
                       }
                       target="_blank"
                       rel="noopener noreferrer"
                       className="font-mono text-xs break-all text-primary hover:underline flex items-center gap-1.5 group"
-                      title={
-                        (selectedRaw?.trans_type || "").toLowerCase().includes("base")
-                          ? "View on BaseScan"
-                          : "View on XRPScan Explorer"
-                      }
+                      title={txChain === "base" ? "View on BaseScan" : "View on XRPScan Explorer"}
                     >
                       <span className="break-all">{selectedRaw.hash}</span>
                       <ExternalLink className="w-3.5 h-3.5 flex-shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
@@ -559,6 +588,8 @@ export const StatementView = ({ refreshTrigger = 0 }: StatementViewProps) => {
                   </div>
                 )}
               </div>
+                );
+              })()}
             </div>
           )}
         </DialogContent>
