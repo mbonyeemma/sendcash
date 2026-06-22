@@ -8,6 +8,9 @@ import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Transactions from "@/pages/Transactions";
 import Users from "@/pages/Users";
+import KYC from "@/pages/KYC";
+import Support from "@/pages/Support";
+import Referrals from "@/pages/Referrals";
 import Profits from "@/pages/Profits";
 import Balances from "@/pages/Balances";
 import ExchangeRates from "@/pages/ExchangeRates";
@@ -23,6 +26,9 @@ const routes: Array<[string, JSX.Element]> = [
   ["/", <Dashboard />],
   ["/transactions", <Transactions />],
   ["/users", <Users />],
+  ["/kyc", <KYC />],
+  ["/support", <Support />],
+  ["/referrals", <Referrals />],
   ["/profits", <Profits />],
   ["/balances", <Balances />],
   ["/exchange-rates", <ExchangeRates />],

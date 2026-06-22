@@ -177,6 +177,7 @@ export default function Signup() {
 
     try {
       // Prepare registration data matching API interface
+      const referralCode = new URLSearchParams(window.location.search).get("ref") || undefined;
       const registerData: {
         full_name: string;
         email: string;
@@ -185,12 +186,14 @@ export default function Signup() {
         country_code?: string;
         confirm_password?: string;
         country?: string;
+        referral_code?: string;
       } = {
         full_name: formData.name,
         email: formData.email,
         password: formData.password,
         confirm_password: formData.password,
         country: formData.country || undefined,
+        referral_code: referralCode,
       };
 
       // Add phone_number and country_code only if phone is provided

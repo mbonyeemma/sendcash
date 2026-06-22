@@ -9,6 +9,8 @@ export interface RegisterRequest {
   phone_number?: string;
   country_code?: string;
   confirm_password?: string;
+  country?: string;
+  referral_code?: string;
 }
 
 export interface LoginRequest {
@@ -464,11 +466,73 @@ export interface KycStatusResponse {
   phone: KycStepStatus;
   id_document: KycStepStatus;
   selfie: KycStepStatus;
+  overall_status?: 'verified' | 'pending' | 'rejected' | 'unverified';
+  rejection_reason?: string | null;
+  submitted_at?: string | null;
+}
+
+export interface KycSubmitRequest {
+  id_document_type?: string;
+  id_number?: string;
+  id_document_image: string; // base64 data URL
+  selfie_image: string; // base64 data URL
 }
 
 export const kycApi = {
   getKycStatus: async (): Promise<ApiResponse<KycStatusResponse>> => {
     return api.get<KycStatusResponse>("/user/kyc-status");
+  },
+
+  submitKyc: async (data: KycSubmitRequest): Promise<ApiResponse<{ status: string }>> => {
+    return api.post<{ status: string }>(data, "/user/kyc-submit");
+  },
+};
+
+// Support API
+export interface SupportTicket {
+  id: number;
+  ticket_ref: string;
+  trans_id?: string | null;
+  subject?: string;
+  message: string;
+  status: "open" | "in_progress" | "closed";
+  admin_response?: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export const supportApi = {
+  createTicket: async (data: { subject?: string; message: string; trans_id?: string }): Promise<ApiResponse<{ ticket_ref: string; status: string }>> => {
+    return api.post<{ ticket_ref: string; status: string }>(data, "/user/support");
+  },
+  getTickets: async (): Promise<ApiResponse<SupportTicket[]>> => {
+    return api.get<SupportTicket[]>("/user/support");
+  },
+};
+
+// Referral API
+export interface ReferralInfo {
+  referral_code: string;
+  referral_link: string;
+  stats: {
+    total_referrals: number;
+    active_referrals: number;
+    total_commission: number;
+    this_month_commission: number;
+  };
+  referrals: Array<{
+    referred_user_id: string;
+    username?: string;
+    full_name?: string;
+    is_active: number;
+    commission_earned: number;
+    referred_at: string;
+  }>;
+}
+
+export const referralApi = {
+  getReferralInfo: async (): Promise<ApiResponse<ReferralInfo>> => {
+    return api.get<ReferralInfo>("/user/referrals");
   },
 };
 

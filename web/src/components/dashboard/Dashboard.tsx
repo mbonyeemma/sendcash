@@ -12,6 +12,7 @@ import { StatementView } from "@/components/dashboard/StatementView";
 import { SettingsView } from "@/components/dashboard/SettingsView";
 import { BalanceView } from "@/components/dashboard/BalanceView";
 import { KYCView } from "@/components/dashboard/KYCView";
+import { ReferralsView } from "@/components/dashboard/ReferralsView";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -120,6 +121,8 @@ export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps)
         );
       case "kyc":
         return <KYCView />;
+      case "referrals":
+        return <ReferralsView />;
       case "settings":
         return <SettingsView />;
       default:

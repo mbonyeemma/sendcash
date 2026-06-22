@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { ArrowDownCircle, ArrowUpCircle, Send, Filter, Search, Loader2, X, ExternalLink, RefreshCw } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, Send, Filter, Search, Loader2, X, ExternalLink, RefreshCw, LifeBuoy } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { walletApi } from "@/services/api";
+import { Textarea } from "@/components/ui/textarea";
+import { walletApi, supportApi } from "@/services/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -170,6 +171,34 @@ export const StatementView = ({ refreshTrigger = 0 }: StatementViewProps) => {
   const [rawTransactions, setRawTransactions] = useState<any[]>([]);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [selectedRaw, setSelectedRaw] = useState<any | null>(null);
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [supportMessage, setSupportMessage] = useState("");
+  const [supportSubmitting, setSupportSubmitting] = useState(false);
+
+  const handleSendToSupport = async () => {
+    const transId = selectedRaw?.trans_id ?? selectedTx?.id;
+    if (!supportMessage.trim()) {
+      toast.error("Please describe the issue.");
+      return;
+    }
+    try {
+      setSupportSubmitting(true);
+      const res = await supportApi.createTicket({
+        message: supportMessage.trim(),
+        trans_id: transId ? String(transId) : undefined,
+        subject: transId ? `Transaction ${transId}` : "Support request",
+      });
+      if (res.status === 200) {
+        toast.success(`Sent to support${res.data?.ticket_ref ? ` (${res.data.ticket_ref})` : ""}. We'll get back to you.`);
+        setSupportMessage("");
+        setSupportOpen(false);
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send your message.");
+    } finally {
+      setSupportSubmitting(false);
+    }
+  };
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -590,8 +619,53 @@ export const StatementView = ({ refreshTrigger = 0 }: StatementViewProps) => {
               </div>
                 );
               })()}
+              <div className="pt-4 mt-2 border-t border-border">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setSupportMessage("");
+                    setSupportOpen(true);
+                  }}
+                >
+                  <LifeBuoy className="w-4 h-4 mr-2" />
+                  Send to support
+                </Button>
+              </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Send to support */}
+      <Dialog open={supportOpen} onOpenChange={(open) => !open && setSupportOpen(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Contact support</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {(selectedRaw?.trans_id ?? selectedTx?.id) && (
+              <p className="text-sm text-muted-foreground">
+                Regarding transaction{" "}
+                <span className="font-mono text-foreground">{String(selectedRaw?.trans_id ?? selectedTx?.id)}</span>
+              </p>
+            )}
+            <Textarea
+              placeholder="Describe the issue with this transaction…"
+              rows={5}
+              value={supportMessage}
+              onChange={(e) => setSupportMessage(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setSupportOpen(false)} disabled={supportSubmitting}>
+                Cancel
+              </Button>
+              <Button onClick={handleSendToSupport} disabled={supportSubmitting || !supportMessage.trim()}>
+                {supportSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+                Send
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

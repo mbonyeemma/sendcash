@@ -108,6 +108,69 @@ export const createSystemUser = (body: { username: string; email: string; full_n
 export const deleteSystemUser = (id: string) => api.del(`/admin/system-user/${id}`);
 export const resetSystemUserPassword = (id: string) => api.put(`/admin/system-user/${id}/reset-password`, {});
 
+// --- KYC review ---
+export interface KycSubmission {
+  id: number | string;
+  user_id: string;
+  username?: string;
+  full_name?: string;
+  email?: string;
+  phone_number?: string;
+  country?: string;
+  id_document_type?: string;
+  id_number?: string;
+  id_document_image?: string;
+  selfie_image?: string;
+  status: "pending" | "verified" | "rejected";
+  rejection_reason?: string | null;
+  reviewed_by?: string | null;
+  submitted_at?: string;
+  reviewed_at?: string | null;
+}
+export const getKycSubmissions = (params?: { status?: string; limit?: number; offset?: number }) =>
+  api.get<KycSubmission[]>("/admin/kyc", params);
+export const getKycSubmission = (id: string) => api.get<KycSubmission>(`/admin/kyc/${id}`);
+export const reviewKyc = (id: string, action: "approve" | "reject", reason?: string) =>
+  api.put(`/admin/kyc/${id}/review`, { action, reason });
+
+// --- Customer support ---
+export interface SupportTicket {
+  id: number | string;
+  ticket_ref: string;
+  user_id: string;
+  username?: string;
+  full_name?: string;
+  email?: string;
+  phone_number?: string;
+  trans_id?: string | null;
+  subject?: string;
+  message: string;
+  status: "open" | "in_progress" | "closed";
+  admin_response?: string | null;
+  responded_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+export const getSupportTickets = (params?: { status?: string; limit?: number; offset?: number }) =>
+  api.get<SupportTicket[]>("/admin/support", params);
+export const getSupportTicket = (id: string) => api.get<SupportTicket>(`/admin/support/${id}`);
+export const respondToSupportTicket = (id: string, body: { response?: string; status?: string }) =>
+  api.put(`/admin/support/${id}/respond`, body);
+
+// --- Referrals ---
+export interface ReferralRow {
+  user_id: string;
+  referral_code: string;
+  total_referrals: number;
+  active_referrals: number;
+  total_commission: number;
+  username?: string;
+  full_name?: string;
+  email?: string;
+}
+export const getReferralLeaderboard = (params?: { limit?: number; offset?: number }) =>
+  api.get<ReferralRow[]>("/admin/referrals", params);
+
 // --- Exchange rates ---
 export const getExchangeRates = () => api.get<any[]>("/admin/exchange-rates");
 

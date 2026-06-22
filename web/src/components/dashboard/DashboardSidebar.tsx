@@ -10,12 +10,13 @@ import {
   ArrowDownCircle,
   DollarSign,
   Building2,
-  Shield
+  Shield,
+  Gift
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import sendicashLogo from "@/assets/sendicash-logo.png";
 
-type DashboardView = "balance" | "balances" | "deposit" | "statement" | "banks" | "settings" | "kyc";
+type DashboardView = "balance" | "balances" | "deposit" | "statement" | "banks" | "settings" | "kyc" | "referrals";
 
 interface DashboardSidebarProps {
   activeView: DashboardView;
@@ -29,6 +30,7 @@ const menuItems = [
   { id: "deposit" as const, label: "Deposit", icon: ArrowDownCircle },
   { id: "statement" as const, label: "Statement", icon: FileText },
   { id: "kyc" as const, label: "Verification", icon: Shield },
+  { id: "referrals" as const, label: "Refer & Earn", icon: Gift },
   { id: "banks" as const, label: "Banks", icon: Building2, comingSoon: true },
   { id: "settings" as const, label: "Settings", icon: Settings },
 ];

@@ -3,7 +3,7 @@ import { Dashboard as DashboardComponent } from "@/components/dashboard/Dashboar
 import { useAuth } from "@/contexts/AuthContext";
 import type { DashboardView } from "@/components/dashboard/DashboardSidebar";
 
-const VALID_VIEWS: DashboardView[] = ["balance", "balances", "deposit", "statement", "banks", "settings", "kyc"];
+const VALID_VIEWS: DashboardView[] = ["balance", "balances", "deposit", "statement", "banks", "settings", "kyc", "referrals"];
 
 const DashboardPage = () => {
   const { logout } = useAuth();
