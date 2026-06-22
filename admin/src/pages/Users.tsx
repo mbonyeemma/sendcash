@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, KeyRound, Trash2, Wallet } from "lucide-react";
 import { toast } from "sonner";
-import { getUsers, resetUserPassword, deleteUser, getUserBalances, User } from "@/services/admin";
+import { getUsers, getOverview, resetUserPassword, deleteUser, getUserBalances, User } from "@/services/admin";
 import { PageHeader } from "@/components/Layout";
 import {
   Button,
@@ -18,19 +18,32 @@ import {
   TD,
   EmptyState,
   Badge,
+  SummaryCard,
+  Pagination,
 } from "@/components/ui";
-import { formatDate, shortId } from "@/lib/utils";
+import { formatDate, formatNumber, shortId } from "@/lib/utils";
+
+const PAGE_SIZE = 20;
 
 export default function Users() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [applied, setApplied] = useState("");
+  const [page, setPage] = useState(0);
   const [balancesFor, setBalancesFor] = useState<string | null>(null);
 
+  const overview = useQuery({ queryKey: ["overview"], queryFn: () => getOverview().then((r) => r.data) });
+
   const { data, isLoading } = useQuery({
-    queryKey: ["users", applied],
-    queryFn: () => getUsers({ username: applied || undefined, limit: 200 }).then((r) => r.data || []),
+    queryKey: ["users", applied, page],
+    queryFn: () =>
+      getUsers({ username: applied || undefined, limit: PAGE_SIZE, offset: page * PAGE_SIZE }).then((r) => r.data || []),
   });
+
+  const applySearch = () => {
+    setPage(0);
+    setApplied(search);
+  };
 
   const balances = useQuery({
     queryKey: ["user-balances", balancesFor],
@@ -65,13 +78,19 @@ export default function Users() {
     <div>
       <PageHeader title="Users" description="Manage platform users." />
 
+      <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <SummaryCard label="Total users" value={formatNumber(overview.data?.users.total ?? 0, 0)} />
+        <SummaryCard label="New (30 days)" value={formatNumber(overview.data?.users.new_30d ?? 0, 0)} accent="text-success" />
+        <SummaryCard label="Wallets" value={formatNumber(overview.data?.wallets.total ?? 0, 0)} />
+      </div>
+
       <Card className="mb-4">
         <CardContent className="flex items-end gap-3 p-4">
           <div className="flex-1 space-y-1">
             <label className="text-xs text-muted-foreground">Search by username</label>
-            <Input placeholder="username" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setApplied(search)} />
+            <Input placeholder="username" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && applySearch()} />
           </div>
-          <Button size="sm" onClick={() => setApplied(search)}>
+          <Button size="sm" onClick={applySearch}>
             <Search className="h-4 w-4" /> Search
           </Button>
         </CardContent>
@@ -125,6 +144,15 @@ export default function Users() {
                 ))}
               </TBody>
             </Table>
+          )}
+          {!isLoading && (
+            <Pagination
+              page={page}
+              pageSize={PAGE_SIZE}
+              count={rows.length}
+              total={applied ? undefined : overview.data?.users.total}
+              onPage={setPage}
+            />
           )}
         </CardContent>
       </Card>

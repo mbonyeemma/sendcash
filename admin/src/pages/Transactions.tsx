@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, RefreshCw } from "lucide-react";
-import { getTransactions } from "@/services/admin";
+import { getTransactions, getOverview } from "@/services/admin";
 import { PageHeader } from "@/components/Layout";
 import {
   Button,
@@ -19,20 +19,32 @@ import {
   TD,
   EmptyState,
   Badge,
+  SummaryCard,
+  Pagination,
 } from "@/components/ui";
 import { formatDate, formatNumber, shortId } from "@/lib/utils";
 
 const STATUSES = ["", "COMPLETED", "SUCCESS", "PENDING", "PROCESSING", "FAILED", "REJECTED"];
+const PAGE_SIZE = 20;
 
 export default function Transactions() {
   const [filters, setFilters] = useState({ status: "", trans_type: "", from_date: "", to_date: "" });
   const [applied, setApplied] = useState(filters);
+  const [page, setPage] = useState(0);
+
+  const overview = useQuery({ queryKey: ["overview"], queryFn: () => getOverview().then((r) => r.data) });
 
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["transactions", applied],
-    queryFn: () => getTransactions({ ...applied, limit: 200 }).then((r) => r.data || []),
+    queryKey: ["transactions", applied, page],
+    queryFn: () => getTransactions({ ...applied, limit: PAGE_SIZE, offset: page * PAGE_SIZE }).then((r) => r.data || []),
   });
 
+  const applyFilters = () => {
+    setPage(0);
+    setApplied(filters);
+  };
+
+  const hasFilters = !!(applied.status || applied.trans_type || applied.from_date || applied.to_date);
   const rows = data || [];
 
   return (
@@ -46,6 +58,13 @@ export default function Transactions() {
           </Button>
         }
       />
+
+      <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <SummaryCard label="Total transactions" value={formatNumber(overview.data?.transactions.total ?? 0, 0)} />
+        <SummaryCard label="Completed" value={formatNumber(overview.data?.transactions.completed ?? 0, 0)} accent="text-success" />
+        <SummaryCard label="Pending" value={formatNumber(overview.data?.transactions.pending ?? 0, 0)} accent="text-warning" />
+        <SummaryCard label="Volume" value={formatNumber(overview.data?.volume.total ?? 0)} />
+      </div>
 
       <Card className="mb-4">
         <CardContent className="flex flex-wrap items-end gap-3 p-4">
@@ -71,7 +90,7 @@ export default function Transactions() {
             <label className="text-xs text-muted-foreground">To</label>
             <Input type="date" className="w-40" value={filters.to_date} onChange={(e) => setFilters({ ...filters, to_date: e.target.value })} />
           </div>
-          <Button size="sm" onClick={() => setApplied(filters)}>
+          <Button size="sm" onClick={applyFilters}>
             <Search className="h-4 w-4" /> Apply
           </Button>
         </CardContent>
@@ -122,9 +141,17 @@ export default function Transactions() {
               </TBody>
             </Table>
           )}
+          {!isLoading && (
+            <Pagination
+              page={page}
+              pageSize={PAGE_SIZE}
+              count={rows.length}
+              total={hasFilters ? undefined : overview.data?.transactions.total}
+              onPage={setPage}
+            />
+          )}
         </CardContent>
       </Card>
-      {rows.length > 0 && <p className="mt-3 text-xs text-muted-foreground">Showing {rows.length} transactions (max 200).</p>}
     </div>
   );
 }

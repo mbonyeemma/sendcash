@@ -49,11 +49,13 @@ export default function Balances() {
                 {relworx.data.balances.map((b) => (
                   <div key={b.currency} className="rounded-lg border p-4">
                     <div className="text-xs text-muted-foreground">{b.currency}</div>
-                    {b.error ? (
-                      <div className="mt-1 text-sm text-destructive">{b.error}</div>
+                    {b.success === false || (b.balance == null && b.message) ? (
+                      <div className="mt-1 text-sm text-destructive" title={b.message}>
+                        {b.message || "Unavailable"}
+                      </div>
                     ) : (
                       <div className="mt-1 text-xl font-bold">
-                        {typeof b.balance === "object" ? JSON.stringify(b.balance) : formatNumber(b.balance)}
+                        {formatNumber(b.balance)} <span className="text-sm font-normal text-muted-foreground">{b.currency}</span>
                       </div>
                     )}
                   </div>

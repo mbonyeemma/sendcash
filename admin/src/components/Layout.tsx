@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import logo from "@/assets/sendicash-logo.png";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -46,13 +47,14 @@ export function Layout({ children }: { children: ReactNode }) {
   };
 
   const sidebar = (
-    <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
+    <div className="flex h-full flex-col border-r bg-sidebar text-sidebar-foreground">
       <div className="flex items-center gap-2 px-5 py-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary font-bold text-primary-foreground">S</div>
-        <span className="text-lg font-semibold">SendiCash</span>
-        <span className="ml-1 rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">Admin</span>
+        <img src={logo} alt="SendiCash" className="h-8 w-auto" />
+        <span className="rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-foreground">
+          Admin
+        </span>
       </div>
-      <nav className="flex-1 space-y-1 px-3 py-2">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
         {nav.map((item) => (
           <NavLink
             key={item.to}
@@ -62,7 +64,9 @@ export function Layout({ children }: { children: ReactNode }) {
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                isActive ? "bg-primary text-primary-foreground" : "text-sidebar-foreground/70 hover:bg-white/10 hover:text-sidebar-foreground"
+                isActive
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )
             }
           >
@@ -71,14 +75,14 @@ export function Layout({ children }: { children: ReactNode }) {
           </NavLink>
         ))}
       </nav>
-      <div className="border-t border-white/10 p-3">
-        <div className="mb-2 px-2 text-xs text-sidebar-foreground/60">
-          <div className="font-medium text-sidebar-foreground">{admin?.full_name || admin?.username}</div>
+      <div className="border-t p-3">
+        <div className="mb-2 px-2 text-xs text-muted-foreground">
+          <div className="font-medium text-foreground">{admin?.full_name || admin?.username}</div>
           <div className="truncate">{admin?.email}</div>
         </div>
         <button
           onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-white/10 hover:text-sidebar-foreground"
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <LogOut className="h-4 w-4" />
           Sign out
@@ -105,7 +109,8 @@ export function Layout({ children }: { children: ReactNode }) {
           <button onClick={() => setOpen((v) => !v)} className="rounded-md p-2 hover:bg-accent">
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
-          <span className="font-semibold">SendiCash Admin</span>
+          <img src={logo} alt="SendiCash" className="h-7 w-auto" />
+          <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-foreground">Admin</span>
         </header>
         <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
@@ -117,7 +122,7 @@ export function PageHeader({ title, description, action }: { title: string; desc
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+        <h1 className="font-display text-2xl font-bold tracking-tight">{title}</h1>
         {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>
       {action}

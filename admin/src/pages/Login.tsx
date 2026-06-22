@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button, Card, CardContent, CardHeader, CardTitle, CardDescription, Input, Label } from "@/components/ui";
+import logo from "@/assets/sendicash-logo.png";
 
 export default function Login() {
   const { login, loading, isAuthenticated } = useAuth();
@@ -28,8 +29,8 @@ export default function Login() {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <div className="mb-2 flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary font-bold text-primary-foreground">S</div>
-            <span className="text-lg font-semibold">SendiCash Admin</span>
+            <img src={logo} alt="SendiCash" className="h-8 w-auto" />
+            <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-foreground">Admin</span>
           </div>
           <CardTitle>Sign in</CardTitle>
           <CardDescription>Enter your admin credentials to continue.</CardDescription>

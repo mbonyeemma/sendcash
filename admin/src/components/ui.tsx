@@ -158,6 +158,54 @@ export function EmptyState({ message }: { message: string }) {
   return <div className="py-12 text-center text-sm text-muted-foreground">{message}</div>;
 }
 
+export function SummaryCard({ label, value, hint, accent }: { label: string; value: React.ReactNode; hint?: string; accent?: string }) {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="text-xs font-medium text-muted-foreground">{label}</div>
+        <div className={cn("mt-1 text-2xl font-bold", accent)}>{value}</div>
+        {hint && <div className="mt-0.5 text-xs text-muted-foreground">{hint}</div>}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function Pagination({
+  page,
+  pageSize,
+  count,
+  total,
+  onPage,
+}: {
+  page: number; // zero-based
+  pageSize: number;
+  count: number; // items on the current page
+  total?: number; // total across all pages, if known
+  onPage: (page: number) => void;
+}) {
+  const start = count === 0 ? 0 : page * pageSize + 1;
+  const end = page * pageSize + count;
+  const hasPrev = page > 0;
+  const hasNext = total !== undefined ? end < total : count >= pageSize;
+  return (
+    <div className="flex items-center justify-between gap-3 border-t px-4 py-3 text-sm">
+      <span className="text-muted-foreground">
+        {count === 0
+          ? "No results"
+          : `Showing ${start.toLocaleString()}–${end.toLocaleString()}${total !== undefined ? ` of ${total.toLocaleString()}` : ""}`}
+      </span>
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" disabled={!hasPrev} onClick={() => onPage(page - 1)}>
+          Previous
+        </Button>
+        <Button variant="outline" size="sm" disabled={!hasNext} onClick={() => onPage(page + 1)}>
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function PageError({ message }: { message?: string }) {
   return (
     <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">

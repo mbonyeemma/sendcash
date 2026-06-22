@@ -38,7 +38,7 @@ export const getTimeseries = (days = 30) => api.get<Timeseries>("/admin/analytic
 // --- Balances ---
 export interface RelworxBalances {
   account: string;
-  balances: Array<{ currency: string; status: number; balance?: any; raw?: any; error?: string }>;
+  balances: Array<{ currency: string; status: number; success?: boolean; balance?: number | string | null; message?: string }>;
 }
 export const getRelworxBalance = () => api.get<RelworxBalances>("/admin/balances/relworx");
 
@@ -172,7 +172,18 @@ export const getReferralLeaderboard = (params?: { limit?: number; offset?: numbe
   api.get<ReferralRow[]>("/admin/referrals", params);
 
 // --- Exchange rates ---
-export const getExchangeRates = () => api.get<any[]>("/admin/exchange-rates");
+export interface ExchangeRate {
+  id: number | string;
+  from_currency: string;
+  to_currency: string;
+  rate: number | string;
+  markup: number | string | null;
+  amount?: number | string | null;
+  updated_at?: string;
+}
+export const getExchangeRates = () => api.get<ExchangeRate[]>("/admin/exchange-rates");
+export const updateExchangeRate = (id: string, body: { rate?: number; markup?: number }) =>
+  api.put(`/admin/exchange-rate/${id}`, body);
 
 // --- Payment types ---
 export interface PaymentType {
