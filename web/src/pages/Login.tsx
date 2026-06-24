@@ -235,6 +235,16 @@ export default function Login() {
               Sign up
             </Link>
           </p>
+
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-sm text-muted-foreground">
+            <Link to="/privacy" className="hover:text-foreground hover:underline">
+              Privacy
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link to="/tos" className="hover:text-foreground hover:underline">
+              Terms
+            </Link>
+          </div>
         </div>
       </motion.div>
     </div>

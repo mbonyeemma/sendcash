@@ -594,10 +594,19 @@ export default function Signup() {
         </Dialog>
 
         {/* Footer */}
-        <div className="text-center mt-4">
-          <Link 
-            to="/" 
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        <div className="mt-4 space-y-2 text-center text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+            <Link to="/privacy" className="hover:text-foreground hover:underline">
+              Privacy
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link to="/tos" className="hover:text-foreground hover:underline">
+              Terms
+            </Link>
+          </div>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 hover:text-foreground transition-colors"
           >
             <Home className="w-4 h-4" />
             Go Home

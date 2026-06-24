@@ -14,6 +14,8 @@ import DashboardPage from "./pages/Dashboard";
 import Logout from "./pages/Logout";
 import NotFound from "./pages/NotFound";
 import Index from "./pages/Index";
+import Privacy from "./pages/Privacy";
+import TermsOfService from "./pages/TermsOfService";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +33,8 @@ const App = () => (
                     <Route path="/" element={<Index />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/signup" element={<Signup />} />
+                    <Route path="/privacy" element={<Privacy />} />
+                    <Route path="/tos" element={<TermsOfService />} />
                     <Route path="/logout" element={<Logout />} />
                     <Route
                       path="/dashboard"
