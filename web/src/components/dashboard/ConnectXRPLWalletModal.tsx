@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,9 +7,8 @@ import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
 import { ConnectEmbed } from "thirdweb/react";
 import { base } from "thirdweb/chains";
 import { thirdwebClient } from "@/lib/thirdweb";
-import { evmConnectWallets, xrplConnectWallets } from "@/lib/walletConfig";
+import { evmConnectWallets } from "@/lib/walletConfig";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 /** Match `html.dark` (Tailwind) so thirdweb text isn't light-on-light — ConnectEmbed defaults to dark theme. */
 function subscribeHtmlClass(cb: () => void) {
@@ -39,12 +38,8 @@ type ChainTab = "evm" | "xrp";
 /**
  * Connect wallet modal: Base (EVM) via thirdweb, or XRPL via GemWallet / Xaman / OsmWallet.
  */
-export const ConnectXRPLWalletModal = ({ isOpen, onClose, defaultTab }: ConnectXRPLWalletModalProps) => {
-  const [tab, setTab] = useState<ChainTab>(defaultTab ?? "evm");
-
-  useEffect(() => {
-    if (isOpen && defaultTab) setTab(defaultTab);
-  }, [isOpen, defaultTab]);
+export const ConnectXRPLWalletModal = ({ isOpen, onClose, defaultTab = "evm" }: ConnectXRPLWalletModalProps) => {
+  const chain = defaultTab;
   const isDark = useAppDarkMode();
   const {
     isConnected: evmConnected,
@@ -71,10 +66,10 @@ export const ConnectXRPLWalletModal = ({ isOpen, onClose, defaultTab }: ConnectX
     toast.success("XRPL wallet disconnected");
   };
 
-  const handleXrplConnect = async (id: (typeof xrplConnectWallets)[number]["id"]) => {
+  const handleXrplConnect = async () => {
     try {
-      await connectXrplWallet(id);
-      toast.success("Wallet connected");
+      // Opens the bundled wallet-connector (wallet list + QR / mobile deep-link).
+      await connectXrplWallet();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Could not connect";
       toast.error(msg);
@@ -82,6 +77,15 @@ export const ConnectXRPLWalletModal = ({ isOpen, onClose, defaultTab }: ConnectX
   };
 
   const formatAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+
+  const modalTitle =
+    chain === "evm"
+      ? evmConnected
+        ? "Base Wallet"
+        : "Connect Base Wallet"
+      : xrplConnected
+        ? "XRPL Wallet"
+        : "Connect XRPL Wallet";
 
   return (
     <AnimatePresence>
@@ -103,7 +107,7 @@ export const ConnectXRPLWalletModal = ({ isOpen, onClose, defaultTab }: ConnectX
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-4 sm:p-6 border-b border-border">
-                <h2 className="text-xl font-semibold">Connect Wallet</h2>
+                <h2 className="text-xl font-semibold">{modalTitle}</h2>
                 <button
                   type="button"
                   onClick={onClose}
@@ -115,30 +119,7 @@ export const ConnectXRPLWalletModal = ({ isOpen, onClose, defaultTab }: ConnectX
               </div>
 
               <div className="p-4 sm:p-6 space-y-4">
-                <div className="flex rounded-lg border border-border p-1 bg-muted/40">
-                  <button
-                    type="button"
-                    onClick={() => setTab("evm")}
-                    className={cn(
-                      "flex-1 rounded-md py-2 text-sm font-medium transition-colors",
-                      tab === "evm" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    Base (EVM)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTab("xrp")}
-                    className={cn(
-                      "flex-1 rounded-md py-2 text-sm font-medium transition-colors",
-                      tab === "xrp" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    XRPL
-                  </button>
-                </div>
-
-                {tab === "evm" && (
+                {chain === "evm" && (
                   <>
                     {!evmConnected ? (
                       <ConnectEmbed
@@ -186,30 +167,29 @@ export const ConnectXRPLWalletModal = ({ isOpen, onClose, defaultTab }: ConnectX
                   </>
                 )}
 
-                {tab === "xrp" && (
+                {chain === "xrp" && (
                   <>
                     {!xrplConnected ? (
-                      <div className="space-y-2">
-                        <p className="text-sm text-muted-foreground mb-3">
-                          Choose an XRPL wallet. These connect separately from Base.
+                      <div className="space-y-3">
+                        <p className="text-sm text-muted-foreground">
+                          Connect an XRPL wallet (Xaman, GemWallet, Crossmark or WalletConnect).
+                          These connect separately from Base.
                         </p>
-                        {xrplConnectWallets.map((w) => (
-                          <button
-                            key={w.id}
-                            type="button"
-                            disabled={xrplConnecting}
-                            onClick={() => handleXrplConnect(w.id)}
-                            className="w-full flex items-center justify-between rounded-xl border border-border bg-background hover:bg-muted/60 px-4 py-3 text-left transition-colors disabled:opacity-60"
-                          >
-                            <div>
-                              <p className="text-sm font-medium">{w.label}</p>
-                              <p className="text-xs text-muted-foreground">{w.description}</p>
-                            </div>
-                            {xrplConnecting ? (
-                              <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                            ) : null}
-                          </button>
-                        ))}
+                        <Button
+                          type="button"
+                          disabled={xrplConnecting}
+                          onClick={handleXrplConnect}
+                          className="w-full"
+                        >
+                          {xrplConnecting ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                              Connecting…
+                            </>
+                          ) : (
+                            "Choose XRPL wallet"
+                          )}
+                        </Button>
                       </div>
                     ) : (
                       <>

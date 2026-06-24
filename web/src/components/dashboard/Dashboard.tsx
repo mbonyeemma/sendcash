@@ -26,6 +26,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useXRPLWallet } from "@/contexts/XRPLWalletContext";
 import { useEVMWallet } from "@/contexts/EVMWalletContext";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import sendicashLogo from "@/assets/sendicash-logo.png";
 
@@ -36,7 +37,7 @@ interface DashboardProps {
 
 export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps) => {
   const { user } = useAuth();
-  const { isConnected: xrplConnected, address: xrplAddress } = useXRPLWallet();
+  const { isConnected: xrplConnected, address: xrplAddress, connectWallet: connectXrplWallet } = useXRPLWallet();
   const { isConnected: evmConnected, address: evmAddress } = useEVMWallet();
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState<DashboardView>(initialView);
@@ -52,7 +53,17 @@ export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps)
     setBalanceRefreshTrigger((t) => t + 1);
   };
 
-  const openWalletModal = (tab: "evm" | "xrp") => {
+  const handleWalletPillClick = async (tab: "evm" | "xrp") => {
+    if (tab === "xrp" && !xrplConnected) {
+      try {
+        await connectXrplWallet();
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Could not connect XRPL wallet";
+        toast.error(msg);
+      }
+      return;
+    }
+
     setConnectWalletTab(tab);
     setConnectWalletOpen(true);
   };
@@ -163,7 +174,7 @@ export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps)
             {/* Dual wallet pills */}
             <div className="flex items-center gap-1">
               <button
-                onClick={() => openWalletModal("evm")}
+                onClick={() => handleWalletPillClick("evm")}
                 className={cn(
                   "inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium transition-all border",
                   evmConnected
@@ -178,7 +189,7 @@ export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps)
                 )}
               </button>
               <button
-                onClick={() => openWalletModal("xrp")}
+                onClick={() => handleWalletPillClick("xrp")}
                 className={cn(
                   "inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium transition-all border",
                   xrplConnected
@@ -262,7 +273,7 @@ export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps)
             {/* Dual wallet pills — desktop */}
             <div className="flex items-center gap-1.5">
               <button
-                onClick={() => openWalletModal("evm")}
+                onClick={() => handleWalletPillClick("evm")}
                 className={cn(
                   "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all border",
                   evmConnected
@@ -277,7 +288,7 @@ export const Dashboard = ({ onLogout, initialView = "balance" }: DashboardProps)
                 )}
               </button>
               <button
-                onClick={() => openWalletModal("xrp")}
+                onClick={() => handleWalletPillClick("xrp")}
                 className={cn(
                   "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all border",
                   xrplConnected

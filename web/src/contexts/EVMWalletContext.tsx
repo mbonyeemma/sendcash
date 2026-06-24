@@ -9,6 +9,7 @@ import {
 } from "thirdweb/react";
 import { thirdwebClient } from "@/lib/thirdweb";
 import { evmConnectWallets } from "@/lib/walletConfig";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface EVMWalletContextType {
   isConnected: boolean;
@@ -37,6 +38,7 @@ interface EVMWalletProviderProps {
 }
 
 export const EVMWalletProvider = ({ children }: EVMWalletProviderProps) => {
+  const { isLoggedIn } = useAuth();
   const account = useActiveAccount();
   const chain = useActiveWalletChain();
   const activeWallet = useActiveWallet();
@@ -65,7 +67,7 @@ export const EVMWalletProvider = ({ children }: EVMWalletProviderProps) => {
         disconnectWallet,
       }}
     >
-      <AutoConnect client={thirdwebClient} wallets={evmConnectWallets} />
+      {isLoggedIn && <AutoConnect client={thirdwebClient} wallets={evmConnectWallets} />}
       {children}
     </EVMWalletContext.Provider>
   );

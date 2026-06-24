@@ -1,9 +1,36 @@
 import { Client } from "xrpl";
-import { sendPayment, createOffer } from "@gemwallet/api";
+import { walletManager } from "@/lib/xrplConnect";
 
 // XRPL Client configuration
 const XRPL_MAINNET = "wss://xrplcluster.com";
 const XRPL_TESTNET = "wss://s.altnet.rippletest.net:51233";
+
+/** tfImmediateOrCancel flag for OfferCreate. */
+const TF_IMMEDIATE_OR_CANCEL = 0x00020000;
+
+/** GemWallet-compatible result shape the rest of the app already expects. */
+type WalletTxResult = { type: "response" | "reject"; result?: { hash?: string } };
+
+/**
+ * Sign + submit a raw XRPL transaction through xrpl-connect and normalize the
+ * outcome to the legacy `{ type, result.hash }` shape. User cancellation
+ * (SIGN_FAILED) maps to `{ type: "reject" }` so existing callers are unchanged.
+ */
+const signAndSubmitTx = async (tx: Record<string, unknown>): Promise<WalletTxResult> => {
+  const account = walletManager.account?.address;
+  if (!account) throw new Error("Connect an XRPL wallet first.");
+  try {
+    const res = await walletManager.signAndSubmit({ Account: account, ...tx });
+    return { type: "response", result: { hash: res?.hash } };
+  } catch (error: any) {
+    const code = error?.code;
+    const msg = String(error?.message || "");
+    if (code === "SIGN_FAILED" || /reject|cancel|declin/i.test(msg)) {
+      return { type: "reject" };
+    }
+    throw error;
+  }
+};
 
 interface XRPLBalance {
   currency: string;
@@ -274,11 +301,13 @@ export const xrplService = {
     let takerGets: XRPLAmount;
     let takerPays: XRPLAmount;
 
+    // Raw XRPL amounts: XRP is a drops string; RLUSD (non-3-char) must be 40-char hex.
+    const rlusd = (value: string) => ({ currency: currencyToHex("RLUSD"), issuer, value });
     if (fromAsset === "XRP" && toAsset === "RLUSD") {
       takerGets = xrpToDrops(fromAmount);
-      takerPays = { currency: "RLUSD", issuer, value: minOut.toFixed(6) };
+      takerPays = rlusd(minOut.toFixed(6));
     } else if (fromAsset === "RLUSD" && toAsset === "XRP") {
-      takerGets = { currency: "RLUSD", issuer, value: fromAmount.toFixed(6) };
+      takerGets = rlusd(fromAmount.toFixed(6));
       takerPays = xrpToDrops(minOut);
     } else {
       throw new Error("Unsupported pair.");
@@ -295,16 +324,13 @@ export const xrplService = {
       takerPays,
     });
 
-    // GemWallet returns { type: 'response' | 'reject', result?: { hash } }
-    const result = await createOffer({
-      takerGets: takerGets as any,
-      takerPays: takerPays as any,
-      flags: {
-        tfImmediateOrCancel: true,
-      },
-    } as any);
-
-    return result;
+    // Sign + submit an OfferCreate (Immediate-or-Cancel) via the connected wallet.
+    return signAndSubmitTx({
+      TransactionType: "OfferCreate",
+      TakerGets: takerGets,
+      TakerPays: takerPays,
+      Flags: TF_IMMEDIATE_OR_CANCEL,
+    });
   },
 
   /**
@@ -329,30 +355,31 @@ export const xrplService = {
       const currencyCode = currency === "XRP" ? currency : (currency.length === 3 ? currency : currencyToHex(currency));
       
       const payment: Record<string, unknown> = {
-        amount: currency === "XRP"
+        TransactionType: "Payment",
+        Destination: destination,
+        Amount: currency === "XRP"
           ? amountForPayment
           : {
               currency: currencyCode,
               issuer: issuer || "",
               value: amount
             },
-        destination: destination,
       };
       // Use DestinationTag (32-bit unsigned) when memo is numeric – composes correctly for signing
       if (memo && memo.trim()) {
         const trimmed = memo.trim();
         const asNum = parseInt(trimmed, 10);
         if (String(asNum) === trimmed && asNum >= 0 && asNum <= 0xFFFFFFFF) {
-          payment.destinationTag = asNum;
+          payment.DestinationTag = asNum;
         } else {
           const memoHex = Array.from(new TextEncoder().encode(trimmed))
             .map((b) => b.toString(16).padStart(2, "0"))
             .join("")
             .toUpperCase();
-          payment.memos = [{ Memo: { MemoData: memoHex } }];
+          payment.Memos = [{ Memo: { MemoData: memoHex } }];
         }
       }
-      
+
       console.log("[xrplService] sendPayment payload:", {
         destination,
         currency,
@@ -362,9 +389,9 @@ export const xrplService = {
         memo,
         payment: JSON.stringify(payment, null, 2)
       });
-      
+
       // Returns { type: "response" | "reject", result?: { hash } } – check type for user cancel
-      const result = await sendPayment(payment as any);
+      const result = await signAndSubmitTx(payment);
       return result;
     } catch (error) {
       console.error("Error sending payment:", error);
@@ -432,18 +459,16 @@ export const xrplService = {
    */
   setTrustline: async (currency: string, issuer: string, limit: string = "1000000") => {
     try {
-      // Import setTrustline from GemWallet API
-      const { setTrustline } = await import("@gemwallet/api");
-      
-      const trustline = {
-        limitAmount: {
-          currency: currency,
-          issuer: issuer,
+      // Non-standard currency codes (e.g. RLUSD) must be 40-char hex on-ledger.
+      const currencyCode = currency.length === 3 ? currency : currencyToHex(currency);
+      const result = await signAndSubmitTx({
+        TransactionType: "TrustSet",
+        LimitAmount: {
+          currency: currencyCode,
+          issuer,
           value: limit,
         },
-      };
-      
-      const result = await setTrustline(trustline);
+      });
       return result;
     } catch (error) {
       console.error("Error creating trustline:", error);

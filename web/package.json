@@ -68,6 +68,7 @@
     "thirdweb": "^5.119.4",
     "vaul": "^0.9.9",
     "xrpl": "^4.5.0",
+    "xrpl-connect": "^0.8.2",
     "zod": "^3.25.76"
   },
   "devDependencies": {

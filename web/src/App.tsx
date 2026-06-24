@@ -20,10 +20,10 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThirdwebProvider>
-      <XRPLWalletProvider>
-        <EVMWalletProvider>
-          <TooltipProvider>
-            <AuthProvider>
+      <AuthProvider>
+        <XRPLWalletProvider>
+          <EVMWalletProvider>
+            <TooltipProvider>
               <SelectedChainProvider>
                 <Sonner />
                 <BrowserRouter>
@@ -53,10 +53,10 @@ const App = () => (
                   </Routes>
                 </BrowserRouter>
               </SelectedChainProvider>
-            </AuthProvider>
-          </TooltipProvider>
-        </EVMWalletProvider>
-      </XRPLWalletProvider>
+            </TooltipProvider>
+          </EVMWalletProvider>
+        </XRPLWalletProvider>
+      </AuthProvider>
     </ThirdwebProvider>
   </QueryClientProvider>
 );

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mail, Lock, User, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2, Home, Globe } from "lucide-react";
+import { Mail, Lock, User, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2, Home, Globe, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -14,6 +14,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { authApi, profileApi } from "@/services/api";
 import { OTPVerification } from "@/components/auth/OTPVerification";
 import sendicashLogo from "@/assets/sendicash-logo.png";
+
+function getReferralCodeFromSearch(search: string): string | undefined {
+  const raw = new URLSearchParams(search).get("ref");
+  if (!raw?.trim()) return undefined;
+  return raw.trim().toUpperCase();
+}
 
 const getPasswordStrength = (password: string): { strength: "weak" | "medium" | "strong"; score: number; feedback: string } => {
   let score = 0;
@@ -38,6 +44,8 @@ const getPasswordStrength = (password: string): { strength: "weak" | "medium" | 
 
 export default function Signup() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const referralFromUrl = getReferralCodeFromSearch(searchParams.toString());
   const { isLoggedIn } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -58,8 +66,15 @@ export default function Signup() {
     country: "",
   });
   const [countries, setCountries] = useState<Array<{ country_id: number; name: string; has_payouts: string; status: string }>>([]);
+  const [referralCodeInput, setReferralCodeInput] = useState("");
 
   const passwordStrength = formData.password ? getPasswordStrength(formData.password) : null;
+
+  useEffect(() => {
+    if (referralFromUrl) {
+      setReferralCodeInput(referralFromUrl);
+    }
+  }, [referralFromUrl]);
 
   // Fetch countries on mount
   useEffect(() => {
@@ -176,8 +191,7 @@ export default function Signup() {
     setIsLoading(true);
 
     try {
-      // Prepare registration data matching API interface
-      const referralCode = new URLSearchParams(window.location.search).get("ref") || undefined;
+      const appliedReferralCode = referralCodeInput.trim().toUpperCase() || undefined;
       const registerData: {
         full_name: string;
         email: string;
@@ -193,7 +207,7 @@ export default function Signup() {
         password: formData.password,
         confirm_password: formData.password,
         country: formData.country || undefined,
-        referral_code: referralCode,
+        referral_code: appliedReferralCode,
       };
 
       // Add phone_number and country_code only if phone is provided
@@ -401,6 +415,29 @@ export default function Signup() {
                   {errors.country}
                 </p>
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="referralCode">
+                Referral Code <span className="text-muted-foreground text-xs">(Optional)</span>
+              </Label>
+              <div className="relative">
+                <Gift className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground z-10" />
+                <Input
+                  id="referralCode"
+                  name="referralCode"
+                  placeholder="referral code"
+                  value={referralCodeInput}
+                  onChange={(e) => setReferralCodeInput(e.target.value.toUpperCase())}
+                  readOnly={Boolean(referralFromUrl)}
+                  autoComplete="off"
+                  spellCheck={false}
+                  className={`pl-10 uppercase tracking-wider bg-transparent border-0 border-b-2 rounded-none focus-visible:ring-0 focus-visible:border-primary border-border ${referralFromUrl ? "cursor-default" : ""}`}
+                />
+              </div>
+              {referralFromUrl ? (
+                <p className="text-xs text-muted-foreground">Applied from your invitation link.</p>
+              ) : null}
             </div>
 
             <div className="space-y-2">
