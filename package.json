@@ -8,7 +8,7 @@
     "admin"
   ],
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "scripts": {
     "dev:web": "npm run dev --workspace web",
