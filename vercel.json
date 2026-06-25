@@ -1,0 +1,11 @@
+{
+  "installCommand": "npm install --include=optional",
+  "buildCommand": "npm run build --workspace web",
+  "outputDirectory": "web/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
