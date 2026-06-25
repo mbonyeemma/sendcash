@@ -1,41 +1,30 @@
-# SendiCash Frontends (monorepo)
+# SendiCash Frontends
 
-This repository contains the two SendiCash web frontends:
+Two separate apps in this repo — run each from its own folder:
 
-| Folder    | App                | Description                                              | Dev port |
-| --------- | ------------------ | -------------------------------------------------------- | -------- |
-| [`web`](web)     | User wallet        | Public-facing wallet app (Vite + React + shadcn/ui)     | 5173     |
-| [`admin`](admin) | Admin panel        | Internal admin dashboard (transactions, users, profits, balances) | 5174 |
+| Folder | App | Dev port |
+| ------ | --- | -------- |
+| [`web`](web) | User wallet (Vite + React) | 5173 |
+| [`admin`](admin) | Admin panel | 5174 |
 
-Both talk to the SendiCash API (`sendcash-be`) via `VITE_API_URL`.
+Both use `VITE_API_URL` to talk to the SendiCash API.
 
-## Setup
-
-This is an npm-workspaces monorepo.
+## User wallet (`web/`)
 
 ```bash
-npm install            # installs deps for both workspaces
+cd web
+npm install
+npm run dev
 ```
 
-Each app keeps its own `.env` (copy from the respective `.env.example` where present).
+Deploy with Vercel **Root Directory** set to `web`.
 
-## Develop
+## Admin (`admin/`)
 
 ```bash
-npm run dev:web        # user wallet  -> http://localhost:5173
-npm run dev:admin      # admin panel  -> http://localhost:5174
+cd admin
+npm install
+npm run dev
 ```
 
-## Build
-
-```bash
-npm run build          # builds both
-npm run build:web
-npm run build:admin
-```
-
-## Deploy notes
-
-The user app previously deployed from the repo root. Since it now lives in `web/`,
-update your hosting "root directory" / build settings to point at `web/` (and add a
-separate project for `admin/`). The user app's `vercel.json` moved to `web/vercel.json`.
+Deploy as a separate Vercel project with **Root Directory** set to `admin`.
