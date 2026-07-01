@@ -55,6 +55,14 @@ export interface TreasuryBalance {
 }
 export const getTreasuryBalances = () => api.get<TreasuryBalance[]>("/admin/balances/treasury");
 
+export interface BaseStablecoinBalances {
+  network: "base" | string;
+  usdc_onramp_source: number;
+  usdt: number;
+  fallback?: { usdc_onramp_source: number; usdt: number };
+}
+export const getBaseStablecoinBalances = () => api.get<BaseStablecoinBalances>("/admin/balances/base");
+
 // --- Transactions ---
 export interface Transaction {
   id: number;
@@ -208,3 +216,12 @@ export const changePassword = (newPassword: string) => api.put("/admin/change-pa
 export const getSweepSettings = () => api.get<any>("/admin/sweep-settings");
 export const getCryptoDepositAddresses = (params?: Record<string, any>) =>
   api.get<any[]>("/admin/reports/crypto-addresses", params);
+
+// --- Quote limits ---
+export interface QuoteLimits {
+  RLUSD: number;
+  USDC: number;
+  USDT: number;
+}
+export const getQuoteLimits = () => api.get<QuoteLimits>("/admin/quote-limits");
+export const updateQuoteLimits = (body: Partial<QuoteLimits>) => api.put<QuoteLimits>("/admin/quote-limits", body);

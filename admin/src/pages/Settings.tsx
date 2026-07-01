@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { changePassword, getSweepSettings, getCryptoDepositAddresses } from "@/services/admin";
+import { changePassword, getSweepSettings, getCryptoDepositAddresses, getQuoteLimits, updateQuoteLimits } from "@/services/admin";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/Layout";
 import {
@@ -33,6 +33,12 @@ export default function Settings() {
 
   const sweep = useQuery({ queryKey: ["sweep-settings"], queryFn: () => getSweepSettings().then((r) => r.data) });
   const addresses = useQuery({ queryKey: ["deposit-addresses"], queryFn: () => getCryptoDepositAddresses({ limit: 100 }).then((r) => r.data || []) });
+  const quoteLimits = useQuery({ queryKey: ["quote-limits"], queryFn: () => getQuoteLimits().then((r) => r.data) });
+
+  const [qlRlusd, setQlRlusd] = useState<string>("");
+  const [qlUsdc, setQlUsdc] = useState<string>("");
+  const [qlUsdt, setQlUsdt] = useState<string>("");
+  const [savingLimits, setSavingLimits] = useState(false);
 
   const submit = async () => {
     if (pw.length < 8) return toast.error("Password must be at least 8 characters.");
@@ -51,6 +57,32 @@ export default function Settings() {
   };
 
   const sweepAddresses: any[] = sweep.data?.sweep_addresses || [];
+
+  const hydrateLimits = () => {
+    const d: any = quoteLimits.data;
+    if (!d) return;
+    setQlRlusd(String(d.RLUSD ?? ""));
+    setQlUsdc(String(d.USDC ?? ""));
+    setQlUsdt(String(d.USDT ?? ""));
+  };
+
+  const saveLimits = async () => {
+    setSavingLimits(true);
+    try {
+      const body: any = {
+        RLUSD: qlRlusd ? Number(qlRlusd) : undefined,
+        USDC: qlUsdc ? Number(qlUsdc) : undefined,
+        USDT: qlUsdt ? Number(qlUsdt) : undefined,
+      };
+      await updateQuoteLimits(body);
+      toast.success("Quote limits updated.");
+      quoteLimits.refetch();
+    } catch {
+      /* handled */
+    } finally {
+      setSavingLimits(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -106,6 +138,43 @@ export default function Settings() {
                   </div>
                 )}
               </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Quote limits</CardTitle>
+            <CardDescription>Maximum crypto amount allowed when generating quotes.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {quoteLimits.isLoading ? (
+              <Spinner />
+            ) : (
+              <>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="space-y-1">
+                    <Label>RLUSD max</Label>
+                    <Input value={qlRlusd || String(quoteLimits.data?.RLUSD ?? "")} onFocus={hydrateLimits} onChange={(e) => setQlRlusd(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>USDC max</Label>
+                    <Input value={qlUsdc || String(quoteLimits.data?.USDC ?? "")} onFocus={hydrateLimits} onChange={(e) => setQlUsdc(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>USDT max</Label>
+                    <Input value={qlUsdt || String(quoteLimits.data?.USDT ?? "")} onFocus={hydrateLimits} onChange={(e) => setQlUsdt(e.target.value)} />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={saveLimits} loading={savingLimits}>
+                    Save limits
+                  </Button>
+                  <Button variant="outline" onClick={hydrateLimits}>
+                    Reset
+                  </Button>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
