@@ -327,7 +327,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                   onAmountChange={setFiatAmount}
                   currencySymbol={selectedCurrency?.symbol ?? ""}
                   currencyLogo={selectedCurrency?.logo}
-                  supportedCurrencies={supportedCurrencies.map((c) => ({ id: c.id, symbol: c.symbol, logo: c.logo }))}
+                  supportedCurrencies={supportedCurrencies.map((c) => ({ id: c.id, symbol: c.symbol, logo: c.logo, name: c.name }))}
                   amountError={errors.fiatAmount}
                   onClearAmountError={() => errors.fiatAmount && setErrors({ ...errors, fiatAmount: "" })}
                 />
@@ -488,7 +488,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
                   </div>
                     <div className="border-t border-border pt-3">
                       <div className="flex justify-between items-center py-1.5">
-                        <span className="text-sm text-muted-foreground">Fee (0.5%)</span>
+                        <span className="text-sm text-muted-foreground">Fee ({feePercent}%)</span>
                         <span className="text-sm font-medium flex items-center gap-1">
                         {selectedCurrency?.logo && <img src={selectedCurrency.logo} alt="" className="w-4 h-3 object-contain rounded" />}
                         {(parseFloat(fiatAmount) * (feePercent / 100)).toFixed(2)} {selectedCurrency?.symbol ?? ""}

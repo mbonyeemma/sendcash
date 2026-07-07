@@ -7,10 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { toast } from "sonner";
-import { walletApi, paymentMethodApi, PaymentMethod as ApiPaymentMethod, type RlusdPayoutResponse } from "@/services/api";
+import { walletApi, paymentMethodApi, paymentTypeApi, PaymentMethod as ApiPaymentMethod, type RlusdPayoutResponse } from "@/services/api";
 import { xrplService } from "@/services/xrplService";
 import { baseService } from "@/services/baseService";
-import { exchangeRates, getCurrencyById, SEND_RECEIVE_CURRENCIES } from "@/data/currencies";
+import { exchangeRates, getCurrencyById, SEND_RECEIVE_CURRENCIES, type Currency } from "@/data/currencies";
 import { ChainAssetPicker } from "@/components/dashboard/ChainAssetPicker";
 import {
   SUPPORTED_ASSETS,
@@ -32,6 +32,7 @@ import {
 import { AmountWithCurrency } from "@/components/ui/amount-with-currency";
 import { Badge } from "@/components/ui/badge";
 import { AssetAmountItem } from "@/components/dashboard/AmountItem";
+import { CurrencyCombobox } from "@/components/dashboard/CurrencyCombobox";
 import { loadFavorites, saveFavorites, type XrplFavorite } from "@/components/dashboard/SendCryptoModal";
 import { AddPaymentMethodModal } from "@/components/dashboard/AddPaymentMethodModal";
 import { AddXRPLAddressModal } from "@/components/dashboard/AddXRPLAddressModal";
@@ -53,9 +54,7 @@ interface SavedContact {
 
 type SendMode = "" | "offramp" | "crypto";
 
-const calculateFee = (amount: number): number => {
-  return amount * 0.01; // 1% fee for fiat offramp
-};
+const DEFAULT_OFFRAMP_FEE_PERCENT = 0.5;
 
 const xrplDefaultAsset =
   SUPPORTED_ASSETS.find((a) => a.chain === "xrpl" && a.code === "RLUSD") ??
@@ -107,6 +106,7 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
   } = useSelectedChain();
   const [offrampAmount, setOfframpAmount] = useState("");
   const [fiatAmount, setFiatAmount] = useState("");
+  const [offrampFeePercent, setOfframpFeePercent] = useState(DEFAULT_OFFRAMP_FEE_PERCENT);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(false);
@@ -150,18 +150,30 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
     exchangeRates[selectedOfframpAsset.rateKey]?.["ugx"] ??
     3720;
 
+  // Fetch admin-configured offramp (cash-out) fee percent once when the modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    paymentTypeApi
+      .getPaymentTypes()
+      .then((res) => {
+        const mobileFee = res.data?.find((pt) => pt.type === "MOBILE" && pt.fee_type === "PERCENTAGE");
+        if (mobileFee) setOfframpFeePercent(mobileFee.fee);
+      })
+      .catch((err) => console.error("getPaymentTypes failed", err));
+  }, [isOpen]);
+
   // Calculate fiat (UGX/KES/TZS) when crypto amount changes
   useEffect(() => {
     if (offrampAmount && !isNaN(parseFloat(offrampAmount)) && rate > 0) {
       const num = parseFloat(offrampAmount);
-      const fee = num * 0.01; // 1% fee
+      const fee = num * (offrampFeePercent / 100);
       const netAmount = num - fee;
       const value = (netAmount * rate).toFixed(2);
       setFiatAmount(value);
     } else {
       setFiatAmount("");
     }
-  }, [offrampAmount, rate]);
+  }, [offrampAmount, rate, offrampFeePercent]);
 
   // Fetch payment methods when offramp is shown (mobile money only)
   useEffect(() => {
@@ -890,25 +902,16 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
 
                 <div>
                   <Label className="text-sm font-medium">Send to (currency)</Label>
-                  <Select value={payoutCurrencyId} onValueChange={setPayoutCurrencyId}>
-                    <SelectTrigger className="mt-1.5 h-11 bg-background">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SEND_RECEIVE_CURRENCIES.map((id) => {
-                        const c = getCurrencyById(id);
-                        if (!c) return null;
-                        return (
-                          <SelectItem key={id} value={id}>
-                            <span className="flex items-center gap-2">
-                              <img src={c.logo} alt={c.symbol} className="w-5 h-4 object-contain rounded" />
-                              {c.symbol}
-                            </span>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
+                  <div className="mt-1.5 h-11 rounded-lg border border-input bg-background flex items-center px-1">
+                    <CurrencyCombobox
+                      value={payoutCurrencyId}
+                      onChange={setPayoutCurrencyId}
+                      options={SEND_RECEIVE_CURRENCIES.map((id) => getCurrencyById(id))
+                        .filter((c): c is Currency => !!c)
+                        .map((c) => ({ id: c.id, symbol: c.symbol, logo: c.logo, name: c.name }))}
+                      triggerClassName="w-full justify-between"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">
@@ -959,9 +962,9 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                         </span>
                       </div>
                       <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Fee (1%):</span>
+                        <span className="text-muted-foreground">Fee ({offrampFeePercent}%):</span>
                         <span>
-                          {(parseFloat(offrampAmount) * 0.01).toFixed(6)} {selectedOfframpAsset.code}
+                          {(parseFloat(offrampAmount) * (offrampFeePercent / 100)).toFixed(6)} {selectedOfframpAsset.code}
                         </span>
                       </div>
                       <div className="flex justify-between text-xs">
@@ -1057,9 +1060,9 @@ export const SendModal = ({ isOpen, onClose, onSuccess }: SendModalProps) => {
                   </div>
                   <div className="border-t border-border pt-3">
                     <div className="flex justify-between items-center py-1.5">
-                      <span className="text-sm text-muted-foreground">Fee (1%)</span>
+                      <span className="text-sm text-muted-foreground">Fee ({offrampFeePercent}%)</span>
                       <span className="text-sm font-medium">
-                        {(parseFloat(offrampAmount) * 0.01).toFixed(6)} {selectedOfframpAsset.code}
+                        {(parseFloat(offrampAmount) * (offrampFeePercent / 100)).toFixed(6)} {selectedOfframpAsset.code}
                       </span>
                     </div>
                   </div>

@@ -7,13 +7,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CurrencyCombobox } from "@/components/dashboard/CurrencyCombobox";
 import { getCurrencyById, SEND_RECEIVE_CURRENCIES, type Currency } from "@/data/currencies";
 import { XRPL_SEND_ASSETS, type SupportedAsset } from "@/data/supportedAssets";
 import { AlertCircle } from "lucide-react";
 import type { SupportedCurrency } from "@/services/api";
 
 /** Minimal currency option for dropdown (from API or fallback) */
-export type CurrencyOption = { id: string; symbol: string; logo: string };
+export type CurrencyOption = { id: string; symbol: string; logo: string; name?: string };
 
 interface AmountItemProps {
   currencyId: string;
@@ -45,7 +46,7 @@ export const AmountItem = ({
     ? supportedCurrencies
     : SEND_RECEIVE_CURRENCIES.map((id) => {
         const c = getCurrencyById(id);
-        return c ? { id: c.id, symbol: c.symbol, logo: c.logo } : null;
+        return c ? { id: c.id, symbol: c.symbol, logo: c.logo, name: c.name } : null;
       }).filter(Boolean) as CurrencyOption[];
 
   return (
@@ -62,22 +63,13 @@ export const AmountItem = ({
           placeholder="0.00"
           className="h-full min-w-0 flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
         />
-        <div className="flex items-center border-l border-input bg-muted/50 px-2">
-          <Select value={currencyId} onValueChange={onCurrencyChange}>
-            <SelectTrigger className="h-9 w-[100px] border-0 bg-transparent shadow-none focus:ring-0 gap-1.5 pr-1">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {options.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  <span className="flex items-center gap-2">
-                    <img src={c.logo} alt={c.symbol} className="w-5 h-4 object-contain rounded" />
-                    {c.symbol}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex items-center border-l border-input bg-muted/50 px-1">
+          <CurrencyCombobox
+            value={currencyId}
+            onChange={onCurrencyChange}
+            options={options}
+            triggerClassName="w-[110px]"
+          />
         </div>
       </div>
       {amountError && (
