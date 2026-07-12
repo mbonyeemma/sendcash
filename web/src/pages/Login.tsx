@@ -1,40 +1,37 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, Link, Navigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { toast as sonnerToast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { authApi } from "@/services/api";
 import sendicashLogo from "@/assets/sendicash-logo.png";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, isLoggedIn } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { login, isLoggedIn, isLoading: authLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
-  const { toast } = useToast();
 
   const [formData, setFormData] = useState({
-    email: "",
+    email: searchParams.get("email") || "",
     password: "",
   });
 
-  // Redirect if already logged in
-  if (isLoggedIn) {
-    navigate("/dashboard", { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (searchParams.get("reason") === "session_expired") {
+      navigate("/login", { replace: true });
+    }
+  }, [searchParams, navigate]);
 
-  // Optional: show "Session expired" if redirected from 401
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("reason") === "session_expired") {
-    // One-time message handled by api layer toast; clear param
-    window.history.replaceState({}, "", "/login");
+  if (!authLoading && isLoggedIn) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   const validateEmail = (email: string): boolean => {
@@ -58,7 +55,7 @@ export default function Login() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-    
+
     if (touched[name]) {
       const error = validateField(name, value);
       setErrors({ ...errors, [name]: error });
@@ -74,12 +71,10 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Mark all fields as touched
+
     const allTouched = { email: true, password: true };
     setTouched(allTouched);
 
-    // Validate all fields
     const newErrors: Record<string, string> = {};
     Object.keys(formData).forEach((key) => {
       const error = validateField(key, formData[key as keyof typeof formData]);
@@ -88,11 +83,7 @@ export default function Login() {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      toast({
-        title: "Validation Error",
-        description: "Please fix the errors in the form",
-        variant: "destructive",
-      });
+      sonnerToast.error("Please fix the errors in the form");
       return;
     }
 
@@ -104,17 +95,28 @@ export default function Login() {
         password: formData.password,
       });
 
-      if (response.data) {
-        login(response.data.user, response.data.token);
-        toast({
-          title: "Welcome back!",
-          description: "You've successfully logged in.",
+      // Email not verified — send user to signup OTP flow
+      if (response.status === 203) {
+        sonnerToast.message("Please verify your email to continue", {
+          description: "Enter the code we sent you, or request a new one.",
         });
-        navigate("/dashboard");
+        navigate(`/signup?email=${encodeURIComponent(formData.email)}&verify=1`);
+        return;
       }
-    } catch (error: any) {
-      // Error toast is already shown by the API layer, so we don't need to show another one
-      // Just log for debugging if needed
+
+      const token = response.data?.token;
+      const user = response.data?.user;
+      if (!token || !user) {
+        sonnerToast.error("Login failed. Please try again.");
+        return;
+      }
+
+      login(user, token);
+      sonnerToast.success("Welcome back!", {
+        description: "You've successfully logged in.",
+      });
+      navigate("/dashboard", { replace: true });
+    } catch (error: unknown) {
       console.error("Login error:", error);
     } finally {
       setIsLoading(false);
@@ -161,6 +163,7 @@ export default function Login() {
                   value={formData.email}
                   onChange={handleInputChange}
                   onBlur={handleBlur}
+                  autoComplete="username"
                   className={`pl-10 ${errors.email ? "border-destructive" : touched.email && !errors.email ? "border-green-500" : ""}`}
                 />
                 {touched.email && !errors.email && (
@@ -180,7 +183,11 @@ export default function Login() {
                 <Label htmlFor="password">Password</Label>
                 <button
                   type="button"
-                  onClick={() => toast({ title: "Forgot Password", description: "Password reset feature coming soon!" })}
+                  onClick={() =>
+                    sonnerToast.message("Forgot Password", {
+                      description: "Password reset feature coming soon!",
+                    })
+                  }
                   className="text-sm text-primary hover:underline"
                 >
                   Forgot?
@@ -196,6 +203,7 @@ export default function Login() {
                   value={formData.password}
                   onChange={handleInputChange}
                   onBlur={handleBlur}
+                  autoComplete="current-password"
                   className={`pl-10 pr-10 ${errors.password ? "border-destructive" : touched.password && !errors.password ? "border-green-500" : ""}`}
                 />
                 <button
@@ -217,7 +225,7 @@ export default function Login() {
               )}
             </div>
 
-            <Button className="w-full" size="lg" disabled={isLoading}>
+            <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin mr-2" />

@@ -202,7 +202,7 @@ export const AuthModal = ({ isOpen, onClose, initialMode }: AuthModalProps) => {
             <p className="text-muted-foreground">
               {mode === "login" 
                 ? "Sign in to access your wallet" 
-                : "Join SendWave and start sending money"}
+                : "Join SendiCash and start sending money"}
             </p>
           </div>
 

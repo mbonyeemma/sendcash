@@ -26,6 +26,9 @@ export const removeAuthToken = (): void => {
 /** User-friendly messages for common API errors (all toasts are dismissible via Sonner close button) */
 function getFriendlyMessage(serverMessage: string, status: number): string {
   const lower = (serverMessage || "").toLowerCase();
+  if (lower.includes("invalid password") || lower.includes("user not found")) {
+    return "Invalid email or password.";
+  }
   if (status === 401 || lower.includes("invalid access token") || lower.includes("unauthorized")) {
     return "Your session has expired. Please sign in again.";
   }
@@ -73,15 +76,26 @@ const request = async <T>(
         : response.status || data.status || 500;
     const serverMessage = data.message || data.error || `Request failed (${status})`;
 
-    // 401: clear token and redirect to login so user can sign in again
+    // 401: session expired → redirect to login. Auth attempts (login/pin) stay on the page.
     if (status === 401) {
       removeAuthToken();
+      const lower = (serverMessage || "").toLowerCase();
+      const isCredentialFailure =
+        endpoint.includes("/user/login") ||
+        endpoint.includes("/wallet/pinlogin") ||
+        lower.includes("invalid password") ||
+        window.location.pathname.startsWith("/login");
+
       toast.error(getFriendlyMessage(serverMessage, status), { duration: 8000 });
-      window.location.href = "/login?reason=session_expired";
+      if (!isCredentialFailure) {
+        window.location.href = "/login?reason=session_expired";
+      }
       throw new Error(serverMessage);
     }
 
-    const isError = !response.ok || (status >= 400);
+    // Body may carry non-success statuses (API always responds HTTP 200)
+    const bodyStatus = typeof data.status === "number" ? data.status : status;
+    const isError = !response.ok || status >= 400 || (bodyStatus >= 300 && bodyStatus !== 203);
     if (isError) {
       const friendly = getFriendlyMessage(serverMessage, status);
       const isAlreadyExists = status === 409 || (serverMessage || "").toLowerCase().includes("already exists");

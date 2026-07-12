@@ -76,6 +76,16 @@ export default function Signup() {
     }
   }, [referralFromUrl]);
 
+  // Deep-link from login when email still needs verification
+  useEffect(() => {
+    const email = searchParams.get("email")?.trim();
+    if (searchParams.get("verify") === "1" && email) {
+      setFormData((prev) => ({ ...prev, email }));
+      setRegisteredEmail(email);
+      setShowOTP(true);
+    }
+  }, [searchParams]);
+
   // Fetch countries on mount
   useEffect(() => {
     const fetchCountries = async () => {
@@ -299,7 +309,7 @@ export default function Signup() {
               Create Account
             </h2>
             <p className="text-sm text-muted-foreground">
-              Join SendWave and start sending money
+              Join SendiCash and start sending money
             </p>
           </div>
 
@@ -502,7 +512,7 @@ export default function Signup() {
               )}
             </div>
 
-            <Button className="w-full" size="lg" disabled={isLoading}>
+            <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin mr-2" />
