@@ -42,7 +42,7 @@ export const DepositModal = ({ isOpen, onClose, onSuccess }: DepositModalProps) 
   const { selectedChain, selectedAsset: receiveAsset, walletConnected, walletAddress } =
     useSelectedChain();
   const rate = getFiatRateForAsset(receiveAsset, selectedCurrency);
-  const feePercent = selectedCurrency?.fee_percent ?? 0.5;
+  const feePercent = selectedCurrency?.fee_percent ?? 1;
   const [phone, setPhone] = useState("");
   const [fiatAmount, setFiatAmount] = useState("");
   const [cryptoReceiveAmount, setCryptoReceiveAmount] = useState("");

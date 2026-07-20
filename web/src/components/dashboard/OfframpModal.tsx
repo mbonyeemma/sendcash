@@ -74,6 +74,8 @@ export const OfframpModal = ({ isOpen, onClose, onSuccess }: OfframpModalProps) 
   const [selectedWallet, setSelectedWallet] = useState<string>("");
   const [pin, setPin] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Offramp fee percent (admin-configurable, defaults to 1%)
+  const [offrampFeePercent, setOfframpFeePercent] = useState(1);
 
   const chains = [
     { value: "BSC", label: "Binance Smart Chain (BSC)" },
@@ -85,6 +87,16 @@ export const OfframpModal = ({ isOpen, onClose, onSuccess }: OfframpModalProps) 
   useEffect(() => {
     if (isOpen) {
       fetchWallets();
+      // Load the admin-configurable offramp fee (public endpoint)
+      walletApi
+        .getSupportedCurrencies()
+        .then((res) => {
+          const pct = res.data?.[0]?.offramp_fee_percent;
+          if (typeof pct === "number" && !isNaN(pct)) setOfframpFeePercent(pct);
+        })
+        .catch(() => {
+          /* keep default 1% */
+        });
     }
   }, [isOpen]);
 
@@ -560,11 +572,27 @@ export const OfframpModal = ({ isOpen, onClose, onSuccess }: OfframpModalProps) 
                     error={errors.amount}
                     placeholder="0.00"
                   />
-                  {amount && !isNaN(parseFloat(amount)) && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      You will receive: {(parseFloat(amount) * getRate()).toLocaleString()} {toCurrency.symbol}
-                    </p>
-                  )}
+                  {amount && !isNaN(parseFloat(amount)) && (() => {
+                    const gross = parseFloat(amount) * getRate();
+                    const fee = gross * (offrampFeePercent / 100);
+                    const net = gross - fee;
+                    return (
+                      <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                        <div className="flex items-center justify-between">
+                          <span>Amount</span>
+                          <span>{gross.toLocaleString(undefined, { maximumFractionDigits: 2 })} {toCurrency.symbol}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Offramp fee ({offrampFeePercent}%)</span>
+                          <span>-{fee.toLocaleString(undefined, { maximumFractionDigits: 2 })} {toCurrency.symbol}</span>
+                        </div>
+                        <div className="flex items-center justify-between font-medium text-foreground pt-1 border-t border-border">
+                          <span>You will receive</span>
+                          <span>{net.toLocaleString(undefined, { maximumFractionDigits: 2 })} {toCurrency.symbol}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <p className="text-xs text-muted-foreground mt-1">
                     Select the crypto asset you are sending. Settlement options vary by asset and chain.
                   </p>

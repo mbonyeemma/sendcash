@@ -78,7 +78,10 @@ export interface SupportedCurrency {
   rlusd_rate: number;
   usdc_rate?: number;
   usdt_rate?: number;
+  /** Onramp (deposit) fee percent, admin-configurable. Defaults to 1%. */
   fee_percent: number;
+  /** Offramp (withdraw/cash-out) fee percent, admin-configurable. Defaults to 1%. */
+  offramp_fee_percent?: number;
 }
 
 export interface Transaction {
