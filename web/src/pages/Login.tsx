@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast as sonnerToast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { authApi } from "@/services/api";
+import { ForgotPasswordModal } from "@/components/auth/ForgotPasswordModal";
 import sendicashLogo from "@/assets/sendicash-logo.png";
 
 export default function Login() {
@@ -18,6 +19,7 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     email: searchParams.get("email") || "",
@@ -183,11 +185,7 @@ export default function Login() {
                 <Label htmlFor="password">Password</Label>
                 <button
                   type="button"
-                  onClick={() =>
-                    sonnerToast.message("Forgot Password", {
-                      description: "Password reset feature coming soon!",
-                    })
-                  }
+                  onClick={() => setForgotOpen(true)}
                   className="text-sm text-primary hover:underline"
                 >
                   Forgot?
@@ -255,6 +253,13 @@ export default function Login() {
           </div>
         </div>
       </motion.div>
+
+      <ForgotPasswordModal
+        open={forgotOpen}
+        onOpenChange={setForgotOpen}
+        defaultEmail={formData.email}
+        onSuccess={(email) => setFormData((prev) => ({ ...prev, email, password: "" }))}
+      />
     </div>
   );
 }

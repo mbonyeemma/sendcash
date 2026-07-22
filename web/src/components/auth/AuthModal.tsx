@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { ForgotPasswordModal } from "@/components/auth/ForgotPasswordModal";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -41,6 +42,7 @@ export const AuthModal = ({ isOpen, onClose, initialMode }: AuthModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [forgotOpen, setForgotOpen] = useState(false);
   const { toast } = useToast();
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -168,6 +170,7 @@ export const AuthModal = ({ isOpen, onClose, initialMode }: AuthModalProps) => {
   if (!isOpen) return null;
 
   return (
+    <>
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         {/* Backdrop */}
@@ -295,7 +298,7 @@ export const AuthModal = ({ isOpen, onClose, initialMode }: AuthModalProps) => {
                 {mode === "login" && (
                   <button
                     type="button"
-                    onClick={() => toast({ title: "Forgot Password", description: "Password reset feature coming soon!" })}
+                    onClick={() => setForgotOpen(true)}
                     className="text-sm text-primary hover:underline"
                   >
                     Forgot?
@@ -414,5 +417,12 @@ export const AuthModal = ({ isOpen, onClose, initialMode }: AuthModalProps) => {
         </motion.div>
       </div>
     </AnimatePresence>
+    <ForgotPasswordModal
+      open={forgotOpen}
+      onOpenChange={setForgotOpen}
+      defaultEmail={formData.email}
+      onSuccess={(email) => setFormData((prev) => ({ ...prev, email, password: "" }))}
+    />
+    </>
   );
 };
